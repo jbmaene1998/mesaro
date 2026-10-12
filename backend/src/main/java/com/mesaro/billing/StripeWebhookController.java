@@ -28,6 +28,8 @@ import org.springframework.web.bind.annotation.RestController;
  * Durability: claim event as {@code processing}, handle, then mark {@code done}.
  * On handler failure mark {@code failed} and return 500 so Stripe retries;
  * {@link BillingService#tryClaimEvent} reclaims failed / stale processing rows.
+ * Deserialize failures for handled event types that require a Stripe object must fail
+ * the claim (same as handler errors) so Stripe can retry with a recoverable payload.
  * </p>
  */
 @RestController
@@ -95,40 +97,25 @@ public class StripeWebhookController {
 
         switch (event.getType()) {
 
-            case "checkout.session.completed" -> {
-                Session session = deserialize(event, Session.class);
-                if (session != null) {
-                    billingService.handleCheckoutSessionCompleted(session);
-                }
-            }
+            case "checkout.session.completed" ->
+                    billingService.handleCheckoutSessionCompleted(
+                            requireDeserialized(event, Session.class));
 
-            case "customer.subscription.updated" -> {
-                Subscription sub = deserialize(event, Subscription.class);
-                if (sub != null) {
-                    billingService.handleSubscriptionUpdated(sub);
-                }
-            }
+            case "customer.subscription.updated" ->
+                    billingService.handleSubscriptionUpdated(
+                            requireDeserialized(event, Subscription.class));
 
-            case "customer.subscription.deleted" -> {
-                Subscription sub = deserialize(event, Subscription.class);
-                if (sub != null) {
-                    billingService.handleSubscriptionDeleted(sub);
-                }
-            }
+            case "customer.subscription.deleted" ->
+                    billingService.handleSubscriptionDeleted(
+                            requireDeserialized(event, Subscription.class));
 
-            case "invoice.payment_succeeded" -> {
-                Invoice invoice = deserialize(event, Invoice.class);
-                if (invoice != null) {
-                    billingService.handleInvoicePaymentSucceeded(invoice);
-                }
-            }
+            case "invoice.payment_succeeded" ->
+                    billingService.handleInvoicePaymentSucceeded(
+                            requireDeserialized(event, Invoice.class));
 
-            case "invoice.payment_failed" -> {
-                Invoice invoice = deserialize(event, Invoice.class);
-                if (invoice != null) {
-                    billingService.handleInvoicePaymentFailed(invoice);
-                }
-            }
+            case "invoice.payment_failed" ->
+                    billingService.handleInvoicePaymentFailed(
+                            requireDeserialized(event, Invoice.class));
 
             case "customer.subscription.trial_will_end" ->
                     log.debug("customer.subscription.trial_will_end received (Stripe-managed trial, not standard flow)");
@@ -149,5 +136,15 @@ public class StripeWebhookController {
         }
         log.warn("Could not deserialize event {} data as {}", event.getId(), type.getSimpleName());
         return null;
+    }
+
+    private <T extends StripeObject> T requireDeserialized(Event event, Class<T> type) {
+        T obj = deserialize(event, type);
+        if (obj == null) {
+            throw new IllegalStateException(
+                    "Could not deserialize Stripe event " + event.getId()
+                            + " (" + event.getType() + ") data as " + type.getSimpleName());
+        }
+        return obj;
     }
 }
