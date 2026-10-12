@@ -112,7 +112,7 @@ export function MarketingLayout({ children }: PropsWithChildren) {
               {isAuthenticated ? (
                 <Link
                   to="/dashboard"
-                  className="mk-btn-primary inline-flex h-10 items-center rounded-full px-5 text-sm font-semibold"
+                  className="mk-btn-primary inline-flex min-h-10 items-center rounded-full px-5 text-sm font-semibold"
                 >
                   {t("marketing.goToDashboard")}
                 </Link>
@@ -126,7 +126,7 @@ export function MarketingLayout({ children }: PropsWithChildren) {
                   </Link>
                   <Link
                     to="/register"
-                    className="mk-btn-primary inline-flex h-10 items-center rounded-full px-5 text-sm font-semibold"
+                    className="mk-btn-primary inline-flex min-h-10 items-center rounded-full px-5 text-sm font-semibold"
                   >
                     {t("common.startNow")}
                   </Link>
@@ -162,7 +162,7 @@ export function MarketingLayout({ children }: PropsWithChildren) {
                     <Link
                       to="/dashboard"
                       onClick={() => setMobileOpen(false)}
-                      className="mk-btn-primary inline-flex h-11 items-center justify-center rounded-full text-sm font-semibold"
+                      className="mk-btn-primary inline-flex min-h-11 items-center justify-center rounded-full text-sm font-semibold"
                     >
                       {t("marketing.goToDashboard")}
                     </Link>
@@ -171,14 +171,14 @@ export function MarketingLayout({ children }: PropsWithChildren) {
                       <Link
                         to="/login"
                         onClick={() => setMobileOpen(false)}
-                        className="mk-btn-ghost inline-flex h-11 items-center justify-center rounded-full text-sm font-semibold leading-normal"
+                        className="mk-btn-ghost inline-flex min-h-11 items-center justify-center rounded-full text-sm font-semibold leading-normal"
                       >
                         {t("common.logIn")}
                       </Link>
                       <Link
                         to="/register"
                         onClick={() => setMobileOpen(false)}
-                        className="mk-btn-primary inline-flex h-11 items-center justify-center rounded-full text-sm font-semibold"
+                        className="mk-btn-primary inline-flex min-h-11 items-center justify-center rounded-full text-sm font-semibold"
                       >
                         {t("common.startNow")}
                       </Link>

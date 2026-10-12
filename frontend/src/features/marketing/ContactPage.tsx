@@ -275,13 +275,13 @@ export function ContactPage() {
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <Link
                 to="/register"
-                className="mk-btn-primary inline-flex h-12 items-center justify-center rounded-full px-7 text-sm font-semibold"
+                className="mk-btn-primary inline-flex min-h-12 items-center justify-center rounded-full px-7 text-sm font-semibold"
               >
                 {t("common.startNow")}
               </Link>
               <a
                 href="#contact-form"
-                className="mk-btn-ghost inline-flex h-12 items-center justify-center rounded-full px-7 text-sm font-semibold"
+                className="mk-btn-ghost inline-flex min-h-12 items-center justify-center rounded-full px-7 text-sm font-semibold"
               >
                 {copy.sendMessage}
               </a>
@@ -382,7 +382,7 @@ export function ContactPage() {
                 <button
                   type="submit"
                   disabled={submitState === "submitting"}
-                  className="mk-btn-primary inline-flex h-12 items-center justify-center rounded-full px-7 text-sm font-semibold disabled:opacity-60"
+                  className="mk-btn-primary inline-flex min-h-12 items-center justify-center rounded-full px-7 text-sm font-semibold disabled:opacity-60"
                 >
                   {submitState === "submitting" ? copy.sending : copy.send}
                 </button>
@@ -411,7 +411,7 @@ export function ContactPage() {
             </div>
             <Link
               to="/register"
-              className="mk-btn-primary mt-6 inline-flex h-12 w-full items-center justify-center rounded-full text-sm font-semibold"
+              className="mk-btn-primary mt-6 inline-flex min-h-12 w-full items-center justify-center rounded-full text-sm font-semibold"
             >
               {t("common.startNow")}
             </Link>

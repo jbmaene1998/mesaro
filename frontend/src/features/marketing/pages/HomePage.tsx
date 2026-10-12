@@ -540,7 +540,7 @@ export function HomePage() {
               <Link
                 to="/register"
                 onClick={() => trackEvent(ANALYTICS_EVENTS.MARKETING_HOME_PRIMARY_CTA_CLICK, { page: "home" })}
-                className="mk-btn-primary inline-flex h-12 items-center justify-center rounded-full px-7 text-sm font-semibold"
+                className="mk-btn-primary inline-flex min-h-12 items-center justify-center rounded-full px-7 text-sm font-semibold"
                 data-analytics-event={ANALYTICS_EVENTS.MARKETING_HOME_PRIMARY_CTA_CLICK}
               >
                 {t("common.startNow")}
@@ -548,7 +548,7 @@ export function HomePage() {
               <Link
                 to="/features"
                 onClick={() => trackEvent(ANALYTICS_EVENTS.MARKETING_HOME_SECONDARY_CTA_CLICK, { page: "home" })}
-                className="mk-btn-ghost inline-flex h-12 items-center justify-center rounded-full px-7 text-sm font-semibold"
+                className="mk-btn-ghost inline-flex min-h-12 items-center justify-center rounded-full px-7 text-sm font-semibold"
                 data-analytics-event={ANALYTICS_EVENTS.MARKETING_HOME_SECONDARY_CTA_CLICK}
               >
                 {howLabel}

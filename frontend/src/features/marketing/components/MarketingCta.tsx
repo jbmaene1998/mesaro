@@ -41,14 +41,14 @@ export function MarketingCta({
             <Link
               to={primaryTo}
               onClick={onPrimaryClick}
-              className="mk-btn-primary inline-flex h-12 items-center justify-center rounded-full px-7 text-sm font-semibold"
+              className="mk-btn-primary inline-flex min-h-12 items-center justify-center rounded-full px-7 text-sm font-semibold"
             >
               {primaryLabel}
             </Link>
             {secondaryLabel && secondaryTo ? (
               <Link
                 to={secondaryTo}
-                className="mk-btn-ghost inline-flex h-12 items-center justify-center rounded-full px-7 text-sm font-semibold"
+                className="mk-btn-ghost inline-flex min-h-12 items-center justify-center rounded-full px-7 text-sm font-semibold"
               >
                 {secondaryLabel}
               </Link>
