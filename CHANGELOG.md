@@ -17,11 +17,12 @@ How we cut releases: [docs/engineering/branching-and-releases.md](docs/engineeri
 
 ### Changed
 
-- Docs rescored 2026-10-12: Phase 0–2 code fixes reflected; readiness ~78%
+- Docs rescored 2026-10-12 from code audit: readiness ~72%; staging CD live; test CI still parked; webhook deserialize hole + PAST_DUE called out as open
+- `.env.prod.example` aligned with compose (Stripe, `MESARO_DOMAIN`, `ACME_EMAIL`)
 
 ### Fixed
 
-- Stripe webhook durability; billing success confirm; guest booking billing gate
+- Billing success confirm; guest booking billing gate; webhook claim→done/failed path *(deserialize-null→done still open)*
 - STAFF cancel/switch + self-vacation; restaurant `/select`; accept-invite set-password
 - Dev seed `maxRestaurants` aligned with 2 demo restaurants
 - Planning cold-load; guest slot `HH:mm`; guest cancel deep-links

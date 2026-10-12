@@ -2,7 +2,7 @@
 
 **Repo:** [jbmaene1998/mesaro](https://github.com/jbmaene1998/mesaro) · monorepo `backend/` + `frontend/` + `docs/`  
 **Audience:** founder building a simple, cheap restaurant reservation SaaS  
-**Status date:** 2026-10-12 (code review rescore after Phase 0–4 remediation)  
+**Status date:** 2026-10-12 (code-audit rescore — evidence from `backend/` + `frontend/` + `.github/`, not prior doc claims)  
 **Historical live audit:** 2026-10-09 — kept in [production-ready-plan.md](production-ready-plan.md) as a snapshot only
 
 | Document | Scope |
@@ -39,26 +39,25 @@ Engineering depth (holds, DST, tenancy) stays **under the hood**. Marketing stay
 
 ## One-line engineering verdict
 
-**Mesaro’s core money, floor, billing-gate, and legal-page paths are implemented in code** (Phase 0–2). It is **not yet safe to run paid ads / unattended self-serve** until prod email is smoke-tested, counsel signs off Privacy/Terms, GitHub Actions are unparked and green, and a real VPS cutover with secrets is done.
+**Core product paths (booking, floor STAFF ops, planning/vacations/reports, billing checkout confirm, legal routes) are implemented.** Staging CD from `dev` → Omen is live. It is **not** safe for paid ads / unattended self-serve until: webhook deserialize failures stop marking events `done`, PAST_DUE policy is defined, prod email is smoke-tested, test CI is unparked and green, and Hostinger prod CD + secrets exist.
 
 **Do not “differentiate” by adding competitor suite features** — that violates the doctrine.
 
 ---
 
-## Current status (2026-10-12)
+## Current status (2026-10-12 code audit)
 
-| Works in code (Phase 0–2) | Still open before paid scale |
-|---------------------------|------------------------------|
-| Owner / staff login → Dashboard | Real email smoke (Resend/SMTP) in prod-like env |
-| Guest avail → hold → confirm | Counsel-approved Privacy/Terms (routes exist; drafts) |
-| STAFF cancel / switch / self-vacation | GitHub Actions **parked** (`.github/ci-parked/`) — not running yet |
-| Billing success → `confirmCheckout` | Hostinger VPS cutover + live secrets |
-| Webhook claim → route → done/failed | PAST_DUE / dunning policy |
-| Guest booking billing-gated | Company formation / DPA / Stripe legal entity |
-| Privacy + Terms routes + footer | Some i18n / opening-hours UX polish |
-| Seed `maxRestaurants=2` for demo owner | |
-| `/select` wired; accept-invite set-password | |
-| Planning cold-load; reports; vacations module | |
+| Works in code | Still open (evidence-based) |
+|---------------|------------------------------|
+| Guest avail → hold → confirm + billing/`bookingEnabled` gate | **P0:** Stripe webhook marks `done` when deserialize returns null (no handler, no retry) |
+| Billing success → `confirmCheckout`; claim → route → done/failed path | **P0:** PAST_DUE still `allowsAccess()` with no local grace/dunning |
+| STAFF cancel / switch / self-vacation create | Prod email smoke (Resend/SMTP wired; credentials not fail-fast; not verified live) |
+| Accept-invite set-password for new users | Test CI parked (`.github/ci-parked/`); only staging CD + soft PR gate active |
+| Planning cold-load today; vacations/closures; reports summary+CSV (MANAGER+) | Prod CD stub (`deploy-prod.yml`); Hostinger VPS + live secrets not cut over |
+| Privacy + Terms routes + footer + consent → Privacy | Billing + register UI English-only under ES; dashboard trial toasts EN |
+| Seed `maxRestaurants=2`; compose prod binds data plane to localhost + Caddy | Settings: no opening-hours ↔ closures warning; hours edit warn-only (no cancel) |
+| `/restaurants/{id}/select` + `X-Restaurant-Id` tenancy | Outbox: only `ReservationConfirmed` sends mail; other enqueued types are stubs |
+| Staging deploy workflow on `dev` (Omen self-hosted) | `.env.prod.example` missing Stripe + `MESARO_DOMAIN` / `ACME_EMAIL` vars compose needs |
 
 Full phase checklist: [production-ready-plan.md](production-ready-plan.md)
 
@@ -75,47 +74,47 @@ Full phase checklist: [production-ready-plan.md](production-ready-plan.md)
 | **Frontend** | React 18 + TypeScript + Vite + TanStack Query + Playwright |
 | **Vision core (aligned)** | Guest booking, embed, floor ops, tables/shifts, staff, flat €49.99 marketing |
 | **In-nav essentials (locked)** | Planning, vacations, reports — implemented; keep simple in marketing |
-| **Repo / process** | Private GitHub repo, CONTRIBUTING, PR templates, squash-only merges; CI parked |
+| **Repo / process** | Private GitHub; squash PRs into `dev`; staging CD live; test CI parked; prod CD stub |
 
 ### What is strong (keep)
 
 - Booking correctness: holds, locks, overlap triggers, DST, concurrency tests
-- Multi-tenant RBAC with restaurant context (`X-Restaurant-Id` + select scoped JWT)
+- Multi-tenant RBAC via membership + `X-Restaurant-Id` (select refreshes JWT; not a single-restaurant claim)
 - Owner Stripe checkout + flat-price story on marketing (`€49.99`)
 - Guest + embed channels; Privacy/Terms linked
 - Audit/GDPR under the hood (compliance — not a pricing-page feature)
-- Local prod path (`run-prod-local.ps1`) + Hostinger VPS runbook
+- Local prod path (`run-prod-local.ps1`) + Hostinger VPS runbook + Omen staging CD
 
 ### What still blocks unattended paid scale
 
 | # | Blocker | Where |
 |---|---------|--------|
-| 1 | Prod email smoke not verified | Ops / Phase 0 item 7 |
-| 2 | Privacy/Terms need counsel + company entity | Legal |
-| 3 | CI not active on GitHub (workflows parked) | Ops |
-| 4 | Live VPS deploy + secrets not cut over | Ops |
-| 5 | PAST_DUE / dunning policy undefined | Billing product |
-| 6 | Opening-hours vs closures UX polish | Settings P2 |
-| 7 | Outbox: some event types still stubs | Reliability |
+| 1 | Webhook deserialize-null → still `markEventDone` | `StripeWebhookController` |
+| 2 | PAST_DUE keeps write access forever in-app | `SubscriptionStatus.allowsAccess` |
+| 3 | Prod email smoke not verified; blank Resend/SMTP not rejected at boot | Ops / `ProductionSecurityValidator` |
+| 4 | Test CI parked; prod deploy stub; no Hostinger cutover | `.github/` + VPS |
+| 5 | Privacy/Terms drafts need counsel + company entity | Legal |
+| 6 | Billing/register i18n missing; opening-hours ↔ closures UX missing | Frontend |
+| 7 | Outbox stubs still enqueued (`HoldExpired`, planning delete, etc.) | `OutboxWorker` |
 
 Journey catalog: **[flows.md](flows.md)**
 
 ---
 
-## Readiness scores (2026-10-12 rescore)
+## Readiness scores (2026-10-12 code-audit rescore)
 
 | Domain | Score | Note |
 |--------|-------|------|
 | Booking engine | **~90%** | Hold/confirm + billing gate in code |
-| Simple floor UX | **~85%** | STAFF cancel/switch allowed; minor i18n noise |
-| Advanced modules | **~85%** | Planning/vacations/reports implemented; E2E in CI still parked |
-| Monetization durability | **~80%** | Confirm + webhook fixed; PAST_DUE policy open |
-| Security / tenancy | **~80%** | Select JWT + RBAC; secret scanning etc. still off on GitHub |
+| Simple floor UX | **~85%** | STAFF cancel/switch allowed; billing/register i18n gaps |
+| Advanced modules | **~85%** | Planning/vacations/reports implemented; CI E2E not running |
+| Monetization durability | **~65%** | Confirm + claim path OK; deserialize→done hole; PAST_DUE soft forever |
+| Security / tenancy | **~75%** | RBAC + header context; JWT not single-restaurant-scoped; secret scanning off |
 | EU compliance (legal pages) | **~65%** | Routes + drafts live; counsel / entity pending |
-| Ops / CI | **~55%** | Compose/Caddy/runbooks exist; Actions parked; no live VPS yet |
+| Ops / CI | **~60%** | Staging CD live; test CI parked; prod CD stub; no Hostinger yet |
 | Vision fit (simple €50 product) | **~75%** | Doctrine held through remediation |
 
-**Company readiness overall: ~78%.** Safe for careful pilots with hand-holding. **Not** ready for paid ads until email smoke, legal counsel, active CI, and VPS cutover.
+**Company readiness overall: ~72%.** Staging pilots possible with hand-holding. **Not** ready for paid ads until webhook hole, PAST_DUE policy, email smoke, test CI, and Hostinger prod cutover.
 
 ---
 
@@ -136,22 +135,24 @@ We are **not** chasing suite parity. Missing deposits, SMS, waitlist, marketplac
 
 ### P0 — before paid self-serve / ads
 
-1. Prod email smoke (invite, reset, confirmation) with real Resend/SMTP  
-2. Counsel review of Privacy + Terms; incorporate / VAT / Stripe entity  
-3. Unpark + green GitHub Actions (backend `mvn test` + honest E2E)  
-4. Hostinger VPS cutover with real secrets, TLS, private data plane  
+1. Fix Stripe webhook: deserialize failure must `markEventFailed` + 500 (never silent `done`)  
+2. Define + implement PAST_DUE grace → block / dunning (today PAST_DUE still allows access)  
+3. Prod email smoke (invite, reset, confirmation) with Resend/SMTP; fail-fast if credentials blank  
+4. Unpark + green test CI (`backend-ci.yml` ± `e2e.yml`); fix fragile billing/reports e2e mocks  
+5. Hostinger VPS cutover: real `.env.prod` (incl. Stripe), wire `deploy-prod.yml`, TLS  
 
 ### P1 — SaaS correctness
 
-5. Define PAST_DUE → grace → unpaid/canceled + dunning  
-6. Finish outbox stubs or stop enqueueing fake reliability  
-7. Opening-hours vs closures UX (warn vs create closure)  
+6. Counsel review of Privacy + Terms; incorporate / VAT / Stripe entity  
+7. Align `.env.prod.example` with compose (Stripe, `MESARO_DOMAIN`, `ACME_EMAIL`)  
+8. Finish outbox stubs or stop enqueueing fake reliability  
+9. Settings: opening-hours ↔ closures warning; document warn-only hours edit  
 
 ### P2 — polish
 
-8. Remaining i18n leaks; overnight capacity copy edge cases  
-9. Branch-protection enforcement when GitHub Pro (or org) is available  
-10. Secret scanning / Dependabot on the private repo  
+10. Localize billing + register (and dashboard trial toasts) for ES/NL/FR  
+11. Branch-protection enforcement when GitHub Pro (or org) is available  
+12. Secret scanning / Dependabot; backups + 2–3 alerts from `monitoring.md`  
 
 ### Explicitly not priority
 
@@ -162,23 +163,24 @@ We are **not** chasing suite parity. Missing deposits, SMS, waitlist, marketplac
 
 ## 30 / 60 / 90 (from today)
 
-### Days 0–30 — charge safely in prod
+### Days 0–30 — charge safely
 
-- Email smoke + counsel drafts → shipable legal  
-- Unpark CI; VPS deploy with TLS  
-- Pilot 1–3 restaurants  
+- Fix webhook deserialize hole + PAST_DUE policy  
+- Email smoke on staging/prod-like; unpark test CI  
+- Hostinger prod bring-up + replace deploy stub  
+- Pilot 1–3 restaurants on staging, then prod  
 
 ### Days 31–60 — trust without sprawl
 
-- DSAR/retention notes for counsel  
-- PAST_DUE / dunning policy  
-- Backup / incident drill  
+- Counsel + DSAR/retention notes  
+- Backups / incident drill; Sentry optional  
+- Billing/register i18n; opening-hours UX  
 
 ### Days 61–90 — deepen the wedge, don’t widen it
 
 - Mobile-first **floor** experience (not new modules)  
 - Load-test booking; support playbooks that match simple product  
-- Validate €50 willingness-to-pay and “no training needed”  
+- Validate €50 willingness-to-pay and “no training needed” 
 
 ---
 
