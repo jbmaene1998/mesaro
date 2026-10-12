@@ -1,25 +1,28 @@
 # Mesaro backend — functional flow audit
 
-**Audit date:** 2026-10-09 (includes live API probes)  
+**Status date:** 2026-10-12 (code rescore) · historical live probes: 2026-10-09  
 **Source:** `backend/src/main/java/com/mesaro/**`  
 **Vision:** [../product-doctrine.md](../product-doctrine.md)  
 **Cross-cut:** [../flows.md](../flows.md) · Technical: [audit.md](audit.md) · Plan: [../production-ready-plan.md](../production-ready-plan.md)
 
+> Rows below that still say “403 / ungated / mark-then-route” in older subsections were fixed in Phase 0–1. Prefer the snapshot table and [../flows.md](../flows.md).
+
 ---
 
-## Live probes (2026-10-09) — short
+## Status snapshot (2026-10-12)
 
-| Flow | Live |
-|------|------|
-| Login admin / staff.demo | OK |
-| Hold → `POST /api/holds/confirm` | OK (ungated) |
+| Flow | Status |
+|------|--------|
+| Login admin / manager / staff.demo | OK |
+| Hold → confirm | OK + **billing-gated** |
 | Staff-planning day | OK |
 | Reports summary | OK |
-| Billing status | OK read; qty=1 vs 2 restaurants |
-| STAFF cancel | **403** (service MANAGER) |
-| STAFF vacation create | **403** (service MANAGER) |
-| `POST .../select` | OK (FE unused) |
-| Webhook order | Still mark-then-route |
+| Billing status / seed quota | OK (`max_restaurants = 2` for demo owner) |
+| STAFF cancel / switch | OK (service STAFF+) |
+| STAFF vacation create (self) | OK |
+| `POST .../select` | OK (FE wired) |
+| Webhook | OK (claim → route → done/failed) |
+| Prod email smoke / PAST_DUE policy | Open |
 
 ---
 
@@ -29,15 +32,15 @@
 |--------|---------|
 | **Complete** | End-to-end usable for €50 simple SaaS |
 | **Partial** | Works with meaningful gaps |
-| **Broken** | Typical actor blocked (often controller vs service role mismatch) |
+| **Broken** | Typical actor blocked |
 | **Stub** | Entry exists; side effect log-only / unhandled |
 
 ### Global auth
 
 - **Public:** health, availability, holds, analytics, contact, auth (login/register/refresh/logout/forgot/reset), staff accept-invite, Stripe webhook, reservation GET/cancel (token)
 - **Roles:** `OWNER` > `MANAGER` > `STAFF`
-- **Billing gate:** `RestaurantContextInterceptor` → `checkBillingAccess` on authenticated non-GET restaurant writes (skips `/billing/**`). **Guest holds/confirm are not gated** (live confirmed).
-- **Context:** `X-Restaurant-Id` and/or `/restaurants/{id}/...` path; `POST /restaurants/{id}/select` re-issues JWT
+- **Billing gate:** `RestaurantContextInterceptor` → `checkBillingAccess` on authenticated non-GET restaurant writes (skips `/billing/**`). **Guest holds/confirm also check billing access.**
+- **Context:** `X-Restaurant-Id` and/or `/restaurants/{id}/...` path; `POST /restaurants/{id}/select` re-issues scoped JWT (FE calls it)
 
 ---
 
@@ -117,8 +120,8 @@
 |--------|------|------------|---------|
 | List / create walk-in | `GET\|POST /api/admin/reservations` | STAFF | STAFF |
 | Seat / complete / no-show | `POST .../{id}/seat\|complete\|noshow` | STAFF | STAFF |
-| Cancel | `POST .../{id}/cancel` | STAFF | **MANAGER** → STAFF **403** |
-| Switch tables | `POST .../{id}/switch` | STAFF | **MANAGER** → STAFF **403** |
+| Cancel | `POST .../{id}/cancel` | STAFF | STAFF+ |
+| Switch tables | `POST .../{id}/switch` | STAFF | STAFF+ |
 
 Optimistic lock via `If-Match` version. Audit + cancel emails on mutations.
 
@@ -141,8 +144,8 @@ Optimistic lock via `If-Match` version. Audit + cancel emails on mutations.
 | Entry | Notes |
 |-------|-------|
 | `GET .../billing/status`, `POST checkout-session`, `portal-session`, `quantity` | OWNER |
-| `POST /api/billing/checkout/confirm?session_id=` | Auth (owner-tied) — **FE does not call** |
-| `POST /api/webhooks/stripe` | HMAC; **marks processed before route** → retry death |
+| `POST /api/billing/checkout/confirm?session_id=` | Auth (owner-tied) — FE calls on success page |
+| `POST /api/webhooks/stripe` | HMAC; claim → route → done/failed |
 | Trial expiry cron | → `CANCELED`; access = TRIALING/ACTIVE/PAST_DUE |
 
 Guest booking still allowed if `bookingEnabled` when subscription dead.
@@ -164,7 +167,7 @@ Guest booking still allowed if `bookingEnabled` when subscription dead.
 | | |
 |--|--|
 | Closures | MANAGER — auto-cancels affected reservations + emails |
-| Staff vacation create | Controller allows STAFF; **`createStaffVacation` @PreAuthorize MANAGER** → STAFF **403** (live) |
+| Staff vacation create | STAFF for **own** `userId`; MANAGER+ for others |
 | Approve / reject | MANAGER |
 
 **Doctrine:** keep in nav; finish STAFF self-serve + closures UX.
@@ -184,15 +187,13 @@ Guest booking still allowed if `bookingEnabled` when subscription dead.
 
 ---
 
-## Highest-impact backend flow bugs
+## Highest-impact remaining backend gaps
 
-1. **STAFF cannot cancel or switch tables** (service MANAGER) — floor product broken for waiters (live 403)  
-2. **STAFF cannot create own vacation** (service MANAGER) — weekly module inconsistent (live 403)  
-3. **Guest booking ignores billing expiry**  
-4. **Accept-invite random password** — no set-password step  
-5. **Webhook mark-before-process**  
-6. **Logout leaves access JWT live**  
-7. **Admin billing gate** may skip if only query `restaurantId` without `X-Restaurant-Id`  
+1. **Prod email smoke** — provider wiring exists; live Resend/SMTP not verified  
+2. **PAST_DUE / dunning policy** undefined  
+3. **Outbox stubs** — only some events send real email  
+4. **CI parked** — `.github/ci-parked/backend-ci.yml` not active on GitHub yet  
+5. **VPS cutover** — compose/Caddy runbooks exist; secrets/purchase pending
 
 ---
 

@@ -1,8 +1,8 @@
 # Production-ready remediation plan
 
-**Status:** approved decisions locked · deploy path = Hostinger VPS + automation  
+**Status:** Phase 0–2 code done · Phase 3 artifacts exist but CI parked / VPS not cut over · Phase 4 mostly done  
 **Source audits:** [README.md](README.md), [flows.md](flows.md), [backend/audit.md](backend/audit.md), [frontend/audit.md](frontend/audit.md), [product-doctrine.md](product-doctrine.md)  
-**Updated:** 2026-10-11 (Phase 0–2 marked done in repo; Phase 4 polish in progress)
+**Updated:** 2026-10-12 (docs rescore; CI location = `.github/ci-parked/`)
 
 Fix every audit/flow finding so Mesaro is post-deploy production-ready: money/trust P0s, STAFF floor autonomy, complete advanced modules (planning/vacations/reports), vision-aligned go-live UX with Dashboard as home, and ops/CI/legal hardening.
 
@@ -10,13 +10,16 @@ Fix every audit/flow finding so Mesaro is post-deploy production-ready: money/tr
 
 ---
 
-## Live runtime audit — 2026-10-09
+## Live runtime audit — 2026-10-09 (historical)
+
+> **Do not treat this section as current product status.** It is the pre-remediation snapshot that drove Phase 0–2.  
+> Current scores and open blockers: [README.md](README.md) (2026-10-12). Most P0/P1 rows below are **fixed in code**.
 
 **Stack:** `run-dev.ps1` · FE `http://localhost:3000` · API `http://localhost:8080`  
 **Accounts:** `admin@demo.com` / `demo123` (OWNER) · `staff.demo@demo.com` / `demo123` (STAFF)  
 **Clock:** ~00:20 Europe/Brussels — no Lunch/Dinner window active (expected “Sin turno activo”)
 
-### Verified working
+### Verified working (as of 2026-10-09)
 
 | Area | Evidence |
 |------|----------|
@@ -31,24 +34,20 @@ Fix every audit/flow finding so Mesaro is post-deploy production-ready: money/tr
 | Billing status read | `GET /api/restaurants/1/billing/status` → `TRIALING`, `accessAllowed: true` |
 | Restaurant select API exists | `POST /api/restaurants/2/select` returns new access token |
 
-### Verified broken / incorrect
+### Verified broken / incorrect (as of 2026-10-09) → remediation
 
-| Severity | Finding | Evidence |
-|----------|---------|----------|
-| **P0** | Billing success does **not** call confirm | `BillingSuccessPage.tsx` only reads `session_id` and shows copy |
-| **P0** | Stripe webhook mark-before-process | `StripeWebhookController` `tryMarkProcessed` then `route` |
-| **P0** | No Privacy / Terms routes | Still missing |
-| **P1** | STAFF cannot cancel | Controller STAFF; **service** `@PreAuthorize MANAGER` → **403**; FE `permissions.ts` also MANAGER-only |
-| **P1** | STAFF cannot switch tables | Same service MANAGER gate; FE hides action |
-| **P1** | STAFF self-vacation create → 403 | `VacationService.createStaffVacation` MANAGER-only |
-| **P1** | Guest booking not billing-gated | Hold/confirm succeeded without subscription ACTIVE |
-| **P1** | Seed billing quota inconsistent | JWT/`current-user` `maxRestaurants: 1`, billing `currentQuantity: 1`, but **2** active restaurants |
-| **P1** | Restaurant `/select` unused in FE | `restaurant-context.tsx` only sets local id + `X-Restaurant-Id` |
-| **P2** | Planning first paint empty | Totals **0** / “No hay dia seleccionado” until **Hoy** (selectedDate init = weekStart; queries/selection race) |
-| **P2** | Closures tab empty | Vacations page closures list blank (no seed closures / filter) |
-| **P2** | i18n mixed ES/EN | Nav ES; floor tags “Free” / “Reserved later”; “New Reservation”; report badges “Confirmed” |
-| **P2** | Guest slot labels include seconds | `11:30:00` etc. |
-| **P2** | Overnight dashboard capacity confusing | Day has reservations but “Sin turno activo” / 0 capacity (correct for clock; UX unclear) |
+| Severity | Finding (then) | Status now (2026-10-12) |
+|----------|----------------|-------------------------|
+| **P0** | Billing success did not call confirm | **Fixed** — `BillingSuccessPage` → `confirmCheckout` |
+| **P0** | Stripe webhook mark-before-process | **Fixed** — claim → route → done/failed |
+| **P0** | No Privacy / Terms routes | **Fixed** — `/privacy`, `/terms` (+ footer); counsel still pending |
+| **P1** | STAFF cancel / switch 403 | **Fixed** — service + FE STAFF+ |
+| **P1** | STAFF self-vacation 403 | **Fixed** — STAFF self-only create |
+| **P1** | Guest booking not billing-gated | **Fixed** — hold/confirm check billing access |
+| **P1** | Seed `maxRestaurants` vs 2 restaurants | **Fixed** — seed sets `max_restaurants = 2` |
+| **P1** | Restaurant `/select` unused in FE | **Fixed** — wired in `restaurant-context` |
+| **P2** | Planning first paint empty | **Fixed** — cold-load to today |
+| **P2** | Closures / i18n / slot seconds / overnight copy | Partially addressed in Phase 2/4; some i18n polish remains |
 
 ### Demo logins (dev seed)
 
@@ -124,8 +123,8 @@ Shell, tests, file edits, docs — Phase 0–2 **code** does not require Hosting
 
 - **Unpaid owners:** hard-block guest `holds` + `confirm` when `!allowsAccess()` (also set/clear `bookingEnabled` on cancel/expire for clarity).
 - **Accept invite:** require set-password for new users before issuing long-lived session.
-- **Restaurant context:** wire FE to `POST /restaurants/{id}/select` + scoped access token (API already exists; FE unused).
-- **Legal:** ship Privacy + Terms pages with clear placeholder/founder draft + “review with counsel” checklist (you finalize counsel text).
+- **Restaurant context:** FE calls `POST /restaurants/{id}/select` + scoped access token (**done**).
+- **Legal:** Privacy + Terms founder drafts live; “review with counsel” checklist remains before paid ads.
 - **Deploy:** **Hostinger VPS** running Docker (`docker-compose.prod.yml` hardened) + Caddy/nginx TLS; frontend static on same VPS or Hostinger static site. **Not** Shared hosting for the Java API (no Spring Boot + Postgres + Redis there).
 - **Out of scope still:** deposits, SMS, marketplace, plan matrices (doctrine).
 
@@ -271,7 +270,7 @@ Scope stays simple (no HR suite / BI warehouse). Each module below has a **done 
 
 **Must work for:** STAFF request own leave; MANAGER/OWNER approve/reject and manage closures.
 
-22. **STAFF self-request:** `VacationService.createStaffVacation` allows STAFF for **own** `userId` only; MANAGER+ for others. Align FE form + permissions. **Live: STAFF create = 403.**
+22. [x] **STAFF self-request:** `VacationService.createStaffVacation` allows STAFF for **own** `userId` only; MANAGER+ for others. Align FE form + permissions.
 23. **Approve / reject:** MANAGER+ can approve/reject pending requests; status, actor, notes visible; list filters pending vs resolved.
 24. **Closures:** create / edit / delete restaurant closures; Closures tab never a silent blank (seed ≥1 demo closure **or** honest empty-state CTA). Closures block availability and cancel/affect bookings per existing BE rules; FE shows impact.
 25. **Overlap / validation:** date range, overlap with existing vacation/closure, and membership checks return clear field errors in UI.
@@ -314,8 +313,8 @@ Scope stays simple (no HR suite / BI warehouse). Each module below has a **done 
 
 ## Phase 3 — Ops, CI, deploy hardening (Hostinger VPS)
 
-39. GitHub Actions: `mvn test` (Testcontainers) on backend; stop blind `-DskipTests` for release images (or separate verified release job).
-40. E2E: start backend (compose) in `.github/workflows/e2e.yml`; critical paths live — include STAFF cancel, **planning cold-load**, **STAFF vacation request**, **reports CSV**, guest hold/confirm, billing success confirm.
+39. [x] GitHub Actions workflows authored: `backend-ci.yml` (`mvn test` / Testcontainers) — **parked** at `.github/ci-parked/` until Actions are enabled.
+40. [x] E2E workflow authored (starts infra + API + Playwright) — **parked** at `.github/ci-parked/e2e.yml`. Unpark to `.github/workflows/` when ready; require status checks on `main`.
 41. Harden `backend/docker-compose.prod.yml` for VPS: **bind DB/Redis to localhost only** (drop public `15432`/`16379`/`19200`); disable Elasticsearch for v1 unless RAM ≥4 GB; add Caddy/nginx reverse proxy with TLS.
 42. Agent deploy runbook: SSH/API to Hostinger VPS → `docker compose --env-file .env.prod up -d` → health checks; DNS A records + SSL via Hostinger DNS MCP when domain is on Hostinger.
 43. Monitoring: Actuator/prometheus scrape notes + alert stubs (webhook failures, outbox dead-letters, 5xx).
@@ -334,7 +333,7 @@ Scope stays simple (no HR suite / BI warehouse). Each module below has a **done 
 49. [ ] Opening-hours close vs closures: document behavior in Settings UI (warn-only vs closure cancels); optional “create closure instead” CTA — no silent mass cancel on hours edit.
 50. [x] Remove dead FE (`BookingPage`, `route-placeholders.tsx`); rename `RegisterPlaceholderPage` → `RegisterPage`.
 51. [ ] PAST_DUE policy: define grace → UNPAID/CANCELED aligned with Stripe + dunning email; update doctrine/docs.
-52. [ ] Refresh audit/flow docs after each phase; re-score readiness in [README.md](README.md).
+52. [x] Refresh audit/flow docs after each phase; re-score readiness in [README.md](README.md) *(2026-10-12)*.
 
 ---
 
@@ -381,5 +380,5 @@ Phase 2 is a **full implementation** week(s), not a polish pass — block Phase 
 - [x] Phase 2B — **Vacations/closures fully implemented**
 - [x] Phase 2C — **Reports fully implemented**
 - [x] Phase 2D — Dashboard home polish
-- [x] Phase 3 — CI / deploy / monitoring / outbox *(CI workflows + hardened compose + Caddy + runbooks; live VPS cutover still needs your secrets/purchase)*
-- [x] Phase 4 — polish + docs rescore *(items 46–48, 50 done; 49 opening-hours UX + 51 PAST_DUE policy + 52 full audit rescore remain light follow-ups)*
+- [x] Phase 3 — CI / deploy / monitoring / outbox *(workflows authored but **parked** under `.github/ci-parked/`; hardened compose + Caddy + runbooks exist; live VPS cutover still needs secrets/purchase)*
+- [x] Phase 4 — polish + docs rescore *(46–48, 50, 52 done; 49 opening-hours UX + 51 PAST_DUE policy remain)*

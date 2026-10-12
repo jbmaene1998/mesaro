@@ -9,6 +9,7 @@ Mesaro is a multi-tenant restaurant reservation SaaS for independent restaurants
 | **Backend** | Spring Boot 3.5 · Java 21 · PostgreSQL · Flyway · Redis · Stripe |
 | **Frontend** | React 18 · TypeScript · Vite · TanStack Query · Playwright |
 | **Docs** | Product doctrine, technical reference, ops runbooks |
+| **Repo** | [github.com/jbmaene1998/mesaro](https://github.com/jbmaene1998/mesaro) (private) |
 
 ## Repository layout
 
@@ -16,9 +17,9 @@ Mesaro is a multi-tenant restaurant reservation SaaS for independent restaurants
 backend/     Spring Boot API
 frontend/    React SPA + marketing
 docs/        Product & engineering documentation
-infra/       Local/prod infrastructure helpers
-scripts/     Utility scripts
-.github/     PR/issue templates, CODEOWNERS, (CI later)
+scripts/     Utility scripts (incl. GitHub bootstrap)
+.github/     PR/issue templates, CODEOWNERS; CI parked under ci-parked/
+run-*.ps1    Local infra / test / prod-local helpers
 ```
 
 ## Quick start (local)
@@ -30,13 +31,17 @@ scripts/     Utility scripts
 
 See [docs/README.md](docs/README.md) for the full doc index and [docs/local-prod-deploy.md](docs/local-prod-deploy.md) for a local production-shaped run.
 
-**Demo logins (local seed):** `admin@demo.com` / `demo123` · `staff.demo@demo.com` / `demo123`
+**Demo logins (dev seed):** `admin@demo.com` · `manager.demo@demo.com` · `staff.demo@demo.com` — password `demo123`
+
+## Status (short)
+
+Core money/floor/legal-route paths are implemented in code (~78% company readiness). Remaining before paid ads: prod email smoke, counsel on Privacy/Terms, unpark CI, Hostinger VPS cutover. Details: [docs/README.md](docs/README.md).
 
 ## Contributing
 
 Read **[CONTRIBUTING.md](CONTRIBUTING.md)** before opening a PR. Short version:
 
-- Branch from `main` using the naming rules below
+- Branch from `main` using conventional prefixes (`feat/`, `fix/`, `chore/`, `docs/`, `refactor/`, `test/`)
 - Open a PR; squash-merge only
 - Conventional Commits; keep `main` releasable
 - Product decisions defer to [docs/product-doctrine.md](docs/product-doctrine.md)
@@ -45,8 +50,8 @@ Read **[CONTRIBUTING.md](CONTRIBUTING.md)** before opening a PR. Short version:
 
 | Branch / tag | Purpose |
 |--------------|---------|
-| `main` | Production-ready line. Protected. |
-| `feat/*`, `fix/*`, `chore/*`, `docs/*`, `refactor/*` | Short-lived work branches |
+| `main` | Production-ready line (PR-required by policy; GitHub enforcement needs Pro on private repos) |
+| `feat/*`, `fix/*`, `chore/*`, `docs/*`, `refactor/*`, `test/*` | Short-lived work branches |
 | `release/x.y.z` | Optional release-prep branch when needed |
 | `vX.Y.Z` tags | Immutable releases (GitHub Releases + notes) |
 

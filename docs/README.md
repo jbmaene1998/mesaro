@@ -1,19 +1,21 @@
 # Mesaro — Company docs
 
-**Repo root:** monorepo `backend/` + `frontend/` + `docs/`  
+**Repo:** [jbmaene1998/mesaro](https://github.com/jbmaene1998/mesaro) · monorepo `backend/` + `frontend/` + `docs/`  
 **Audience:** founder building a simple, cheap restaurant reservation SaaS  
-**Last live audit:** 2026-10-09 (local stack FE `:3000` / API `:8080`)
+**Status date:** 2026-10-12 (code review rescore after Phase 0–4 remediation)  
+**Historical live audit:** 2026-10-09 — kept in [production-ready-plan.md](production-ready-plan.md) as a snapshot only
 
 | Document | Scope |
 |----------|--------|
-| **[technical-document.md](technical-document.md)** | **Full technical reference** — stack, APIs, data, ops + marketing pages read |
+| **[technical-document.md](technical-document.md)** | **Full technical reference** — stack, APIs, data, ops + marketing pages |
 | **[product-doctrine.md](product-doctrine.md)** | **Canonical SaaS vision** — €50, simple, 100% used |
-| **[production-ready-plan.md](production-ready-plan.md)** | **Full remediation plan** — includes live runtime findings |
-| **[flows.md](flows.md)** | **End-to-end FE↔BE flow audit** |
+| **[production-ready-plan.md](production-ready-plan.md)** | Remediation plan + historical live findings + phase checklist |
+| **[flows.md](flows.md)** | End-to-end FE↔BE flow catalog (current status) |
 | [backend/flows.md](backend/flows.md) · [frontend/flows.md](frontend/flows.md) | Deep per-layer flow maps |
 | [backend/audit.md](backend/audit.md) | API / data / billing / security / ops audit |
 | [frontend/audit.md](frontend/audit.md) | UI / GTM / client risks audit |
 | [engineering/branching-and-releases.md](engineering/branching-and-releases.md) | Branching, PRs, squash-merge, semver releases |
+| [local-prod-deploy.md](local-prod-deploy.md) · [deploy-hostinger-vps.md](deploy-hostinger-vps.md) | Local prod-shaped + VPS deploy |
 | [../CONTRIBUTING.md](../CONTRIBUTING.md) | Contributor entry point |
 | This file | Company readiness + how vision changes priorities |
 
@@ -37,29 +39,31 @@ Engineering depth (holds, DST, tenancy) stays **under the hood**. Marketing stay
 
 ## One-line engineering verdict
 
-**Mesaro is a real booking + restaurant-ops product with credible multi-tenant and Stripe scaffolding — not vaporware — but several core floor and money paths fail under live use, so it is not yet safe to charge customers at scale.**
+**Mesaro’s core money, floor, billing-gate, and legal-page paths are implemented in code** (Phase 0–2). It is **not yet safe to run paid ads / unattended self-serve** until prod email is smoke-tested, counsel signs off Privacy/Terms, GitHub Actions are unparked and green, and a real VPS cutover with secrets is done.
 
-Close reliability, monetization correctness, STAFF autonomy, legal, and launch-ops gaps before paid self-serve.  
 **Do not “differentiate” by adding competitor suite features** — that violates the doctrine.
 
 ---
 
-## Live audit snapshot (2026-10-09)
+## Current status (2026-10-12)
 
-| Works | Broken / wrong |
-|-------|----------------|
-| Owner login → Dashboard | STAFF cancel/switch **403** (service MANAGER) |
-| Guest avail → hold → confirm | Billing success page **never confirms** session |
-| Planning API + UI after “Hoy” | Planning **first paint empty** (0s) |
-| Vacations staff list (OWNER) | STAFF self-vacation **403** |
-| Reports summary UI | Webhook **mark-before-process** |
-| Tables / shifts / staff APIs | Guest booking **not** subscription-gated |
-| Billing status readable | Seed **maxRestaurants=1** vs **2** restaurants |
-| | No Privacy/Terms; mixed ES/EN labels |
+| Works in code (Phase 0–2) | Still open before paid scale |
+|---------------------------|------------------------------|
+| Owner / staff login → Dashboard | Real email smoke (Resend/SMTP) in prod-like env |
+| Guest avail → hold → confirm | Counsel-approved Privacy/Terms (routes exist; drafts) |
+| STAFF cancel / switch / self-vacation | GitHub Actions **parked** (`.github/ci-parked/`) — not running yet |
+| Billing success → `confirmCheckout` | Hostinger VPS cutover + live secrets |
+| Webhook claim → route → done/failed | PAST_DUE / dunning policy |
+| Guest booking billing-gated | Company formation / DPA / Stripe legal entity |
+| Privacy + Terms routes + footer | Some i18n / opening-hours UX polish |
+| Seed `maxRestaurants=2` for demo owner | |
+| `/select` wired; accept-invite set-password | |
+| Planning cold-load; reports; vacations module | |
 
-Full matrix: [production-ready-plan.md](production-ready-plan.md) · [flows.md](flows.md)
+Full phase checklist: [production-ready-plan.md](production-ready-plan.md)
 
-**Demo logins:** `admin@demo.com` / `demo123` · `staff.demo@demo.com` / `demo123`
+**Demo logins (dev seed):**  
+`admin@demo.com` · `manager.demo@demo.com` · `staff.demo@demo.com` — password `demo123`
 
 ---
 
@@ -70,51 +74,48 @@ Full matrix: [production-ready-plan.md](production-ready-plan.md) · [flows.md](
 | **Backend** | Spring Boot 3.5 / Java 21 / PostgreSQL / Flyway / Redis / Stripe |
 | **Frontend** | React 18 + TypeScript + Vite + TanStack Query + Playwright |
 | **Vision core (aligned)** | Guest booking, embed, floor ops, tables/shifts, staff, flat €49.99 marketing |
-| **In-nav essentials (locked)** | Planning, vacations, reports — finish fully; keep simple in marketing |
+| **In-nav essentials (locked)** | Planning, vacations, reports — implemented; keep simple in marketing |
+| **Repo / process** | Private GitHub repo, CONTRIBUTING, PR templates, squash-only merges; CI parked |
 
 ### What is strong (keep)
 
 - Booking correctness: holds, locks, overlap triggers, DST, concurrency tests
-- Multi-tenant RBAC with restaurant context
-- Owner Stripe checkout + flat-price story already on marketing (`€49.99`)
-- Guest + embed channels
+- Multi-tenant RBAC with restaurant context (`X-Restaurant-Id` + select scoped JWT)
+- Owner Stripe checkout + flat-price story on marketing (`€49.99`)
+- Guest + embed channels; Privacy/Terms linked
 - Audit/GDPR under the hood (compliance — not a pricing-page feature)
+- Local prod path (`run-prod-local.ps1`) + Hostinger VPS runbook
 
-### What blocks charging at scale
+### What still blocks unattended paid scale
 
-| # | Blocker | Where | Live-checked |
-|---|---------|--------|--------------|
-| 1 | Stripe webhooks mark processed **before** handlers run | Backend P0 | Yes |
-| 2 | Billing success page does **not** call confirm API | Frontend P0 | Yes |
-| 3 | Guest booking not gated by subscription status | Backend P1 | Yes (hold+confirm OK while TRIALING/ungated) |
-| 4 | No Privacy / Terms routes | Frontend P0 | Yes |
-| 5 | Prod secret / email fail-fast not enforced | Backend P0–P1 | Code review |
-| 6 | No backend CI; E2E does not start API | Ops | — |
-| 7 | FAQ / marketing drift (e.g. guest cancel) | Trust | — |
-| 8 | STAFF cancel/switch blocked (service + FE) | Floor P1 | Yes (403) |
-| 9 | Accept-invite: new staff get random password (no set-password) | Flow RISK | — |
-| 10 | Restaurant `/select` JWT unused (header-only context) | Flow RISK | Yes |
-| 11 | Planning empty first paint; STAFF vacation 403 | Advanced P1–P2 | Yes |
-| 12 | Seed billing quota vs 2 restaurants | Demo P1 | Yes |
+| # | Blocker | Where |
+|---|---------|--------|
+| 1 | Prod email smoke not verified | Ops / Phase 0 item 7 |
+| 2 | Privacy/Terms need counsel + company entity | Legal |
+| 3 | CI not active on GitHub (workflows parked) | Ops |
+| 4 | Live VPS deploy + secrets not cut over | Ops |
+| 5 | PAST_DUE / dunning policy undefined | Billing product |
+| 6 | Opening-hours vs closures UX polish | Settings P2 |
+| 7 | Outbox: some event types still stubs | Reliability |
 
-Full journey catalog: **[flows.md](flows.md)**
+Journey catalog: **[flows.md](flows.md)**
 
 ---
 
-## Readiness scores (re-scored after live audit)
+## Readiness scores (2026-10-12 rescore)
 
 | Domain | Score | Note |
 |--------|-------|------|
-| Booking engine | **~75%** | Hold/confirm live OK; still ungated vs billing |
-| Simple floor UX | **~55%** | Dashboard works; STAFF cancel/switch fail; i18n noise |
-| Advanced modules | **~60%** | Reports OK; planning first-paint bug; STAFF vacation 403 |
-| Monetization durability | **~45%** | Success page + webhook still P0 |
-| Security / tenancy | **~60%** | Select JWT unused |
-| EU compliance (legal pages) | **~40%** | |
-| Ops / CI | **~40%** | |
-| Vision fit (simple €50 product) | **~60%** | Doctrine amended: essentials in nav, marketing still simple |
+| Booking engine | **~90%** | Hold/confirm + billing gate in code |
+| Simple floor UX | **~85%** | STAFF cancel/switch allowed; minor i18n noise |
+| Advanced modules | **~85%** | Planning/vacations/reports implemented; E2E in CI still parked |
+| Monetization durability | **~80%** | Confirm + webhook fixed; PAST_DUE policy open |
+| Security / tenancy | **~80%** | Select JWT + RBAC; secret scanning etc. still off on GitHub |
+| EU compliance (legal pages) | **~65%** | Routes + drafts live; counsel / entity pending |
+| Ops / CI | **~55%** | Compose/Caddy/runbooks exist; Actions parked; no live VPS yet |
+| Vision fit (simple €50 product) | **~75%** | Doctrine held through remediation |
 
-**Company readiness overall: ~52%.** Pilots OK with hand-holding; no paid ads until P0s + STAFF floor + legal.
+**Company readiness overall: ~78%.** Safe for careful pilots with hand-holding. **Not** ready for paid ads until email smoke, legal counsel, active CI, and VPS cutover.
 
 ---
 
@@ -131,30 +132,26 @@ We are **not** chasing suite parity. Missing deposits, SMS, waitlist, marketplac
 
 ---
 
-## Priority backlog
+## Priority backlog (remaining)
 
-### P0 — money, trust
+### P0 — before paid self-serve / ads
 
-1. Fix Stripe webhook state machine  
-2. Wire billing success confirm (or stop claiming it)  
-3. Ship Privacy + Terms  
-4. Prod fail-fast (secrets, email provider)  
-5. Fix seed billing quota vs restaurant count  
+1. Prod email smoke (invite, reset, confirmation) with real Resend/SMTP  
+2. Counsel review of Privacy + Terms; incorporate / VAT / Stripe entity  
+3. Unpark + green GitHub Actions (backend `mvn test` + honest E2E)  
+4. Hostinger VPS cutover with real secrets, TLS, private data plane  
 
-### P1 — floor + SaaS correctness
+### P1 — SaaS correctness
 
-6. STAFF cancel/switch (BE service + FE permissions)  
-7. Gate guest holds/confirm on billing access  
-8. STAFF self-vacation; accept-invite set-password; wire `/select`  
-9. FAQ / copy honesty; real email smoke  
-10. `mvn test` CI; honest E2E  
+5. Define PAST_DUE → grace → unpaid/canceled + dunning  
+6. Finish outbox stubs or stop enqueueing fake reliability  
+7. Opening-hours vs closures UX (warn vs create closure)  
 
-### P2 — fully implement weekly modules (Phase 2A–C)
+### P2 — polish
 
-11. **Planning full:** cold-load, assign, recurring-week, work-hours, empty/closed states, E2E  
-12. **Vacations full:** STAFF self-request, approve/reject, closures CRUD + booking impact, emails, E2E  
-13. **Reports full:** summary, trend, CSV, print, presets, i18n badges, STAFF gate, E2E  
-14. Dashboard overnight capacity copy; guest `HH:mm` slots (Phase 4)  
+8. Remaining i18n leaks; overnight capacity copy edge cases  
+9. Branch-protection enforcement when GitHub Pro (or org) is available  
+10. Secret scanning / Dependabot on the private repo  
 
 ### Explicitly not priority
 
@@ -163,36 +160,32 @@ We are **not** chasing suite parity. Missing deposits, SMS, waitlist, marketplac
 
 ---
 
-## 30 / 60 / 90 (vision-first)
+## 30 / 60 / 90 (from today)
 
-### Days 0–30 — charge safely + floor works
+### Days 0–30 — charge safely in prod
 
-- Close P0 money/trust items  
-- STAFF cancel/switch end-to-end  
-- Keep planning/vacations/reports in nav; fix 403 / empty bugs  
-- Pricing/FAQ/home: sell daily essentials + €50 flat (modules present, not hyped)  
-- Pilot 1–3 restaurants; counsel draft Privacy/Terms  
+- Email smoke + counsel drafts → shipable legal  
+- Unpark CI; VPS deploy with TLS  
+- Pilot 1–3 restaurants  
 
 ### Days 31–60 — trust without sprawl
 
 - DSAR/retention notes for counsel  
-- Dunning / PAST_DUE policy  
-- Guest cancel deep-links that just work  
-- Harden deploy (TLS, backups, no public DB)  
+- PAST_DUE / dunning policy  
+- Backup / incident drill  
 
 ### Days 61–90 — deepen the wedge, don’t widen it
 
 - Mobile-first **floor** experience (not new modules)  
 - Load-test booking; support playbooks that match simple product  
 - Validate €50 willingness-to-pay and “no training needed”  
-- Kill or warehouse fake analytics endpoint  
 
 ---
 
 ## Legal / company formation checklist
 
 - [ ] Incorporate (jurisdiction, VAT, bank)  
-- [ ] Privacy Policy + Terms + DPA  
+- [ ] Privacy Policy + Terms counsel-approved (+ DPA) — *draft routes already live*  
 - [ ] Stripe in company name + tax  
 - [ ] Data map (guest/staff PII, emails, audit)  
 - [ ] Consent wording matches reality  
@@ -204,15 +197,14 @@ We are **not** chasing suite parity. Missing deposits, SMS, waitlist, marketplac
 ## How to use these docs
 
 1. **Doctrine first** — [product-doctrine.md](product-doctrine.md) beats feature requests.  
-2. **Technical reference** — [technical-document.md](technical-document.md) for stack, routes, APIs, and marketing page content.  
-3. **Execute remediation** — [production-ready-plan.md](production-ready-plan.md) (phased P0→ops; live findings at top).  
-4. **Flows** — [flows.md](flows.md) for “does this journey work?” before building.  
-5. **P0s** block paid self-serve.  
-6. Backend/frontend audits = technical honesty; roadmaps must serve simplicity + €50.  
-7. Re-score readiness after each phase.
+2. **Technical reference** — [technical-document.md](technical-document.md) for stack, routes, APIs.  
+3. **Remediation history** — [production-ready-plan.md](production-ready-plan.md) (2026-10-09 live block is historical).  
+4. **Flows** — [flows.md](flows.md) for “does this journey work?”  
+5. Remaining P0s above block paid ads / unattended self-serve.  
+6. Re-score readiness after each ops/legal milestone.
 
 ---
 
 ## Repo note
 
-Git root is this monorepo. Older `Mesaro-API/docs/*` audits are superseded.
+Git root is this monorepo: [github.com/jbmaene1998/mesaro](https://github.com/jbmaene1998/mesaro). Older `Mesaro-API/docs/*` audits are superseded.

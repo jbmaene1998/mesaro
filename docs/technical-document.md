@@ -3,8 +3,8 @@
 **Audience:** engineers, founders, and operators who need one place that covers product, marketing site, architecture, APIs, data, and ops  
 **Repo:** monorepo `backend/` + `frontend/` + `docs/`  
 **Canonical product vision:** [product-doctrine.md](product-doctrine.md)  
-**Last inventory:** 2026-10-11 (codebase) · last live audit noted in docs: 2026-10-09  
-**Local stack (docs):** Frontend `:3000` / `:5173` · API `:8080`
+**Last inventory:** 2026-10-12 (codebase + docs rescore) · historical live audit: 2026-10-09  
+**Local stack (docs):** Frontend `:3000` / `:5173` · API `:8080` · local-prod `:9443` / `:18080`
 
 ---
 
@@ -87,7 +87,9 @@ Mesaro/
 │   ├── src/i18n/
 │   └── testing/             # Vitest + Playwright
 ├── docs/                    # Doctrine, audits, this document
-├── .github/workflows/       # CI (E2E)
+├── scripts/                 # Utility scripts (incl. GitHub bootstrap)
+├── .github/                 # PR/issue templates, CODEOWNERS, release notes
+│   └── ci-parked/           # Backend CI + E2E workflows (not active yet)
 └── run-*.ps1                # Local helper scripts
 ```
 
@@ -253,7 +255,7 @@ Categories (EN ids):
 |----------|----------------|
 | Pricing & Billing | €49.99, trial, no card, multi-location math, cancel, no annual discounts |
 | Features & Functionality | Double booking / Redis holds, phone bookings, table combinations, **dashboard refresh (no live push)**, reporting, closures |
-| Booking Widget & Guest Experience | iframe embed, `/r/:slug` flow, confirmation + ICS, **guest cancel “on roadmap”**, mobile |
+| Booking Widget & Guest Experience | iframe embed, `/r/:slug` flow, confirmation + ICS, guest cancel, mobile |
 | Setup & Migration | ~30 minutes live; no automated import; migrate from Zenchef/Resengo/Formitable manually |
 | Multi-location | One login; cross-location staff with per-restaurant roles; no hard restaurant limit |
 | Staff & Roles | Owner / Manager / Staff; invite by email; immediate revoke; billing Owner-only |
@@ -263,11 +265,11 @@ Categories (EN ids):
 
 **Honesty / drift flags (product vs FAQ):**
 
-| Claim | Product reality (flows / code audits) |
-|-------|--------------------------------------|
-| Guest cancel “on roadmap” | Guest cancel **exists** via confirmation code + cancel token — FAQ is **stale** vs product |
-| Invite → set password on first login | Accept-invite currently risks **random password**, incomplete set-password UX |
-| Staff manage reservations in service | Doctrine wants STAFF cancel/switch; code often requires **MANAGER** |
+| Claim | Product reality |
+|-------|-----------------|
+| Guest cancel | Supported via confirmation code + cancel token + email deep-link — keep FAQ aligned |
+| Invite → set password on first login | Accept-invite collects password for new users |
+| Staff manage reservations in service | STAFF+ can cancel/switch (doctrine-aligned) |
 | Redis as customer feature | Engineering detail; doctrine prefers outcome language |
 
 ---
@@ -297,7 +299,7 @@ Marketing pages
     → Pay: /settings/billing → Stripe → /billing/success
 ```
 
-**Missing legal routes (P0):** Privacy Policy and Terms are **not** in the route tree yet — called out in company readiness docs.
+**Legal routes:** `/privacy` and `/terms` are live (founder drafts). Counsel review + company entity remain before paid ads — see [README.md](README.md).
 
 ---
 
@@ -370,7 +372,7 @@ Same booking components under `/embed/:slug/...` (compact chrome + locale).
 | Permission | Roles (current code) |
 |------------|----------------------|
 | viewReservations, createWalkIn, updateStatus | OWNER, MANAGER, STAFF |
-| **cancelReservation, switchTables** | **OWNER, MANAGER only** |
+| cancelReservation, switchTables | OWNER, MANAGER, STAFF |
 | manageShifts, manageTables, inviteStaff, manageReports, approveVacation, createClosure | OWNER / MANAGER |
 | manageSettings | OWNER |
 
@@ -450,7 +452,7 @@ Base API prefix: **`/api`**. Envelope: `ApiResponse<T>`. Docs: `/swagger-ui.html
 |------|------|--------------|
 | OWNER | 3 | Settings, billing, restaurant CRUD, invite managers |
 | MANAGER | 2 | Tables, shifts, staff, reports, vacation approve |
-| STAFF | 1 | Floor seat/complete/no-show; planning view; vacation self (intended) |
+| STAFF | 1 | Floor seat/complete/no-show/**cancel/switch**; planning view; vacation self-request |
 
 **Guest:** no account — restaurant slug + hold token + cancel token.
 
@@ -459,7 +461,7 @@ Base API prefix: **`/api`**. Envelope: `ApiResponse<T>`. Docs: `/swagger-ui.html
 | Passwords | BCrypt |
 | JWT | Access ~15m + refresh ~7d |
 | Tenant context | Header **`X-Restaurant-Id`**; path id must match |
-| Select | `POST /api/restaurants/{id}/select` re-issues JWT — **FE currently unused** (header-only context) |
+| Select | `POST /api/restaurants/{id}/select` re-issues scoped JWT — wired from FE restaurant context (+ `X-Restaurant-Id`) |
 | Method security | `@PreAuthorize` + restaurant access guard |
 
 ---
@@ -505,7 +507,7 @@ Settings generates iframe snippet pointing at `{origin}/embed/{slug}`. Same book
 |--------|---------------|----------------------|
 | Seat / complete / no-show | STAFF+ | STAFF+ |
 | Walk-in / manual reservation | STAFF+ | STAFF+ |
-| Cancel / switch tables | **STAFF+ (doctrine)** | **MANAGER+ (BUG)** |
+| Cancel / switch tables | STAFF+ | STAFF+ |
 | Dashboard / timeline / list | STAFF+ | OK |
 
 Primary floor surface: **Dashboard** (doctrine). Timeline and list are secondary.
@@ -514,8 +516,8 @@ Primary floor surface: **Dashboard** (doctrine). Timeline and list are secondary
 
 | Module | Route | Notes |
 |--------|-------|-------|
-| Planning | `/planning` | Assign staff to lunch/dinner; first paint can be empty until date interaction |
-| Vacations | `/vacations` | Staff leave + restaurant closures; STAFF create may 403 |
+| Planning | `/planning` | Assign staff to lunch/dinner; cold-loads to today |
+| Vacations | `/vacations` | Staff leave + restaurant closures; STAFF can request own leave |
 | Reports | `/reports` | Period summary + CSV |
 
 ### Settings / onboarding
@@ -534,16 +536,12 @@ Onboarding: `/onboarding/setup` → create first restaurant → tables → shift
 | Price | `STRIPE_PRICE_ID` (marketing €49.99) |
 | Checkout | `POST .../billing/checkout-session` → Stripe → `/billing/success?session_id=` |
 | Portal | Customer portal session for manage/cancel |
-| Confirm | `POST /api/billing/checkout/confirm?session_id=` (intended after success redirect) |
-| Webhook | `POST /api/webhooks/stripe` (HMAC) |
+| Confirm | `POST /api/billing/checkout/confirm?session_id=` — called from `BillingSuccessPage` |
+| Webhook | `POST /api/webhooks/stripe` (HMAC); claim → route → done/failed |
 
 **Webhook events:** `checkout.session.completed`, `customer.subscription.updated|deleted`, `invoice.payment_succeeded|failed` (+ log `trial_will_end`).
 
-**P0 issues:**
-
-1. Webhook may mark event processed **before** handler completes.  
-2. `BillingSuccessPage` does **not** call checkout confirm API.  
-3. Guest hold/confirm is **not** gated on owner subscription status.
+**Remaining billing gaps:** PAST_DUE / dunning policy undefined; prod email + live Stripe smoke not verified.
 
 Env: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_ID`, success/cancel/portal URLs.
 
@@ -588,7 +586,7 @@ Mixed ES/EN UI copy remains a known polish gap on some app screens.
 | Rate limits | Configurable; 429 + Retry-After |
 | Audit | Internal audit events (compliance under the hood) |
 | GDPR | Retention/purge schedulers; marketing claims EU hosting + restaurant-owned guest data |
-| Legal UI | Privacy / Terms routes **missing** (launch blocker) |
+| Legal UI | Privacy / Terms routes live (drafts); counsel + entity still required for paid ads |
 
 ---
 
@@ -609,7 +607,14 @@ E2E includes marketing pages, auth, guest booking/embed, dashboard/floor, tables
 
 ### CI
 
-`.github/workflows/e2e.yml` — Playwright; **does not start backend API** (documented TODO). No dedicated backend `mvn test` CI called out as complete.
+Workflows are **authored but parked** (not running on GitHub yet):
+
+| File | Role |
+|------|------|
+| `.github/ci-parked/backend-ci.yml` | `mvn test` with Testcontainers |
+| `.github/ci-parked/e2e.yml` | Starts infra + Spring Boot + Playwright |
+
+Move into `.github/workflows/` when enabling Actions, then require status checks on `main`. See [.github/ci-parked/README.md](../.github/ci-parked/README.md).
 
 ---
 
@@ -621,7 +626,8 @@ E2E includes marketing pages, auth, guest booking/embed, dashboard/floor, tables
 |------|---------|
 | `docker-compose.infra.yml` | Postgres + Redis (+ ES/Kibana) |
 | `docker-compose.yml` | Full **dev** stack including app on 8080 |
-| `docker-compose.prod.yml` | Prod-like; remapped ports; `--env-file .env.prod` |
+| `docker-compose.prod.yml` | Prod; `--env-file .env.prod` |
+| `docker-compose.prod.local.yml` | Local overrides for prod-shaped run (`run-prod-local.ps1`) |
 
 ### Notable environment variables
 
@@ -637,30 +643,26 @@ E2E includes marketing pages, auth, guest booking/embed, dashboard/floor, tables
 Profiles: `dev` (seed Flyway location + demo data) · `prod`.  
 Management port **9090** (health/prometheus) — keep off public internet.
 
-Root helpers: `run-dev.ps1`, `run-infra.ps1`, `run-be-test.ps1`, `run-fe-test.ps1`.
+Root helpers: `run-dev.ps1`, `run-infra.ps1`, `run-infra-reset.ps1`, `run-be-test.ps1`, `run-fe-test.ps1`, `run-be-soak.ps1`, `run-prod-local.ps1`.
 
 ---
 
 ## 16. Known gaps vs doctrine
 
-Prioritized from company readiness / live audit (2026-10-09). Re-verify before treating as current truth.
+**Rescored 2026-10-12.** Phase 0–2 code fixes closed the old money/floor/legal-route P0/P1 list. Remaining gaps:
 
 | Priority | Issue |
 |----------|-------|
-| P0 | Stripe webhook mark-before-process |
-| P0 | Billing success page missing confirm API call |
-| P0 | No Privacy / Terms routes |
-| P0 | Prod fail-fast for secrets / email provider |
-| P1 | Guest booking not subscription-gated |
-| P1 | STAFF cancel/switch blocked (BE + FE MANAGER) |
-| P1 | STAFF vacation create 403 |
-| P1 | Accept-invite password UX |
-| P1 | Restaurant `/select` unused |
-| P1 | Seed billing quantity vs restaurant count |
-| P1 | FAQ drift (guest cancel; Redis marketing) |
-| P2 | Planning first-paint empty; closures tab gaps; i18n mix; slot `HH:mm:ss` |
+| P0 | Prod email smoke (Resend/SMTP) not verified |
+| P0 | Privacy/Terms counsel + company entity |
+| P0 | GitHub Actions parked — not green on every PR yet |
+| P0 | Live Hostinger VPS cutover + secrets |
+| P1 | PAST_DUE / dunning policy undefined |
+| P1 | Outbox: some event types still stubs |
+| P2 | Opening-hours vs closures UX polish |
+| P2 | Residual i18n leaks |
 
-**Company readiness (docs snapshot):** ~52% — pilots with hand-holding OK; not ready for paid ads until money/trust P0s + STAFF floor + legal.
+**Company readiness (docs snapshot):** ~78% — careful pilots OK; not ready for paid ads until email, legal, active CI, and VPS cutover. Full matrix: [README.md](README.md).
 
 ---
 

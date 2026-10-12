@@ -7,7 +7,7 @@ Canonical engineering process for this repository. [CONTRIBUTING.md](../../CONTR
 We use a **trunk-based** workflow with short-lived branches:
 
 ```
-main  ←── squash-merge PRs from feat/* | fix/* | chore/* | …
+main  ←── squash-merge PRs from feat/* | fix/* | chore/* | docs/* | refactor/* | test/* | …
   │
   └── tag vX.Y.Z  →  GitHub Release (+ notes)
 ```
@@ -16,7 +16,9 @@ main  ←── squash-merge PRs from feat/* | fix/* | chore/* | …
 - No long-lived `develop` branch
 - Hotfixes: branch `fix/<slug>` from `main`, PR back to `main`, then tag a patch release
 
-## Protected `main` (enforced on GitHub)
+## Protected `main` (policy + settings)
+
+> **Enforcement note:** Branch protection / rulesets on a **private** repo require GitHub Pro (or Team/Enterprise). Merge methods below are applied; protection rules are policy until Pro is available. See [`.github/REPO_SETTINGS.md`](../../.github/REPO_SETTINGS.md).
 
 | Rule | Setting |
 |------|---------|
@@ -31,7 +33,7 @@ main  ←── squash-merge PRs from feat/* | fix/* | chore/* | …
 
 Direct pushes to `main` are not allowed.
 
-## Merge settings (enforced on GitHub)
+## Merge settings (applied on GitHub)
 
 | Method | Status |
 |--------|--------|

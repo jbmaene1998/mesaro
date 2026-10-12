@@ -8,7 +8,7 @@ Only the latest tagged release on `main` receives security fixes unless a prior 
 
 **Do not open a public GitHub issue for security bugs.**
 
-Email the maintainers privately (or use GitHub Security Advisories once enabled on this repository) with:
+Prefer [GitHub private vulnerability reporting](https://github.com/jbmaene1998/mesaro/security/advisories/new) on this repository when enabled. Until then, contact the repo owner (`jbmaene1998`) privately with:
 
 1. Description of the issue and impact
 2. Steps to reproduce (PoC if available)

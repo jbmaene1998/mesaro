@@ -12,18 +12,23 @@ How we cut releases: [docs/engineering/branching-and-releases.md](docs/engineeri
 ### Added
 
 - Repository production baselines: branching, PR templates, CODEOWNERS, security policy, release-note categories
+- Privacy + Terms marketing routes (founder drafts)
+- Hostinger VPS + local-prod deploy runbooks; parked CI workflows under `.github/ci-parked/`
 
 ### Changed
 
-- (none yet)
+- Docs rescored 2026-10-12: Phase 0–2 code fixes reflected; readiness ~78%
 
 ### Fixed
 
-- (none yet)
+- Stripe webhook durability; billing success confirm; guest booking billing gate
+- STAFF cancel/switch + self-vacation; restaurant `/select`; accept-invite set-password
+- Dev seed `maxRestaurants` aligned with 2 demo restaurants
+- Planning cold-load; guest slot `HH:mm`; guest cancel deep-links
 
 ### Security
 
-- (none yet)
+- Prod fail-fast for insecure secrets / log-only email outside `dev`
 
 <!--
 When cutting a release:

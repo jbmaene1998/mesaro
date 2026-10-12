@@ -1,26 +1,28 @@
 # Mesaro frontend — functional flow audit
 
-**Audit date:** 2026-10-09 (includes live browser)  
+**Status date:** 2026-10-12 (code rescore) · historical live browser: 2026-10-09  
 **Source:** `frontend/src/routes/index.tsx`, feature pages, `api/*`  
 **Vision:** [../product-doctrine.md](../product-doctrine.md)  
 **Cross-cut:** [../flows.md](../flows.md) · Technical: [audit.md](audit.md) · Plan: [../production-ready-plan.md](../production-ready-plan.md)
 
+> Prefer this snapshot and [../flows.md](../flows.md) over older “BROKEN / unused” rows deeper in the file if they disagree.
+
 ---
 
-## Live browser (2026-10-09) — short
+## Status snapshot (2026-10-12)
 
-| Flow | Live |
-|------|------|
+| Flow | Status |
+|------|--------|
 | Login → Dashboard home | OK |
-| Guest availability | OK (`HH:mm:ss` labels) |
-| Planning first paint | **Empty** until Hoy |
-| Planning after Hoy | OK |
-| Vacations staff (OWNER) | OK |
-| Vacations closures | Empty |
+| Guest availability | OK (`HH:mm` labels) |
+| Planning cold-load | OK (today init) |
+| Vacations staff + STAFF self-request | OK |
 | Reports | OK |
-| Billing success confirm | **Not called** |
-| Cancel/switch permissions | FE MANAGER-only (STAFF hidden) |
-| i18n | Mixed ES nav + EN floor tags |
+| Billing success confirm | OK (`confirmCheckout`) |
+| Cancel/switch permissions | STAFF+ |
+| Privacy / Terms | OK routes (drafts) |
+| Restaurant select + scoped token | OK |
+| Residual i18n | PARTIAL |
 
 ---
 
@@ -41,7 +43,7 @@
 
 | Path | Gate | Surface |
 |------|------|---------|
-| `/`, `/features`, `/pricing`, `/about`, `/faq`, `/contact` | Public | Marketing |
+| `/`, `/features`, `/pricing`, `/about`, `/faq`, `/contact`, `/privacy`, `/terms` | Public | Marketing |
 | `/login`, `/register`, `/forgot-password`, `/reset-password`, `/accept-invite` | Public | Auth |
 | `/r/:slug` (+ confirm / reservation) | Public | Guest |
 | `/embed/:slug` (+ …) | Public | Widget |
@@ -88,7 +90,7 @@ No password UI (matches BE random password — **re-login risk**).
 |--|--|
 | **UI** | Selector / portfolio calls `restaurantContext.selectRestaurant(id)` |
 | **Actual** | Sets local restaurant + `X-Restaurant-Id`; **does not** call `POST /restaurants/{id}/select` |
-| **Dead helper** | `api/restaurants.ts` `selectRestaurant` + `setScopedAccessToken` unused |
+| **Select context** | `selectRestaurant` + `setScopedAccessToken` wired from restaurant context |
 
 ### 5. Guest book → confirm → details → cancel (+ embed) — Complete
 
@@ -131,7 +133,7 @@ Cancel needs token from session / nav / query — **Partial** if email link omit
 | Route | Behavior |
 |-------|----------|
 | `/settings/billing` | Status, Checkout, Portal, quantity — Complete UI |
-| `/billing/success` | Shows success; **no** `POST /api/billing/checkout/confirm` — **BROKEN** vs comment/e2e |
+| `/billing/success` | Calls `POST /api/billing/checkout/confirm` via `confirmCheckout` |
 | `/billing/cancel` | Cancel landing → retry |
 
 ### 10. Account — Complete
@@ -171,8 +173,8 @@ Contact → `POST /contact`. Consent banner → optional `POST /analytics/events
 |------|--------|
 | `RegisterPlaceholderPage` | Complete (misnamed) |
 | `BookingPage.tsx`, `route-placeholders.tsx` | Dead |
-| `selectRestaurant` API + scoped token | Dead / unused (live: API OK, FE skips) |
-| Billing success confirm | Broken claim (live: no API call) |
+| `selectRestaurant` API + scoped token | Wired |
+| Billing success confirm | Wired (`confirmCheckout`) |
 | Planning first paint | Flaky empty until Hoy |
 | Guest slot labels | Shows seconds (`11:30:00`) |
 | FAQ “cancel is roadmap” | Copy Broken vs product |

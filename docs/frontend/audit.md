@@ -1,6 +1,6 @@
 # Mesaro frontend — deep audit
 
-**Audit date:** 2026-10-09 (static + **live browser**)  
+**Status date:** 2026-10-12 (code rescore) · historical live browser: 2026-10-09  
 **Scope:** `frontend/` (React + Vite SPA + Playwright)  
 **Purpose:** Founder-grade product/UX due diligence — features, gaps, bugs, launch blockers  
 **Vision:** [../product-doctrine.md](../product-doctrine.md) — €50 simple reservation SaaS (canonical)  
@@ -9,25 +9,26 @@
 
 Parent overview: [../README.md](../README.md)
 
+> The 2026-10-09 UI table is **historical**. Phase 0–2 fixed billing confirm, STAFF permissions, planning cold-load, Privacy/Terms routes, and restaurant select. Current scores: [../README.md](../README.md).
+
 ---
 
-## Live UI audit — 2026-10-09
+## Live UI audit — 2026-10-09 (historical) → now
 
-Stack: `http://localhost:3000` · logged in as `admin@demo.com` · locale often ES
+Stack: `http://localhost:3000` · logged in as `admin@demo.com`
 
-| Surface | Result |
-|---------|--------|
-| `/login` → `/dashboard` | OK — Dashboard is home; live table map; “Sin turno activo” overnight |
-| `/r/demo-restaurant` | OK — availability; times show `HH:mm:ss`; title/branding mixed |
-| `/planning` first paint | **Broken UX** — totals 0, “No hay dia seleccionado” |
-| `/planning` after **Hoy** | OK — week strip, assign, weekly hours |
-| `/vacations` staff tab | OK for OWNER — pending/approved/rejected |
-| `/vacations` closures tab | Empty list |
-| `/reports` | OK — summary, trend, today timeline, CSV button |
-| Floor status chips | **i18n leak** — “Free”, “Reserved later”, “New Reservation”, “Confirmed” in EN while nav ES |
-| `BillingSuccessPage` | Comment claims confirm; **no API call** |
-| `permissions.ts` | `cancelReservation` / `switchTables` = OWNER\|MANAGER only (blocks STAFF UI) |
-| `restaurant-context` select | Local id only — does **not** call `POST .../select` / scoped token |
+| Surface | Then | Now (2026-10-12 code) |
+|---------|------|------------------------|
+| `/login` → `/dashboard` | OK | OK |
+| `/r/demo-restaurant` | OK; `HH:mm:ss` | OK; `HH:mm` |
+| `/planning` first paint | Empty until Hoy | Cold-load OK |
+| `/vacations` | OWNER OK; STAFF create blocked | STAFF self-request OK |
+| `/reports` | OK | OK |
+| `BillingSuccessPage` | No confirm API | Calls `confirmCheckout` |
+| `permissions.ts` cancel/switch | MANAGER-only | STAFF+ |
+| `restaurant-context` | Header-only | Calls `/select` + scoped token |
+| `/privacy`, `/terms` | Missing | Live (drafts) |
+| i18n | Mixed ES/EN | Mostly fixed; residual leaks possible |
 
 ---
 
@@ -35,21 +36,19 @@ Stack: `http://localhost:3000` · logged in as `admin@demo.com` · locale often 
 
 Marketing already sells **€49.99 flat**. Doctrine says the differentiator is **simplicity** — and (amended 2026-10-09) weekly planning/vacations/reports stay in nav and must **work**, without being marketed as an HR/BI suite.
 
-| Sell & default-nav (doctrine) | Engineering debt (not “hide”) |
-|-------------------------------|-------------------------------|
-| Marketing → register → onboard → tables/shifts → guest/embed → **Dashboard** floor (STAFF cancel/switch) → staff → **planning / vacations / reports** → settings/billing | Fix first-paint bugs, role gates, i18n; strip Redis/audit jargon from pricing |
+| Sell & default-nav (doctrine) | Remaining polish |
+|-------------------------------|------------------|
+| Marketing → register → onboard → tables/shifts → guest/embed → **Dashboard** floor (STAFF cancel/switch) → staff → **planning / vacations / reports** → settings/billing → Privacy/Terms | Residual i18n; opening-hours vs closures UX; counsel on legal drafts |
 
-**Product work:** finish broken essentials; do not add deposits/SMS/waitlist/guest modify unless doctrine changes.
+**Product work:** do not add deposits/SMS/waitlist/guest modify unless doctrine changes.
 
 ---
 
 ## Executive summary
 
-The frontend is a **near-MVP product surface**, not a shell: marketing → register → onboarding → floor ops → guest/embed booking → reports → Stripe checkout wiring. Craft signals are real (Axios envelope, 401 refresh, 402→billing, role gates, embed widget).
+The frontend is a **full product surface**: marketing → register → onboarding → floor ops (STAFF+) → guest/embed booking → planning/vacations/reports → Stripe checkout confirm → Privacy/Terms drafts. Craft signals are real (Axios envelope, 401 refresh, 402 UX, role gates, embed widget).
 
-**Live browser audit** shows Dashboard/Reports/guest booking largely work, but planning first paint, STAFF floor permissions, billing success honesty, Privacy/Terms, and i18n leaks fail the launch bar.
-
-**Verdict:** Demoable for OWNER pilots. Do **not** present as production-ready EU SaaS until Privacy/Terms, billing confirm, STAFF floor actions, and weekly-module polish are fixed.
+**Verdict:** Demoable for careful pilots. Block paid ads until counsel-approved legal pages, prod email smoke, active CI, and VPS cutover.
 
 ---
 
@@ -112,7 +111,7 @@ Onboarding: users with zero restaurants are forced to `/onboarding/setup`.
 | Reports / CSV | Done | `ReportsPage` | |
 | Account | Done | `AccountPage` | |
 | Analytics consent | Partial | consent banner + `lib/analytics.ts` | EN-only banner; no privacy link |
-| Legal (Privacy/Terms) | **Missing** | — | Hard blocker for EU B2B |
+| Legal (Privacy/Terms) | **Draft live** | `/privacy`, `/terms` | Counsel + company entity still required |
 | Guest modify booking | **Missing** | — | |
 | MANUAL assignment mode | **Missing** | Settings hardcodes AUTO | |
 | Dead code | Risky | `route-placeholders.tsx`, `BookingPage.tsx` | Not routed |
@@ -123,11 +122,8 @@ Onboarding: users with zero restaurants are forced to `/onboarding/setup`.
 
 ### P0 — Launch / trust / money
 
-1. **Billing success does not confirm Stripe session**  
-   - `BillingSuccessPage.tsx` reads `session_id` and shows success copy; **no API call**  
-   - File comment claims proactive backend confirm  
-   - E2E (`billing-success.spec.ts`) appears written for a confirm API that is not called  
-   - **Risk:** webhook delay → “You’re all set” while access still 402  
+1. **~~Billing success does not confirm Stripe session~~** — **Fixed**  
+   - `BillingSuccessPage.tsx` calls `billingApi.confirmCheckout(sessionId)`  
 
 2. **Refresh token in `localStorage`** (`auth-context.tsx`)  
    - Access token in memory is good; refresh persistence enables XSS session theft  
@@ -136,28 +132,25 @@ Onboarding: users with zero restaurants are forced to `/onboarding/setup`.
 3. **FAQ false claim on guest cancel** (`FaqPage.tsx`) vs shipped cancel  
    - Trust/support risk; also under-sells a shipped feature  
 
-4. **No Privacy Policy / Terms routes** while marketing claims GDPR  
+4. **~~No Privacy Policy / Terms routes~~** — **Fixed** (drafts at `/privacy`, `/terms`; counsel still pending) 
    - Hard blocker for EU B2B sales and Stripe trust  
 
 ### P1 — Multi-tenant / SaaS correctness
 
-5. **`selectRestaurant` API unused; `setScopedAccessToken` never called**  
-   - Context only sets local restaurant id + `X-Restaurant-Id`  
-   - If backend expects scoped JWT, switch is silently wrong; if header-only is intentional, dead code remains  
+5. **~~`selectRestaurant` API unused~~** — **Fixed:** restaurant context wires select + scoped token  
 
 6. **Billing downgrade copy references “archive restaurants” with no UI**  
 
-7. **402 redirects to `/settings/billing` (OWNER-only)**  
-   - STAFF/MANAGER mid-flow get Access Denied with little explanation  
+7. **~~402 OWNER-only billing trap~~** — **Fixed:** non-OWNER get clear “contact owner” copy (`client.ts`) 
 
 8. **Sitemap `?lang=` hreflang not implemented** in the app  
 
 ### P2 — Product / UX / quality
 
-9. Register page still named `RegisterPlaceholderPage`; EN-only for nl/fr/es  
-10. Billing UI English-only + ad-hoc gray CSS (outside design system / i18n)  
-11. Dashboard live status labels hardcoded English  
-12. `document.documentElement.lang` never updated → ErrorBoundary locale stuck on `en`  
+9. Register page renamed to `RegisterPage`; some locales still thinner than EN  
+10. Billing UI may still leak English in places  
+11. Residual dashboard/status i18n leaks possible  
+12. `document.documentElement.lang` updated in Phase 4 — re-verify ErrorBoundary locale 
 13. Consent banner English-only; calls analytics “cookies” while storage is `localStorage`  
 14. Guest Zod validation messages English-only on confirm  
 15. Wildcard `*` → home hides 404  
@@ -176,12 +169,12 @@ Onboarding: users with zero restaurants are forced to `/onboarding/setup`.
 
 ### Real gaps (needed for the €50 simple product)
 
-- Privacy + Terms + honest FAQ  
-- Billing success confirm (wire the API the comment already promises)  
-- STAFF cancel/switch permissions aligned with doctrine  
-- Planning first-paint (selectedDate = today; wait for restaurant id)  
+- ~~Privacy + Terms~~ (drafts live; counsel pending)  
+- ~~Billing success confirm~~ (done)  
+- ~~STAFF cancel/switch permissions~~ (done)  
+- ~~Planning first-paint~~ (done)  
 - Marketing copy that sells **outcomes**, not Redis/audit  
-- Cancel deep-links that work without sessionStorage only  
+- ~~Cancel deep-links~~ (done)  
 - Non-owner 402 UX that doesn’t strand staff  
 - Wire `/select` + scoped access token on restaurant switch  
 - i18n for floor tags + guest slot `HH:mm`  
@@ -262,7 +255,7 @@ Onboarding: users with zero restaurants are forced to `/onboarding/setup`.
 - Unit coverage light on planning/settings/billing pages  
 - Quarantine `tmp-seed-login.spec.ts`  
 
-CI: `.github/workflows/e2e.yml` has an explicit **backend startup stub** — E2E does not start the API.
+CI: workflows parked at `.github/ci-parked/` — `e2e.yml` starts infra + API; not active on GitHub until moved to `.github/workflows/`.
 
 ---
 
@@ -276,7 +269,7 @@ CI: `.github/workflows/e2e.yml` has an explicit **backend startup stub** — E2E
 | Stripe publishable key | In env example, unused by FE |
 | Embed | `widget.js` + Settings snippets |
 | SEO | Partial |
-| Legal pages | **Missing** |
+| Legal pages | Draft routes live; counsel pending |
 | Error monitoring (Sentry) | Not present |
 | CSP / security headers | Not in FE repo |
 
@@ -288,8 +281,8 @@ Aligned with [product-doctrine.md](../product-doctrine.md).
 
 ### Days 0–30 (launch + look like the vision)
 
-- Stripe session confirm on `/billing/success`; fix e2e  
-- Privacy + Terms (+ footer); FAQ honesty; consent → privacy  
+- ~~Stripe session confirm on `/billing/success`~~ (done)  
+- ~~Privacy + Terms (+ footer); FAQ honesty; consent → privacy~~ (drafts done; counsel pending)  
 - **Default AppShell nav = doctrine core only**; hide/bury planning, vacations, reports  
 - Pricing/home: remove infra jargon; sell floor + bookings + €50  
 - Rename register page; localize register + billing  
