@@ -5,7 +5,6 @@ import com.mesaro.audit.AuditService;
 import com.mesaro.common.exception.ConflictException;
 import com.mesaro.common.exception.NotFoundException;
 import com.mesaro.common.exception.ValidationException;
-import com.mesaro.outbox.OutboxService;
 import com.mesaro.security.RestaurantRole;
 import com.mesaro.shift.Shift;
 import com.mesaro.shift.ShiftService;
@@ -19,7 +18,6 @@ import com.mesaro.vacation.VacationRepository;
 import com.mesaro.vacation.VacationService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -53,9 +51,6 @@ public class StaffPlanningService {
     private final VacationRepository vacationRepository;
     private final StaffWeeklyWorkHoursRepository weeklyWorkHoursRepository;
     private final AuditService auditService;
-    @Autowired(required = false)
-    private OutboxService outboxService;
-
     public StaffPlanningService(StaffShiftAssignmentRepository assignmentRepository,
                                 ShiftService shiftService,
                                 UserRestaurantRepository userRestaurantRepository,
@@ -313,20 +308,6 @@ public class StaffPlanningService {
                         "serviceDate", assignment.getServiceDate().toString()
                 )
         );
-        if (outboxService != null) {
-            outboxService.enqueue(
-                    "STAFF_SHIFT_ASSIGNMENT",
-                    assignmentId,
-                    "StaffAssignmentDeleted",
-                    Map.of(
-                            "assignmentId", assignmentId,
-                            "restaurantId", restaurantId,
-                            "userId", assignment.getUser().getId(),
-                            "shiftId", assignment.getShift().getId()
-                    ),
-                    assignmentId + ":deleted"
-            );
-        }
 
         log.info("Removed planned user {} from shift {} for restaurant {} at {}",
                 assignment.getUser().getId(), assignment.getShift().getId(), restaurantId, assignment.getServiceDate());

@@ -10,7 +10,6 @@ import com.mesaro.common.exception.NotFoundException;
 import com.mesaro.common.exception.ValidationException;
 import com.mesaro.infra.TimeService;
 import com.mesaro.infra.TokenService;
-import com.mesaro.outbox.OutboxService;
 import com.mesaro.reservation.ReservationRepository;
 import com.mesaro.restaurant.Restaurant;
 import com.mesaro.restaurant.RestaurantService;
@@ -23,7 +22,6 @@ import io.micrometer.core.instrument.MeterRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -60,9 +58,6 @@ public class HoldService {
     private final TimeService timeService;
     private final AuditService auditService;
     private final MeterRegistry meterRegistry;
-    @Autowired(required = false)
-    private OutboxService outboxService;
-
     @Value("${app.hold.duration-minutes:3}")
     private int holdDurationMinutes;
 
@@ -299,19 +294,6 @@ public class HoldService {
                             "endAtUtc", hold.getEndAtUtc()
                     )
             );
-            if (outboxService != null) {
-                outboxService.enqueue(
-                        "HOLD",
-                        hold.getId(),
-                        "HoldExpired",
-                        Map.of(
-                                "holdId", hold.getId(),
-                                "restaurantId", hold.getRestaurantId(),
-                                "expiredAt", cutoff
-                        ),
-                        hold.getId() + ":expired"
-                );
-            }
         }
         return deleted;
     }
