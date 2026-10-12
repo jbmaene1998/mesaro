@@ -29,6 +29,7 @@ backend/dev-start.log
 backend/dev-start.err.log
 backend/.env.prod
 backend/.env.prod.local
+backend/.env.staging
 backend/.env.dev
 backend/.env.prod.verify
 backend/frontend-dist/

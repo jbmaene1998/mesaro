@@ -1,0 +1,40 @@
+# =============================================================================
+# Staging override for docker-compose.prod.yml — LAN Omen server
+#
+# Usage (from backend/):
+#   docker compose -f docker-compose.prod.yml -f docker-compose.staging.yml \
+#     --env-file .env.staging up -d --build
+# =============================================================================
+
+services:
+  mailpit:
+    image: axllent/mailpit:v1.21
+    container_name: mesaro-staging-mailpit
+    ports:
+      - "127.0.0.1:8025:8025"
+    restart: unless-stopped
+    networks:
+      - mesaro-internal
+
+  app-prod:
+    ports: !override
+      - "127.0.0.1:18080:8080"
+      - "127.0.0.1:19090:9090"
+
+  caddy:
+    environment:
+      MESARO_DOMAIN: mesaro.staging
+      ACME_EMAIL: staging@mesaro.staging
+    ports: !override
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile.staging:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+      - ${FRONTEND_DIST_PATH:-./frontend-dist}:/srv/frontend:ro
+    depends_on:
+      app-prod:
+        condition: service_healthy
+      mailpit:
+        condition: service_started
