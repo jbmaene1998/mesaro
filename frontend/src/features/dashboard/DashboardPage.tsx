@@ -94,7 +94,7 @@ function formatShiftCapacitySubLabel(
 }
 
 export function DashboardPage() {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const auth = useAuth();
@@ -193,11 +193,11 @@ export function DashboardPage() {
     const trialStartedFlagKey = `${TRIAL_STARTED_FLAG_PREFIX}${selectedRestaurantId}`;
     if (sessionStorage.getItem(trialStartedFlagKey) === "1" && billingStatusQuery.data.status === "TRIALING") {
       const endsAt = billingStatusQuery.data.trialEndsAt
-        ? new Date(billingStatusQuery.data.trialEndsAt).toLocaleDateString()
+        ? new Date(billingStatusQuery.data.trialEndsAt).toLocaleDateString(locale)
         : null;
       const message = endsAt
-        ? `Your free trial has started and ends on ${endsAt}.`
-        : "Your free trial has started.";
+        ? interpolateTemplate(t("dashboard.trial.startedWithEnd"), { endsAt })
+        : t("dashboard.trial.started");
       showSuccess(message);
       sessionStorage.removeItem(trialStartedFlagKey);
     }
@@ -217,13 +217,15 @@ export function DashboardPage() {
       return;
     }
 
-    const endsAt = new Date(billingStatusQuery.data.trialEndsAt).toLocaleDateString();
+    const endsAt = new Date(billingStatusQuery.data.trialEndsAt).toLocaleDateString(locale);
     const message = daysLeft <= 0
-      ? `Your free trial has ended (${endsAt}). Please subscribe to keep access.`
-      : `Your free trial ends in ${daysLeft} day${daysLeft === 1 ? "" : "s"} (${endsAt}).`;
+      ? interpolateTemplate(t("dashboard.trial.ended"), { endsAt })
+      : daysLeft === 1
+        ? interpolateTemplate(t("dashboard.trial.endsInOne"), { endsAt })
+        : interpolateTemplate(t("dashboard.trial.endsInMany"), { daysLeft, endsAt });
     showWarning(message);
     sessionStorage.setItem(endingToastSessionKey, "1");
-  }, [auth.refreshToken, billingStatusQuery.data, role, selectedRestaurantId]);
+  }, [auth.refreshToken, billingStatusQuery.data, locale, role, selectedRestaurantId, t]);
 
   return (
     <div className="space-y-6">

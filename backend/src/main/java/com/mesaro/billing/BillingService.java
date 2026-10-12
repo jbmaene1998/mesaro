@@ -23,6 +23,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
@@ -46,6 +47,9 @@ public class BillingService {
             "paused",
             "trialing"
     );
+
+    /** Full platform access while PAST_DUE until this elapses from {@code user_account.past_due_since}. */
+    static final Duration PAST_DUE_GRACE_PERIOD = Duration.ofDays(7);
 
     private final StripeService stripeService;
     private final UserRestaurantRepository userRestaurantRepository;
@@ -86,7 +90,7 @@ public class BillingService {
             log.info("Trial expired in-request for owner {} — billing_status set to CANCELED", owner.getId());
         }
 
-        if (!owner.getBillingStatus().allowsAccess()) {
+        if (!ownerAllowsBillingAccess(owner, Instant.now())) {
             throw new BillingAccessBlockedException(
                     "Your subscription has expired. Please subscribe to continue.",
                     owner.getBillingStatus().name()
@@ -134,7 +138,9 @@ public class BillingService {
             Subscription subscription = stripeService.updateSubscriptionQuantity(
                     owner.getStripeSubscriptionId(), targetQuantity);
             owner.setStripeSubscriptionId(subscription.getId());
-            owner.setBillingStatus(mapStripeStatus(subscription.getStatus()));
+            SubscriptionStatus newStatus = mapStripeStatus(subscription.getStatus());
+            owner.setBillingStatus(newStatus);
+            applyPastDueTimestampTransition(owner, newStatus, Instant.now());
             owner.setMaxRestaurants(Math.max(1, resolveSubscriptionQuantity(subscription)));
             if (owner.getBillingStatus() == SubscriptionStatus.ACTIVE && owner.getTrialEndsAt() != null) {
                 owner.setTrialEndsAt(Instant.now());
@@ -273,6 +279,7 @@ public class BillingService {
         owner.setStripeSubscriptionId(subscriptionId);
         owner.setBillingStatus(SubscriptionStatus.ACTIVE);
         owner.setTrialEndsAt(Instant.now());
+        owner.setPastDueSince(null);
         userAccountRepository.save(owner);
         log.info("Owner {} subscription activated: {}", owner.getId(), subscriptionId);
 
@@ -297,6 +304,7 @@ public class BillingService {
         SubscriptionStatus newStatus = mapStripeStatus(subscription.getStatus());
         owner.setBillingStatus(newStatus);
         owner.setStripeSubscriptionId(subscription.getId());
+        applyPastDueTimestampTransition(owner, newStatus, Instant.now());
         if (newStatus == SubscriptionStatus.ACTIVE && owner.getTrialEndsAt() != null) {
             owner.setTrialEndsAt(Instant.now());
         }
@@ -342,7 +350,11 @@ public class BillingService {
         }
 
         UserAccount owner = ownerOpt.get();
+        Instant now = Instant.now();
         owner.setBillingStatus(SubscriptionStatus.PAST_DUE);
+        if (owner.getPastDueSince() == null) {
+            owner.setPastDueSince(now);
+        }
         userAccountRepository.save(owner);
         log.warn("Owner {} payment failed — billing_status set to PAST_DUE", owner.getId());
     }
@@ -365,6 +377,7 @@ public class BillingService {
         if (owner.getBillingStatus() == SubscriptionStatus.PAST_DUE
                 || owner.getBillingStatus() == SubscriptionStatus.UNPAID) {
             owner.setBillingStatus(SubscriptionStatus.ACTIVE);
+            owner.setPastDueSince(null);
             userAccountRepository.save(owner);
             log.info("Owner {} payment recovered — billing_status set to ACTIVE", owner.getId());
         }
@@ -521,7 +534,7 @@ public class BillingService {
                 owner.getTrialEndsAt(),
                 owner.getStripeCustomerId(),
                 owner.getStripeSubscriptionId(),
-                owner.getBillingStatus().allowsAccess(),
+                ownerAllowsBillingAccess(owner, Instant.now()),
                 Math.max(1, owner.getMaxRestaurants()),
                 activeRestaurantCount
         );
@@ -538,7 +551,9 @@ public class BillingService {
             }
 
             owner.setStripeSubscriptionId(subscription.getId());
-            owner.setBillingStatus(mapStripeStatus(subscription.getStatus()));
+            SubscriptionStatus reconciledStatus = mapStripeStatus(subscription.getStatus());
+            owner.setBillingStatus(reconciledStatus);
+            applyPastDueTimestampTransition(owner, reconciledStatus, Instant.now());
             if (owner.getBillingStatus() == SubscriptionStatus.ACTIVE && owner.getTrialEndsAt() != null) {
                 owner.setTrialEndsAt(Instant.now());
             }
@@ -546,6 +561,33 @@ public class BillingService {
             userAccountRepository.save(owner);
         } catch (StripeException e) {
             log.warn("Failed to reconcile owner {} billing from Stripe: {}", owner.getId(), e.getMessage());
+        }
+    }
+
+    /**
+     * Whether the owner may use guest booking and other billing-guarded features.
+     * PAST_DUE keeps access for {@link #PAST_DUE_GRACE_PERIOD} from {@code past_due_since}.
+     */
+    boolean ownerAllowsBillingAccess(UserAccount owner, Instant now) {
+        SubscriptionStatus status = owner.getBillingStatus();
+        if (!status.allowsAccess()) {
+            return false;
+        }
+        if (status != SubscriptionStatus.PAST_DUE) {
+            return true;
+        }
+        Instant pastDueSince = owner.getPastDueSince();
+        if (pastDueSince == null) {
+            return true;
+        }
+        return now.isBefore(pastDueSince.plus(PAST_DUE_GRACE_PERIOD));
+    }
+
+    private void applyPastDueTimestampTransition(UserAccount owner, SubscriptionStatus newStatus, Instant now) {
+        if (newStatus == SubscriptionStatus.ACTIVE || newStatus == SubscriptionStatus.TRIALING) {
+            owner.setPastDueSince(null);
+        } else if (newStatus == SubscriptionStatus.PAST_DUE && owner.getPastDueSince() == null) {
+            owner.setPastDueSince(now);
         }
     }
 

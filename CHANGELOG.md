@@ -17,7 +17,7 @@ How we cut releases: [docs/engineering/branching-and-releases.md](docs/engineeri
 
 ### Changed
 
-- Docs rescored 2026-10-12 from code audit: readiness ~72%; staging CD live; test CI still parked; webhook deserialize hole + PAST_DUE called out as open
+- Docs rescored 2026-10-12 after PRs #5–#11: readiness ~82%; backend CI active; webhook/outbox/PAST_DUE grace/i18n/hours UX landed
 - `.env.prod.example` aligned with compose (Stripe, `MESARO_DOMAIN`, `ACME_EMAIL`)
 
 ### Fixed

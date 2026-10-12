@@ -7,7 +7,6 @@ import com.mesaro.common.exception.NotFoundException;
 import com.mesaro.common.exception.ValidationException;
 import com.mesaro.infra.TokenService;
 import com.mesaro.infra.EmailService;
-import com.mesaro.outbox.OutboxService;
 import com.mesaro.restaurant.RestaurantService;
 import com.mesaro.security.RestaurantRole;
 import com.mesaro.security.TokenDenylistService;
@@ -19,7 +18,6 @@ import com.mesaro.user.UserRestaurantRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -53,9 +51,6 @@ public class AuthService {
     private final AuditService auditService;
     private final TokenDenylistService tokenDenylistService;
     private final long refreshTokenTtlDays;
-    @Autowired(required = false)
-    private OutboxService outboxService;
-
     public AuthService(UserAccountRepository userAccountRepository,
                        UserRestaurantRepository userRestaurantRepository,
                        RefreshTokenRepository refreshTokenRepository,
@@ -200,15 +195,6 @@ public class AuthService {
                 normalizedEmail,
                 Map.of("outcome", "ACCEPTED", "accountPresent", existingUser.isPresent())
         );
-        if (outboxService != null) {
-            outboxService.enqueue(
-                    "USER",
-                    existingUser.map(UserAccount::getId).orElse(0L),
-                    "PasswordResetRequested",
-                    Map.of("email", normalizedEmail),
-                    normalizedEmail + ":password_reset_requested"
-            );
-        }
     }
 
     @Transactional

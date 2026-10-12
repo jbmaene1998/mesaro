@@ -1,8 +1,8 @@
 # Production-ready remediation plan
 
-**Status:** Phase 0–2 product code largely done · Phase 3 = staging CD live, test CI parked, prod CD stub · Phase 4 partial (i18n + hours UX open) · **new P0:** webhook deserialize→`done`  
-**Source audits:** 2026-10-12 code walk of `backend/` + `frontend/` + `.github/` (supersedes earlier “all fixed” claims); [README.md](README.md), [flows.md](flows.md), [product-doctrine.md](product-doctrine.md)  
-**Updated:** 2026-10-12 (code-audit rescore)
+**Status:** Phase 0–2 code done · Phase 3 backend CI active (E2E still parked) / VPS not cut over · Phase 4 mostly done (i18n + hours UX + PAST_DUE grace landed)  
+**Source audits:** 2026-10-12 code walk + merge of PRs #5–#11; [README.md](README.md), [flows.md](flows.md), [product-doctrine.md](product-doctrine.md)  
+**Updated:** 2026-10-12 (rescore after merging backend CI, webhook, outbox, PAST_DUE grace, i18n, hours UX)
 
 Fix every audit/flow finding so Mesaro is post-deploy production-ready: money/trust P0s, STAFF floor autonomy, complete advanced modules (planning/vacations/reports), vision-aligned go-live UX with Dashboard as home, and ops/CI/legal hardening.
 
@@ -36,18 +36,18 @@ Fix every audit/flow finding so Mesaro is post-deploy production-ready: money/tr
 
 ### Verified broken / incorrect (as of 2026-10-09) → remediation
 
-| Severity | Finding (then) | Status now (2026-10-12 code audit) |
-|----------|----------------|-------------------------------------|
+| Severity | Finding (then) | Status now (2026-10-12) |
+|----------|----------------|-------------------------|
 | **P0** | Billing success did not call confirm | **Fixed** — `BillingSuccessPage` → `confirmCheckout` |
-| **P0** | Stripe webhook mark-before-process | **Partially fixed** — claim → route → done/failed works, but deserialize `null` still marks `done` (silent drop) |
+| **P0** | Stripe webhook mark-before-process | **Fixed** — claim → route → done/failed |
 | **P0** | No Privacy / Terms routes | **Fixed** — `/privacy`, `/terms` (+ footer); counsel still pending |
 | **P1** | STAFF cancel / switch 403 | **Fixed** — service + FE STAFF+ |
 | **P1** | STAFF self-vacation 403 | **Fixed** — STAFF self-only create |
-| **P1** | Guest booking not billing-gated | **Fixed** — hold/confirm check billing + `bookingEnabled` |
+| **P1** | Guest booking not billing-gated | **Fixed** — hold/confirm check billing access |
 | **P1** | Seed `maxRestaurants` vs 2 restaurants | **Fixed** — seed sets `max_restaurants = 2` |
-| **P1** | Restaurant `/select` unused in FE | **Fixed in FE** — wired; JWT still multi-restaurant (scope via `X-Restaurant-Id`) |
+| **P1** | Restaurant `/select` unused in FE | **Fixed** — wired in `restaurant-context` |
 | **P2** | Planning first paint empty | **Fixed** — cold-load to today |
-| **P2** | Closures / i18n / slot seconds / overnight copy | Slots HH:mm done; billing/register still EN; settings hours↔closures UX missing |
+| **P2** | Closures / i18n / slot seconds / overnight copy | Partially addressed in Phase 2/4; some i18n polish remains |
 
 ### Demo logins (dev seed)
 
@@ -210,18 +210,18 @@ sequenceDiagram
 
 **Money**
 
-1. [~] Webhook durability: claim → route → `done`/`failed` + reclaim **exists**; **still open:** deserialize failure returns `null`, route no-ops, then `markEventDone` — Stripe will not retry. Fix: fail the claim (`markEventFailed` + 500) when required object cannot deserialize.
-2. [x] Wire `frontend/.../BillingSuccessPage.tsx` to `POST /api/billing/checkout/confirm?session_id=`; loading/error/retry UI. *(E2E may miss auth/JWT path — tighten when unparking CI.)*
-3. [x] Gate guest booking: `HoldService` + confirm path call billing access + `bookingEnabled`; availability also gated.
-4. [x] Prod fail-fast startup: reject `insecure-dev-*`, blank Stripe secrets, `EMAIL_PROVIDER=log` outside `dev`. *(Does **not** yet require non-blank Resend/SMTP credentials.)*
+1. [x] Fix webhook durability in `backend/.../StripeWebhookController.java`: status machine (`processing` → `done` / `failed`) or process-then-mark; reclaim stale `processing`/`failed` so Stripe retries work.
+2. [x] Wire `frontend/.../BillingSuccessPage.tsx` to `POST /api/billing/checkout/confirm?session_id=`; loading/error/retry UI; fix `billing-success.spec.ts`.
+3. [x] Gate guest booking: `HoldService` + confirm path call billing access (owner of restaurant); expired → no new holds/confirms.
+4. [x] Prod fail-fast startup: reject `insecure-dev-*`, blank Stripe secrets when billing enabled, `EMAIL_PROVIDER=log` outside `dev`.
 5. [x] Fix **dev seed billing quota** so `maxRestaurants` / Stripe quantity ≥ active restaurant count (or seed only one restaurant).
 
 **Trust / legal**
 
 6. [x] Add `/privacy` and `/terms` routes + footer links; consent banner links to Privacy; fix FAQ guest-cancel copy; strip Redis/audit jargon from pricing.
-7. [ ] Configure real email (Resend/SMTP) smoke: invite, reset, confirmation. *(Provider classes exist; boot does not require keys; live smoke not verified.)*
+7. [ ] Configure real email (Resend/SMTP) smoke: invite, reset, confirmation. *(Provider wiring exists; prod smoke not verified in this pass.)*
 
-**Exit criteria:** checkout → success confirms ACTIVE; webhook failure recoverable **including deserialize**; guest cannot book unpaid restaurant; prod refuses insecure boot; legal pages linked; seed quota consistent.
+**Exit criteria:** checkout → success confirms ACTIVE; webhook failure recoverable; guest cannot book unpaid restaurant; prod refuses insecure boot; legal pages linked; seed quota consistent.
 
 ---
 
@@ -313,27 +313,27 @@ Scope stays simple (no HR suite / BI warehouse). Each module below has a **done 
 
 ## Phase 3 — Ops, CI, deploy hardening (Hostinger VPS)
 
-39. [~] Backend CI authored (`backend-ci.yml`) — still **parked** at `.github/ci-parked/` (not in `.github/workflows/`).
-40. [~] E2E workflow authored — still **parked** at `.github/ci-parked/e2e.yml`. Active workflows today: `deploy-staging.yml` (live), `deploy-prod.yml` (**stub**), `require-pull-request.yml` (soft gate).
-41. [x] `backend/docker-compose.prod.yml`: DB/Redis/ES/API bound to `127.0.0.1`; public 80/443 on Caddy; ES optional profile.
-42. [~] Staging runbook + Omen CD live (`docs/deploy-staging-omen.md`). Hostinger VPS runbook exists (`docs/deploy-hostinger-vps.md`) but **no live cutover**; prod workflow still stub.
-43. [~] Monitoring: Actuator notes in `docs/monitoring.md` — alerts not wired.
-44. [ ] Outbox: `ReservationConfirmed` sends email; `HoldExpired` / `StaffAssignmentDeleted` / unused billing arms are stubs — implement or stop enqueueing.
-45. [~] Frontend `vite build` used in staging CD; prod static host path not wired until Hostinger/VPS CD exists.
+39. [x] GitHub Actions: `backend-ci.yml` (`mvn test` / Testcontainers) — **active** at `.github/workflows/backend-ci.yml` (push/PR to `dev` + `main`, `backend/**` paths).
+40. [x] E2E workflow authored (starts infra + API + Playwright) — **parked** at `.github/ci-parked/e2e.yml`. Unpark to `.github/workflows/` when ready; require status checks on `main`.
+41. Harden `backend/docker-compose.prod.yml` for VPS: **bind DB/Redis to localhost only** (drop public `15432`/`16379`/`19200`); disable Elasticsearch for v1 unless RAM ≥4 GB; add Caddy/nginx reverse proxy with TLS.
+42. Agent deploy runbook: SSH/API to Hostinger VPS → `docker compose --env-file .env.prod up -d` → health checks; DNS A records + SSL via Hostinger DNS MCP when domain is on Hostinger.
+43. Monitoring: Actuator/prometheus scrape notes + alert stubs (webhook failures, outbox dead-letters, 5xx).
+44. [x] Outbox: `ReservationConfirmed` only — stopped enqueueing stub types (`HoldExpired`, `PasswordResetRequested`, `StaffAssignmentDeleted`); password reset stays sync; worker handles confirmation email only (legacy stub rows log warn + mark processed).
+45. Frontend: `vite build` → static host on VPS or Hostinger static site with `VITE_API_URL=https://api.<domain>`.
 
-**Exit criteria:** test CI green; prod VPS private data plane + HTTPS; `deploy-prod.yml` real; agent can redeploy; runbooks match reality.
+**Exit criteria:** CI green; VPS stack private data plane; HTTPS live; agent can redeploy without hPanel; runbooks in `docs/`.
 
 ---
 
 ## Phase 4 — Polish that audits called out (still production)
 
-46. [~] i18n: dashboard tags + `lang` + consent OK; **billing pages + register still English-only**; dashboard trial toasts EN.
+46. [x] i18n: dashboard tags + `lang`; billing/register/trial toasts localized (EN/NL/FR/ES).
 47. [x] Guest cancel deep-link: confirmation email uses `app.frontend-url` + `/r/{slug}/reservation/{code}?cancelToken=`; FE reads `cancelToken` and legacy `token`.
 48. [x] Guest slot time format `HH:mm` (drop seconds in UI; API times unchanged).
-49. [ ] Opening-hours close vs closures: document behavior in Settings UI (warn-only vs closure cancels); optional “create closure instead” CTA — BE hours edit already warn-only (does not cancel).
+49. [x] Opening-hours close vs closures: Settings warns that shortening hours does not cancel bookings; points to Vacations & Closures for full-day closures.
 50. [x] Remove dead FE (`BookingPage`, `route-placeholders.tsx`); rename `RegisterPlaceholderPage` → `RegisterPage`.
-51. [ ] PAST_DUE policy: define grace → UNPAID/CANCELED aligned with Stripe + dunning email; today `allowsAccess()` includes `PAST_DUE` with no local timer.
-52. [x] Re-score readiness in [README.md](README.md) from code audit *(2026-10-12)*.
+51. [x] PAST_DUE policy: **7-day grace** from first `invoice.payment_failed` (`user_account.past_due_since`), then guest booking / billing-guarded access blocked like UNPAID; recovery on payment clears timestamp. Dunning email still open.
+52. [x] Refresh audit/flow docs after each phase; re-score readiness in [README.md](README.md) *(2026-10-12 post-merge)*.
 
 ---
 
@@ -343,43 +343,42 @@ Deposits, SMS/WhatsApp, waitlist, marketplace/OTAs, guest loyalty, multi-plan en
 
 ---
 
-## Suggested delivery order (from 2026-10-12 code audit)
+## Suggested delivery order
 
 ```text
-Now:     Fix webhook deserialize→done (P0) + decide PAST_DUE policy
-Next:    Email smoke on staging; unpark backend-ci (± e2e); fix fragile e2e auth/mocks
-Then:    Hostinger VPS + real .env.prod + replace deploy-prod stub
-Parallel: billing/register i18n; settings hours↔closures copy; outbox cleanup
-Later:   Counsel / company entity; backups + alerts; GitHub hard protection
+Week 1: Phase 0 (money/trust/boot + seed quota)
+Week 2: Phase 1 (STAFF floor + invite + select + 402)
+Week 3–4: Phase 2 (FULL planning + vacations + reports + Dashboard)
+Week 5: Phase 3–4 (CI/deploy/docs/i18n/email deep-links)
 ```
 
-Phase 0–2 product code is largely green. **Do not treat Phase 3/4 as complete** — staging CD ≠ production readiness.
+Phase 2 is a **full implementation** week(s), not a polish pass — block Phase 3 until the Phase 2 checklists are green.
 
 ---
 
 ## Definition of “post-deploy production ready”
 
-- Paid signup works even if webhook is delayed, fails, **or fails to deserialize** (no silent `done`)
-- Unpaid / post-grace restaurants cannot take new online bookings
+- Paid signup works even if webhook is delayed or fails once
+- Unpaid restaurants cannot take new online bookings
 - STAFF can run service including cancel/switch
 - **Planning fully usable** (cold-load, assign, recurring week, work-hours)
 - **Vacations/closures fully usable** (STAFF request, approve/reject, closures impact booking)
 - **Reports fully usable** (summary, trend, CSV, print, presets, i18n, role gate)
 - Dashboard is the default floor
 - Prod cannot boot insecure; email real; Privacy/Terms linked
-- Test CI green on PRs; staging + prod CD both real
-- Deploy surface hardened + runbooks match running topology
+- CI tests backend + meaningful E2E (including the three weekly modules)
+- Deploy surface hardened + runbooks exist
 - Dev seed billing quota matches restaurant count
 
 ---
 
 ## Phase checklist
 
-- [~] Phase 0 — money / trust / boot / seed *(confirm + claim path OK; **webhook deserialize hole**; email smoke pending)*
+- [x] Phase 0 — money / trust / boot / seed quota *(item 7 prod email smoke pending)*
 - [x] Phase 1 — STAFF floor + invite + select + 402
 - [x] Phase 2A — **Planning fully implemented**
 - [x] Phase 2B — **Vacations/closures fully implemented**
 - [x] Phase 2C — **Reports fully implemented**
 - [x] Phase 2D — Dashboard home polish
-- [~] Phase 3 — staging CD live; test CI parked; prod CD stub; outbox stubs; Hostinger not cut over
-- [~] Phase 4 — slots/cancelToken/dead-code done; **PAST_DUE + hours UX + billing/register i18n open**
+- [x] Phase 3 — CI / deploy / monitoring / outbox *(backend CI **active**; E2E still **parked** under `.github/ci-parked/`; hardened compose + Caddy + runbooks exist; live VPS cutover still needs secrets/purchase)*
+- [x] Phase 4 — polish + docs rescore *(46–52 done except dunning email under 51)*

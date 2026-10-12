@@ -98,15 +98,6 @@ public class OutboxWorker {
             JsonNode payload = objectMapper.readTree(row.payload());
             switch (row.eventType()) {
                 case "ReservationConfirmed" -> handleReservationConfirmed(row, payload);
-                case "HoldExpired" ->
-                    log.info("Outbox HoldExpired event id={} holdId={} restaurantId={}",
-                            row.id(), payload.path("holdId").asText(null), payload.path("restaurantId").asText(null));
-                case "BillingSubscriptionSynced" ->
-                    log.info("Outbox BillingSubscriptionSynced event id={} userId={} status={}",
-                            row.id(), payload.path("userId").asText(null), payload.path("status").asText(null));
-                case "RestaurantSuspended" ->
-                    log.info("Outbox RestaurantSuspended event id={} restaurantId={} reason={}",
-                            row.id(), payload.path("restaurantId").asText(null), payload.path("reason").asText(null));
                 default -> log.warn("Outbox event type '{}' is not handled; marking processed. id={}", row.eventType(), row.id());
             }
         } catch (Exception ex) {
