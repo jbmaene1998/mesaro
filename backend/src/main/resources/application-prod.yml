@@ -9,9 +9,10 @@
 #   - ELASTICSEARCH_URIS (and ELASTICSEARCH_USERNAME/ELASTICSEARCH_PASSWORD if secured)
 #   - JWT_SECRET (min 256 bits / 32 chars)
 #   - HOLD_TOKEN_SECRET, RESERVATION_TOKEN_SECRET, STAFF_TOKEN_SECRET
+#   - EMAIL_FROM (non-blank)
 #   - EMAIL_PROVIDER with matching provider credentials:
 #       resend -> RESEND_API_KEY
-#       smtp   -> SMTP_HOST (and optionally SMTP_PORT/SMTP_USERNAME/SMTP_PASSWORD)
+#       smtp   -> SMTP_HOST; when SMTP_AUTH=true also SMTP_USERNAME and SMTP_PASSWORD
 #   - APP_BASE_URL, API_BASE_URL, FRONTEND_URL
 #   - API_CORS_ORIGINS
 # =============================================================================
