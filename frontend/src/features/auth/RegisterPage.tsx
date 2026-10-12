@@ -10,8 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 
 export function RegisterPage() {
-  const { locale } = useI18n();
-  const copy = COPY[locale as keyof typeof COPY];
+  const { t } = useI18n();
   const navigate = useNavigate();
   const { isAuthenticated, restaurants, register } = useAuth();
   const [ownerName, setOwnerName] = useState("");
@@ -27,15 +26,15 @@ export function RegisterPage() {
 
   const handleSubmit = async () => {
     if (!ownerName.trim()) {
-      setError(copy.ownerNameValidation);
+      setError(t("register.ownerNameValidation"));
       return;
     }
     if (!EMAIL_REGEX.test(ownerEmail.trim())) {
-      setError(copy.emailValidation);
+      setError(t("register.emailValidation"));
       return;
     }
     if (ownerPassword.length < 8) {
-      setError(copy.passwordValidation);
+      setError(t("register.passwordValidation"));
       return;
     }
 
@@ -50,7 +49,7 @@ export function RegisterPage() {
       });
       navigate("/onboarding/setup", { replace: true });
     } catch (submitError) {
-      setError(copy.registerFailed);
+      setError(t("register.registerFailed"));
       showApiError(submitError);
     } finally {
       setIsSubmitting(false);
@@ -60,48 +59,48 @@ export function RegisterPage() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{copy.title}</CardTitle>
-        <CardDescription>{copy.subtitle}</CardDescription>
+        <CardTitle>{t("register.title")}</CardTitle>
+        <CardDescription>{t("register.subtitle")}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="space-y-1">
-          <label htmlFor="owner-name" className="text-sm font-medium">{copy.yourName}</label>
+          <label htmlFor="owner-name" className="text-sm font-medium">{t("register.yourName")}</label>
           <Input
             id="owner-name"
             value={ownerName}
             onChange={(event) => setOwnerName(event.target.value)}
-            placeholder={copy.ownerNamePlaceholder}
+            placeholder={t("register.ownerNamePlaceholder")}
           />
         </div>
         <div className="space-y-1">
-          <label htmlFor="owner-email" className="text-sm font-medium">{copy.workEmail}</label>
+          <label htmlFor="owner-email" className="text-sm font-medium">{t("register.workEmail")}</label>
           <Input
             id="owner-email"
             type="email"
             autoComplete="email"
             value={ownerEmail}
             onChange={(event) => setOwnerEmail(event.target.value)}
-            placeholder={copy.workEmailPlaceholder}
+            placeholder={t("register.workEmailPlaceholder")}
           />
         </div>
         <div className="space-y-1">
-          <label htmlFor="owner-password" className="text-sm font-medium">{copy.password}</label>
+          <label htmlFor="owner-password" className="text-sm font-medium">{t("register.password")}</label>
           <Input
             id="owner-password"
             type="password"
             autoComplete="new-password"
             value={ownerPassword}
             onChange={(event) => setOwnerPassword(event.target.value)}
-            placeholder={copy.minimumEightCharacters}
+            placeholder={t("register.minimumEightCharacters")}
           />
         </div>
         <div className="space-y-1">
-          <label htmlFor="owner-phone" className="text-sm font-medium">{copy.phoneOptional}</label>
+          <label htmlFor="owner-phone" className="text-sm font-medium">{t("register.phoneOptional")}</label>
           <Input
             id="owner-phone"
             value={ownerPhone}
             onChange={(event) => setOwnerPhone(event.target.value)}
-            placeholder={copy.phonePlaceholder}
+            placeholder={t("register.phonePlaceholder")}
           />
         </div>
 
@@ -112,41 +111,14 @@ export function RegisterPage() {
         ) : null}
 
         <Button type="button" className="w-full" onClick={() => void handleSubmit()} disabled={isSubmitting}>
-          {isSubmitting ? copy.creatingAccount : copy.createAccount}
+          {isSubmitting ? t("register.creatingAccount") : t("register.createAccount")}
         </Button>
 
         <p className="text-xs text-muted-foreground">
-          {copy.alreadyInvited} <Link to="/login" className="underline underline-offset-4">{copy.logInHere}</Link>.
+          {t("register.alreadyInvited")}{" "}
+          <Link to="/login" className="underline underline-offset-4">{t("register.logInHere")}</Link>.
         </p>
       </CardContent>
     </Card>
   );
 }
-
-const EN_COPY = {
-  title: "Create your account",
-  subtitle: "Create your owner account first, then set up your first restaurant.",
-  yourName: "Your name",
-  ownerNamePlaceholder: "Alex Taylor",
-  workEmail: "Work email",
-  workEmailPlaceholder: "you@restaurant.com",
-  password: "Password",
-  minimumEightCharacters: "Minimum 8 characters",
-  phoneOptional: "Phone (optional)",
-  phonePlaceholder: "+32 ...",
-  createAccount: "Create account",
-  creatingAccount: "Creating account...",
-  ownerNameValidation: "Enter your name.",
-  emailValidation: "Enter a valid work email.",
-  passwordValidation: "Password must contain at least 8 characters.",
-  registerFailed: "We couldn't create your account right now. Please try again.",
-  alreadyInvited: "Already invited?",
-  logInHere: "Log in here"
-} as const;
-
-const COPY = {
-  en: EN_COPY,
-  nl: EN_COPY,
-  fr: EN_COPY,
-  es: EN_COPY
-} as const;
