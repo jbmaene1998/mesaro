@@ -100,6 +100,21 @@ class StripeWebhookControllerTest {
     }
 
     @Test
+    void handleWebhook_deserializeEmptyForHandledType_marksFailedAndReturns500()
+            throws SignatureVerificationException {
+        Event event = mockEvent("evt_bad", "checkout.session.completed");
+        when(stripeService.constructWebhookEvent(any(), any())).thenReturn(event);
+        when(billingService.tryClaimEvent("evt_bad", "checkout.session.completed")).thenReturn(true);
+
+        ResponseEntity<Void> response = controller.handleWebhook(RAW_PAYLOAD, SIG_HEADER);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
+        verify(billingService, never()).handleCheckoutSessionCompleted(any());
+        verify(billingService).markEventFailed("evt_bad");
+        verify(billingService, never()).markEventDone(any());
+    }
+
+    @Test
     void handleWebhook_handlerThrowsException_marksFailedAndReturns500()
             throws SignatureVerificationException {
         Session session = mock(Session.class);

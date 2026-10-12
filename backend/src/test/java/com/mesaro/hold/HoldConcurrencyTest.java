@@ -7,11 +7,16 @@ import com.mesaro.reservation.ConfirmHoldRequest;
 import com.mesaro.reservation.ReservationService;
 import com.mesaro.restaurant.Restaurant;
 import com.mesaro.restaurant.RestaurantRepository;
+import com.mesaro.security.RestaurantRole;
 import com.mesaro.shift.Shift;
 import com.mesaro.shift.ShiftRepository;
 import com.mesaro.shift.ShiftStatus;
 import com.mesaro.table.DiningTable;
 import com.mesaro.table.DiningTableRepository;
+import com.mesaro.user.UserAccount;
+import com.mesaro.user.UserAccountRepository;
+import com.mesaro.user.UserRestaurant;
+import com.mesaro.user.UserRestaurantRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -45,10 +50,15 @@ class HoldConcurrencyTest extends IntegrationTestBase {
     private DiningTableRepository diningTableRepository;
     @Autowired
     private ShiftRepository shiftRepository;
+    @Autowired
+    private UserAccountRepository userAccountRepository;
+    @Autowired
+    private UserRestaurantRepository userRestaurantRepository;
 
     @Test
     void holdCreationAndConfirmationConcurrentlyDoNotDeadlock() throws Exception {
         Restaurant restaurant = restaurantRepository.save(new Restaurant("Hold Concurrency", "hold-concurrency-" + System.nanoTime(), "UTC"));
+        attachOwner(restaurant);
         DiningTable table1 = diningTableRepository.save(new DiningTable(restaurant, "T1", 2));
         diningTableRepository.save(new DiningTable(restaurant, "T2", 8));
 
@@ -107,6 +117,7 @@ class HoldConcurrencyTest extends IntegrationTestBase {
     @Test
     void concurrentHoldsNeverExceedShiftMaxCovers() throws Exception {
         Restaurant restaurant = restaurantRepository.save(new Restaurant("Capacity Concurrency", "capacity-concurrency-" + System.nanoTime(), "UTC"));
+        attachOwner(restaurant);
         for (int i = 1; i <= 10; i++) {
             diningTableRepository.save(new DiningTable(restaurant, "T" + i, 10));
         }
@@ -140,6 +151,13 @@ class HoldConcurrencyTest extends IntegrationTestBase {
         }
 
         assertThat(successCount.get()).isLessThanOrEqualTo(4);
+    }
+
+    private void attachOwner(Restaurant restaurant) {
+        UserAccount owner = userAccountRepository.save(
+                new UserAccount("owner-" + restaurant.getSlug() + "@example.com", "hash")
+        );
+        userRestaurantRepository.save(new UserRestaurant(owner, restaurant, RestaurantRole.OWNER));
     }
 
     private boolean isDeadlockError(Exception e) {

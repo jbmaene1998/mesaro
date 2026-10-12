@@ -37,6 +37,7 @@ We do **not** optimize for feature parity with Zenchef / TheFork Manager / Resy-
 | Reservations | Unlimited at the same price |
 | Multi-location | One login; **each restaurant billed once** at the flat rate |
 | Trial | 14 days, no card required (keep this honest in product + legal) |
+| Failed payment | **PAST_DUE:** full access for **7 days** from first failure, then block guest booking until paid (same as UNPAID) |
 
 Never introduce commission, per-seat fees, or “module unlock” pricing that recreates competitor complexity.
 
