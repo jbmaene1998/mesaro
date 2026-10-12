@@ -1,8 +1,8 @@
 # Production-ready remediation plan
 
-**Status:** Phase 0–2 code done · Phase 3 artifacts exist but CI parked / VPS not cut over · Phase 4 mostly done  
+**Status:** Phase 0–2 code done · Phase 3 backend CI active (E2E still parked) / VPS not cut over · Phase 4 mostly done  
 **Source audits:** [README.md](README.md), [flows.md](flows.md), [backend/audit.md](backend/audit.md), [frontend/audit.md](frontend/audit.md), [product-doctrine.md](product-doctrine.md)  
-**Updated:** 2026-10-12 (docs rescore; CI location = `.github/ci-parked/`)
+**Updated:** 2026-10-12 (backend CI unparked to `.github/workflows/backend-ci.yml`; E2E remains in `.github/ci-parked/`)
 
 Fix every audit/flow finding so Mesaro is post-deploy production-ready: money/trust P0s, STAFF floor autonomy, complete advanced modules (planning/vacations/reports), vision-aligned go-live UX with Dashboard as home, and ops/CI/legal hardening.
 
@@ -313,7 +313,7 @@ Scope stays simple (no HR suite / BI warehouse). Each module below has a **done 
 
 ## Phase 3 — Ops, CI, deploy hardening (Hostinger VPS)
 
-39. [x] GitHub Actions workflows authored: `backend-ci.yml` (`mvn test` / Testcontainers) — **parked** at `.github/ci-parked/` until Actions are enabled.
+39. [x] GitHub Actions: `backend-ci.yml` (`mvn test` / Testcontainers) — **active** at `.github/workflows/backend-ci.yml` (push/PR to `dev` + `main`, `backend/**` paths).
 40. [x] E2E workflow authored (starts infra + API + Playwright) — **parked** at `.github/ci-parked/e2e.yml`. Unpark to `.github/workflows/` when ready; require status checks on `main`.
 41. Harden `backend/docker-compose.prod.yml` for VPS: **bind DB/Redis to localhost only** (drop public `15432`/`16379`/`19200`); disable Elasticsearch for v1 unless RAM ≥4 GB; add Caddy/nginx reverse proxy with TLS.
 42. Agent deploy runbook: SSH/API to Hostinger VPS → `docker compose --env-file .env.prod up -d` → health checks; DNS A records + SSL via Hostinger DNS MCP when domain is on Hostinger.
@@ -380,5 +380,5 @@ Phase 2 is a **full implementation** week(s), not a polish pass — block Phase 
 - [x] Phase 2B — **Vacations/closures fully implemented**
 - [x] Phase 2C — **Reports fully implemented**
 - [x] Phase 2D — Dashboard home polish
-- [x] Phase 3 — CI / deploy / monitoring / outbox *(workflows authored but **parked** under `.github/ci-parked/`; hardened compose + Caddy + runbooks exist; live VPS cutover still needs secrets/purchase)*
+- [x] Phase 3 — CI / deploy / monitoring / outbox *(backend CI **active**; E2E still **parked** under `.github/ci-parked/`; hardened compose + Caddy + runbooks exist; live VPS cutover still needs secrets/purchase)*
 - [x] Phase 4 — polish + docs rescore *(46–48, 50, 52 done; 49 opening-hours UX + 51 PAST_DUE policy remain)*
