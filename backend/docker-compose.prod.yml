@@ -1,0 +1,189 @@
+# =============================================================================
+# Mesaro API - Docker Compose (Production / Hostinger VPS)
+# =============================================================================
+# No insecure defaults. Provide secrets via --env-file.
+#
+# Usage:
+#   docker compose -f docker-compose.prod.yml --env-file .env.prod up -d
+#   docker compose -f docker-compose.prod.yml --env-file .env.prod down
+#
+# Data plane (Postgres/Redis) is NOT published on the public interface.
+# Optional Elasticsearch: add profile `elastic`
+#   docker compose -f docker-compose.prod.yml --env-file .env.prod --profile elastic up -d
+# =============================================================================
+
+services:
+  postgres-prod:
+    image: postgres:15-alpine
+    container_name: mesaro-prod-postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB?POSTGRES_DB is required}
+      POSTGRES_USER: ${POSTGRES_USER?POSTGRES_USER is required}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD?POSTGRES_PASSWORD is required}
+    # Localhost-only bind for rare host-side admin tools. Prefer `docker exec`.
+    ports:
+      - "127.0.0.1:15432:5432"
+    volumes:
+      - pgdata-prod:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+    restart: unless-stopped
+    networks:
+      - mesaro-internal
+
+  redis-prod:
+    image: redis:7-alpine
+    container_name: mesaro-prod-redis
+    command:
+      - redis-server
+      - --requirepass
+      - ${REDIS_PASSWORD?REDIS_PASSWORD is required}
+    ports:
+      - "127.0.0.1:16379:6379"
+    volumes:
+      - redisdata-prod:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+    networks:
+      - mesaro-internal
+
+  # Optional — enable with --profile elastic when RAM ≥ 4 GB
+  elasticsearch-prod:
+    profiles: ["elastic"]
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.4
+    container_name: mesaro-prod-elasticsearch
+    environment:
+      discovery.type: single-node
+      xpack.security.enabled: "false"
+      ES_JAVA_OPTS: -Xms512m -Xmx512m
+    ports:
+      - "127.0.0.1:19200:9200"
+    volumes:
+      - esdata-prod:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:9200 >/dev/null || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 15
+      start_period: 45s
+    restart: unless-stopped
+    networks:
+      - mesaro-internal
+
+  app-prod:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: mesaro-prod-api
+    ports:
+      - "127.0.0.1:18080:8080"
+    expose:
+      - "9090"
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      MANAGEMENT_PORT: ${MANAGEMENT_PORT:-9090}
+
+      DB_URL: ${DB_URL?DB_URL is required}
+      DB_USER: ${DB_USER?DB_USER is required}
+      DB_PASS: ${DB_PASS?DB_PASS is required}
+
+      REDIS_HOST: ${REDIS_HOST?REDIS_HOST is required}
+      REDIS_PORT: ${REDIS_PORT?REDIS_PORT is required}
+      REDIS_PASSWORD: ${REDIS_PASSWORD?REDIS_PASSWORD is required}
+      SESSION_STORE_TYPE: redis
+
+      # v1 default: disable ES action logging unless elastic profile is used
+      ELASTICSEARCH_URIS: ${ELASTICSEARCH_URIS:-}
+      ELASTICSEARCH_USERNAME: ${ELASTICSEARCH_USERNAME:-}
+      ELASTICSEARCH_PASSWORD: ${ELASTICSEARCH_PASSWORD:-}
+      ELASTICSEARCH_HEALTH_ENABLED: ${ELASTICSEARCH_HEALTH_ENABLED:-false}
+      APP_LOG_ELASTIC_ENABLED: ${APP_LOG_ELASTIC_ENABLED:-false}
+
+      JWT_SECRET: ${JWT_SECRET?JWT_SECRET is required}
+      HOLD_TOKEN_SECRET: ${HOLD_TOKEN_SECRET?HOLD_TOKEN_SECRET is required}
+      RESERVATION_TOKEN_SECRET: ${RESERVATION_TOKEN_SECRET?RESERVATION_TOKEN_SECRET is required}
+      STAFF_TOKEN_SECRET: ${STAFF_TOKEN_SECRET?STAFF_TOKEN_SECRET is required}
+
+      APP_BASE_URL: ${APP_BASE_URL?APP_BASE_URL is required}
+      API_BASE_URL: ${API_BASE_URL?API_BASE_URL is required}
+      FRONTEND_URL: ${FRONTEND_URL?FRONTEND_URL is required}
+      API_CORS_ORIGINS: ${API_CORS_ORIGINS?API_CORS_ORIGINS is required}
+
+      EMAIL_PROVIDER: ${EMAIL_PROVIDER?EMAIL_PROVIDER is required}
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      RESEND_API_BASE_URL: ${RESEND_API_BASE_URL:-https://api.resend.com}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USERNAME: ${SMTP_USERNAME:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_AUTH: ${SMTP_AUTH:-true}
+      SMTP_STARTTLS: ${SMTP_STARTTLS:-true}
+
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY?STRIPE_SECRET_KEY is required}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET?STRIPE_WEBHOOK_SECRET is required}
+      STRIPE_PRICE_ID: ${STRIPE_PRICE_ID?STRIPE_PRICE_ID is required}
+      STRIPE_SUCCESS_URL: ${STRIPE_SUCCESS_URL:-}
+      STRIPE_CANCEL_URL: ${STRIPE_CANCEL_URL:-}
+      STRIPE_PORTAL_RETURN_URL: ${STRIPE_PORTAL_RETURN_URL:-}
+    depends_on:
+      postgres-prod:
+        condition: service_healthy
+      redis-prod:
+        condition: service_healthy
+    healthcheck:
+      # Actuator listens on MANAGEMENT_PORT (default 9090), not the app port.
+      test: ["CMD", "wget", "-qO-", "http://localhost:9090/actuator/health/readiness"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    restart: unless-stopped
+    networks:
+      - mesaro-internal
+
+  # TLS reverse proxy — put API (and optional static FE) behind HTTPS
+  caddy:
+    image: caddy:2-alpine
+    container_name: mesaro-prod-caddy
+    environment:
+      MESARO_DOMAIN: ${MESARO_DOMAIN?MESARO_DOMAIN is required}
+      ACME_EMAIL: ${ACME_EMAIL:-ops@example.com}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+      - ${FRONTEND_DIST_PATH:-./frontend-dist}:/srv/frontend:ro
+    depends_on:
+      app-prod:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - mesaro-internal
+
+volumes:
+  pgdata-prod:
+    name: mesaro-prod-pgdata
+  redisdata-prod:
+    name: mesaro-prod-redisdata
+  esdata-prod:
+    name: mesaro-prod-esdata
+  caddy-data:
+    name: mesaro-prod-caddy-data
+  caddy-config:
+    name: mesaro-prod-caddy-config
+
+networks:
+  mesaro-internal:
+    name: mesaro-internal
+    driver: bridge

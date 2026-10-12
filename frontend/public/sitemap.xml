@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset
+  xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+  xmlns:xhtml="http://www.w3.org/1999/xhtml"
+>
+
+  <url>
+    <loc>https://mesaro.com/</loc>
+    <lastmod>2026-10-11</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://mesaro.com/?lang=en"/>
+    <xhtml:link rel="alternate" hreflang="nl" href="https://mesaro.com/?lang=nl"/>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://mesaro.com/?lang=fr"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://mesaro.com/?lang=es"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://mesaro.com/"/>
+  </url>
+
+  <url>
+    <loc>https://mesaro.com/features</loc>
+    <lastmod>2026-10-11</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.9</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://mesaro.com/features?lang=en"/>
+    <xhtml:link rel="alternate" hreflang="nl" href="https://mesaro.com/features?lang=nl"/>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://mesaro.com/features?lang=fr"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://mesaro.com/features?lang=es"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://mesaro.com/features"/>
+  </url>
+
+  <url>
+    <loc>https://mesaro.com/pricing</loc>
+    <lastmod>2026-10-11</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.9</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://mesaro.com/pricing?lang=en"/>
+    <xhtml:link rel="alternate" hreflang="nl" href="https://mesaro.com/pricing?lang=nl"/>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://mesaro.com/pricing?lang=fr"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://mesaro.com/pricing?lang=es"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://mesaro.com/pricing"/>
+  </url>
+
+  <url>
+    <loc>https://mesaro.com/about</loc>
+    <lastmod>2026-10-11</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://mesaro.com/about?lang=en"/>
+    <xhtml:link rel="alternate" hreflang="nl" href="https://mesaro.com/about?lang=nl"/>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://mesaro.com/about?lang=fr"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://mesaro.com/about?lang=es"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://mesaro.com/about"/>
+  </url>
+
+  <url>
+    <loc>https://mesaro.com/faq</loc>
+    <lastmod>2026-10-11</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://mesaro.com/faq?lang=en"/>
+    <xhtml:link rel="alternate" hreflang="nl" href="https://mesaro.com/faq?lang=nl"/>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://mesaro.com/faq?lang=fr"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://mesaro.com/faq?lang=es"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://mesaro.com/faq"/>
+  </url>
+
+  <url>
+    <loc>https://mesaro.com/contact</loc>
+    <lastmod>2026-10-11</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.6</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://mesaro.com/contact?lang=en"/>
+    <xhtml:link rel="alternate" hreflang="nl" href="https://mesaro.com/contact?lang=nl"/>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://mesaro.com/contact?lang=fr"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://mesaro.com/contact?lang=es"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://mesaro.com/contact"/>
+  </url>
+
+  <url>
+    <loc>https://mesaro.com/privacy</loc>
+    <lastmod>2026-10-11</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.4</priority>
+  </url>
+
+  <url>
+    <loc>https://mesaro.com/terms</loc>
+    <lastmod>2026-10-11</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.4</priority>
+  </url>
+
+</urlset>

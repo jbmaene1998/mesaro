@@ -1,0 +1,140 @@
+# =============================================================================
+# Mesaro API - Docker Compose (Development)
+# =============================================================================
+# Usage:
+#   docker compose -f docker-compose.yml up -d
+#   docker compose -f docker-compose.yml down
+# =============================================================================
+
+services:
+  postgres-dev:
+    image: postgres:15-alpine
+    container_name: mesaro-dev-postgres
+    environment:
+      POSTGRES_DB: mesaro_dev
+      POSTGRES_USER: mesaro
+      POSTGRES_PASSWORD: mesaro
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata-dev:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mesaro -d mesaro_dev"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+
+  redis-dev:
+    image: redis:7-alpine
+    container_name: mesaro-dev-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata-dev:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  elasticsearch-dev:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.4
+    container_name: mesaro-dev-elasticsearch
+    environment:
+      discovery.type: single-node
+      xpack.security.enabled: "false"
+      ES_JAVA_OPTS: -Xms512m -Xmx512m
+    ports:
+      - "9200:9200"
+    volumes:
+      - esdata-dev:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:9200 >/dev/null || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+    restart: unless-stopped
+
+  kibana-dev:
+    image: docker.elastic.co/kibana/kibana:8.11.4
+    container_name: mesaro-dev-kibana
+    environment:
+      ELASTICSEARCH_HOSTS: http://elasticsearch-dev:9200
+    ports:
+      - "5601:5601"
+    depends_on:
+      elasticsearch-dev:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:5601/api/status >/dev/null || exit 1"]
+      interval: 20s
+      timeout: 10s
+      retries: 15
+      start_period: 45s
+    restart: unless-stopped
+
+  app-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: mesaro-dev-api
+    env_file:
+      - .env.dev
+    ports:
+      - "8080:8080"
+    expose:
+      # Management port is internal-only; do not publish this port publicly.
+      - "9090"
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      MANAGEMENT_PORT: 9090
+
+      DB_URL: jdbc:postgresql://postgres-dev:5432/mesaro_dev
+      DB_USER: mesaro
+      DB_PASS: mesaro
+
+      REDIS_HOST: redis-dev
+      REDIS_PORT: 6379
+      SESSION_STORE_TYPE: redis
+
+      ELASTICSEARCH_URIS: http://elasticsearch-dev:9200
+      ELASTICSEARCH_USERNAME: ""
+      ELASTICSEARCH_PASSWORD: ""
+
+      JWT_SECRET: insecure-dev-jwt-secret-change-me-1234567890
+      HOLD_TOKEN_SECRET: insecure-dev-hold-secret-change-me-1234567890
+      RESERVATION_TOKEN_SECRET: insecure-dev-reservation-secret-change-me-1234567890
+      STAFF_TOKEN_SECRET: insecure-dev-staff-secret-change-me-1234567890
+
+      APP_BASE_URL: http://localhost:8080
+      API_BASE_URL: http://localhost:8080
+      FRONTEND_URL: http://localhost:3000
+      API_CORS_ORIGINS: http://localhost:3000,http://localhost:5173
+
+      LOG_LEVEL_APP: DEBUG
+    depends_on:
+      postgres-dev:
+        condition: service_healthy
+      redis-dev:
+        condition: service_healthy
+      elasticsearch-dev:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/actuator/health/readiness"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
+
+volumes:
+  pgdata-dev:
+    name: mesaro-dev-pgdata
+  redisdata-dev:
+    name: mesaro-dev-redisdata
+  esdata-dev:
+    name: mesaro-dev-esdata

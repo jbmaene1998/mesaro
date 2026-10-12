@@ -1,0 +1,43 @@
+# =============================================================================
+# Local override for docker-compose.prod.yml — prod practices without a VPS.
+#
+# Usage (from backend/):
+#   docker compose -f docker-compose.prod.yml -f docker-compose.prod.local.yml \
+#     --env-file .env.prod.local up -d --build
+#
+# Or from repo root: .\run-prod-local.ps1
+# =============================================================================
+
+services:
+  # Catch outbound mail locally (prod uses Resend/SMTP)
+  mailpit:
+    image: axllent/mailpit:v1.21
+    container_name: mesaro-prod-mailpit
+    ports:
+      - "127.0.0.1:8025:8025"
+    restart: unless-stopped
+    networks:
+      - mesaro-internal
+
+  app-prod:
+    ports: !override
+      - "127.0.0.1:18080:8080"
+      - "127.0.0.1:19090:9090"
+
+  caddy:
+    environment:
+      MESARO_DOMAIN: mesaro.localhost
+      ACME_EMAIL: local@mesaro.localhost
+    ports: !override
+      - "127.0.0.1:9080:80"
+      - "127.0.0.1:9443:443"
+    volumes:
+      - ./Caddyfile.local:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+      - ${FRONTEND_DIST_PATH:-./frontend-dist}:/srv/frontend:ro
+    depends_on:
+      app-prod:
+        condition: service_healthy
+      mailpit:
+        condition: service_started

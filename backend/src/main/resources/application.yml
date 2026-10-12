@@ -1,0 +1,320 @@
+# =============================================================================
+# Mesaro API Configuration
+# =============================================================================
+# Environment variables are used for sensitive values and deployment-specific config.
+# This file contains sensible defaults for development.
+# =============================================================================
+
+spring:
+  application:
+    name: mesaro-api
+
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:dev}
+  lifecycle:
+    timeout-per-shutdown-phase: ${SHUTDOWN_TIMEOUT:30s}
+
+  # ---------------------------------------------------------------------------
+  # Database Configuration
+  # ---------------------------------------------------------------------------
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/mesaro}
+    username: ${DB_USER:mesaro}
+    password: ${DB_PASS:mesaro}
+    hikari:
+      maximum-pool-size: ${DB_POOL_SIZE:10}
+      minimum-idle: ${DB_POOL_MIN_IDLE:5}
+      idle-timeout: 300000
+      connection-timeout: 20000
+      pool-name: MesaroHikariPool
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+        format_sql: false
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+    placeholders:
+      seed_demo_data: false
+
+  # ---------------------------------------------------------------------------
+  # Redis Configuration
+  # ---------------------------------------------------------------------------
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      timeout: ${REDIS_TIMEOUT:2000ms}
+      connect-timeout: ${REDIS_CONNECT_TIMEOUT:2000ms}
+      repositories:
+        enabled: false
+
+  # ---------------------------------------------------------------------------
+  # Elasticsearch Configuration
+  # ---------------------------------------------------------------------------
+  elasticsearch:
+    uris: ${ELASTICSEARCH_URIS:http://localhost:9200}
+    username: ${ELASTICSEARCH_USERNAME:}
+    password: ${ELASTICSEARCH_PASSWORD:}
+
+  # ---------------------------------------------------------------------------
+  # Spring Session (Redis-backed)
+  # ---------------------------------------------------------------------------
+  session:
+    store-type: ${SESSION_STORE_TYPE:redis}
+    redis:
+      namespace: mesaro:session
+      flush-mode: on_save
+    timeout: ${SESSION_TIMEOUT:30m}
+
+  # ---------------------------------------------------------------------------
+  # SMTP / JavaMail Configuration (used when EMAIL_PROVIDER=smtp)
+  # ---------------------------------------------------------------------------
+  mail:
+    host: ${SMTP_HOST:localhost}
+    port: ${SMTP_PORT:587}
+    username: ${SMTP_USERNAME:}
+    password: ${SMTP_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: ${SMTP_AUTH:true}
+          starttls:
+            enable: ${SMTP_STARTTLS:true}
+          connectiontimeout: ${SMTP_CONNECTION_TIMEOUT_MS:10000}
+          timeout: ${SMTP_TIMEOUT_MS:10000}
+          writetimeout: ${SMTP_WRITE_TIMEOUT_MS:10000}
+
+# =============================================================================
+# Server Configuration
+# =============================================================================
+server:
+  port: ${SERVER_PORT:8080}
+  shutdown: graceful
+  servlet:
+    context-path: /
+
+# =============================================================================
+# Actuator / Observability
+# =============================================================================
+management:
+  server:
+    # Internal-only management port; do NOT expose this port to the public internet.
+    port: ${MANAGEMENT_PORT:9090}
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: when_authorized
+      show-components: when_authorized
+      probes:
+        enabled: true
+    prometheus:
+      enabled: true
+  health:
+    db:
+      enabled: true
+    diskspace:
+      enabled: true
+    redis:
+      enabled: true
+    elasticsearch:
+      enabled: ${ELASTICSEARCH_HEALTH_ENABLED:true}
+  info:
+    env:
+      enabled: true
+    git:
+      enabled: true
+      mode: simple
+  metrics:
+    tags:
+      application: ${spring.application.name}
+    export:
+      prometheus:
+        enabled: true
+
+# =============================================================================
+# OpenAPI / Swagger
+# =============================================================================
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: method
+
+# =============================================================================
+# Application Configuration
+# =============================================================================
+app:
+  # ---------------------------------------------------------------------------
+  # URLs
+  # ---------------------------------------------------------------------------
+  base-url: ${APP_BASE_URL:http://localhost:8080}
+  api-base-url: ${API_BASE_URL:http://localhost:8080}
+  frontend-url: ${FRONTEND_URL:http://localhost:3000}
+
+  # ---------------------------------------------------------------------------
+  # CORS
+  # ---------------------------------------------------------------------------
+  cors:
+    allowed-origins: ${API_CORS_ORIGINS:http://localhost:3000,http://localhost:5173}
+    allow-credentials: ${API_CORS_ALLOW_CREDENTIALS:false}
+
+  # ---------------------------------------------------------------------------
+  # Email
+  # ---------------------------------------------------------------------------
+  email:
+    provider: ${EMAIL_PROVIDER:log}
+    from-address: ${EMAIL_FROM:noreply@mesaro.com}
+    from-name: ${EMAIL_FROM_NAME:Mesaro}
+    support-address: ${EMAIL_SUPPORT_ADDRESS:support@mesaro.com}
+    resend:
+      api-key: ${RESEND_API_KEY:}
+      api-base-url: ${RESEND_API_BASE_URL:https://api.resend.com}
+
+  # ---------------------------------------------------------------------------
+  # Hold Configuration
+  # ---------------------------------------------------------------------------
+  hold:
+    duration-minutes: ${HOLD_DURATION_MINUTES:3}
+    cleanup-interval-ms: ${HOLD_CLEANUP_INTERVAL_MS:60000}
+    # Dev-only fallback. Startup validation rejects this placeholder outside the dev profile.
+    token-secret: ${HOLD_TOKEN_SECRET:insecure-dev-hold-secret-change-me-1234567890}
+
+  # ---------------------------------------------------------------------------
+  # Reservation Configuration
+  # ---------------------------------------------------------------------------
+  reservation:
+    cancel-token-ttl-days: ${RESERVATION_CANCEL_TTL_DAYS:7}
+    # Dev-only fallback. Startup validation rejects this placeholder outside the dev profile.
+    token-secret: ${RESERVATION_TOKEN_SECRET:insecure-dev-reservation-secret-change-me-1234567890}
+
+  # ---------------------------------------------------------------------------
+  # Staff Configuration
+  # ---------------------------------------------------------------------------
+  staff:
+    invite-ttl-hours: ${STAFF_INVITE_TTL_HOURS:72}
+    reset-ttl-hours: ${STAFF_RESET_TTL_HOURS:2}
+    invite-cleanup-cron: ${STAFF_INVITE_CLEANUP_CRON:0 0 * * * *}
+    # Dev-only fallback. Startup validation rejects this placeholder outside the dev profile.
+    token-secret: ${STAFF_TOKEN_SECRET:insecure-dev-staff-secret-change-me-1234567890}
+
+  # ---------------------------------------------------------------------------
+  # Notifications
+  # ---------------------------------------------------------------------------
+  notifications:
+    reservation-reminder:
+      enabled: ${NOTIFICATIONS_RESERVATION_REMINDER_ENABLED:true}
+      cron: ${NOTIFICATIONS_RESERVATION_REMINDER_CRON:0 */15 * * * *}
+      minutes-before: ${NOTIFICATIONS_RESERVATION_REMINDER_MINUTES_BEFORE:120}
+      window-minutes: ${NOTIFICATIONS_RESERVATION_REMINDER_WINDOW_MINUTES:15}
+  # ---------------------------------------------------------------------------
+  # Security / JWT Configuration
+  # ---------------------------------------------------------------------------
+  security:
+    jwt:
+      # Dev-only fallback. Startup validation rejects this placeholder outside the dev profile.
+      secret: ${JWT_SECRET:insecure-dev-jwt-secret-change-me-1234567890}
+      access-token-ttl-minutes: ${JWT_ACCESS_TTL_MINUTES:15}
+      refresh-token-ttl-days: ${JWT_REFRESH_TTL_DAYS:7}
+      issuer: ${JWT_ISSUER:mesaro-api}
+
+  # ---------------------------------------------------------------------------
+  # Rate Limiting
+  # ---------------------------------------------------------------------------
+  rate-limit:
+    enabled: ${RATE_LIMIT_ENABLED:true}
+    trust-forwarded-headers: ${RATE_LIMIT_TRUST_FORWARDED_HEADERS:false}
+    trusted-proxies: ${RATE_LIMIT_TRUSTED_PROXIES:}
+    default-requests: ${RATE_LIMIT_DEFAULT_REQUESTS:100}
+    default-window-seconds: ${RATE_LIMIT_DEFAULT_WINDOW:60}
+    endpoints:
+      availability:
+        requests: ${RATE_LIMIT_AVAILABILITY_REQUESTS:60}
+        window-seconds: ${RATE_LIMIT_AVAILABILITY_WINDOW:60}
+      holds:
+        requests: ${RATE_LIMIT_HOLDS_REQUESTS:10}
+        window-seconds: ${RATE_LIMIT_HOLDS_WINDOW:60}
+      reservations:
+        requests: ${RATE_LIMIT_RESERVATIONS_REQUESTS:20}
+        window-seconds: ${RATE_LIMIT_RESERVATIONS_WINDOW:60}
+      auth:
+        requests: ${RATE_LIMIT_AUTH_REQUESTS:10}
+        window-seconds: ${RATE_LIMIT_AUTH_WINDOW:60}
+      admin:
+        requests: ${RATE_LIMIT_ADMIN_REQUESTS:100}
+        window-seconds: ${RATE_LIMIT_ADMIN_WINDOW:60}
+      contact:
+        requests: ${RATE_LIMIT_CONTACT_REQUESTS:5}
+        window-seconds: ${RATE_LIMIT_CONTACT_WINDOW:60}
+
+  # ---------------------------------------------------------------------------
+  # Billing / Trial Enforcement
+  # ---------------------------------------------------------------------------
+  billing:
+    # Daily cron: expire overdue in-app trials and send 3-day reminder emails
+    expiry-check-cron: ${BILLING_EXPIRY_CHECK_CRON:0 0 6 * * *}
+
+  # ---------------------------------------------------------------------------
+  # Stripe Configuration
+  # ---------------------------------------------------------------------------
+  stripe:
+    # Stripe secret key — server-side only, NEVER expose to frontend
+    secret-key: ${STRIPE_SECRET_KEY:}
+    # Webhook signing secret — from Stripe Dashboard or `stripe listen` CLI
+    webhook-secret: ${STRIPE_WEBHOOK_SECRET:}
+    # Stripe Price ID for the €49.99/month plan (create in Stripe Dashboard)
+    price-id: ${STRIPE_PRICE_ID:}
+    # Post-checkout redirect URLs (Stripe requires absolute URLs)
+    success-url: ${STRIPE_SUCCESS_URL:${app.frontend-url}/billing/success}
+    cancel-url: ${STRIPE_CANCEL_URL:${app.frontend-url}/billing/cancel}
+    portal-return-url: ${STRIPE_PORTAL_RETURN_URL:${app.frontend-url}/settings/billing}
+
+  # ---------------------------------------------------------------------------
+  # GDPR / Data Retention
+  # ---------------------------------------------------------------------------
+  gdpr:
+    retention-enabled: ${GDPR_RETENTION_ENABLED:true}
+    # Also used to purge processed outbox_event rows that may contain guest PII.
+    reservation-pii-retention-days: ${GDPR_RESERVATION_PII_RETENTION_DAYS:365}
+    email-log-retention-days: ${GDPR_EMAIL_LOG_RETENTION_DAYS:365}
+    audit-log-retention-days: ${GDPR_AUDIT_LOG_RETENTION_DAYS:365}
+    retention-cron: ${GDPR_RETENTION_CRON:0 15 2 * * *}
+    purge-deleted-after-days: ${GDPR_PURGE_DELETED_AFTER_DAYS:7}
+    purge-cron: ${GDPR_PURGE_CRON:0 30 2 * * *}
+
+  # ---------------------------------------------------------------------------
+  # API Action Logging -> Elasticsearch
+  # ---------------------------------------------------------------------------
+  logging:
+    elasticsearch:
+      enabled: ${APP_LOG_ELASTIC_ENABLED:true}
+      index: ${APP_LOG_ELASTIC_INDEX:mesaro-api-actions}
+      connect-timeout-ms: ${APP_LOG_ELASTIC_CONNECT_TIMEOUT_MS:1500}
+      read-timeout-ms: ${APP_LOG_ELASTIC_READ_TIMEOUT_MS:2000}
+
+# =============================================================================
+# Logging
+# =============================================================================
+logging:
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] [%X{correlationId:-}] %-5level %logger{36} - %msg%n"
+  level:
+    root: INFO
+    com.mesaro: ${LOG_LEVEL_APP:INFO}
+    org.springframework.web: ${LOG_LEVEL_WEB:INFO}
+    org.springframework.security: ${LOG_LEVEL_SECURITY:INFO}
+    org.hibernate.SQL: ${LOG_LEVEL_SQL:WARN}

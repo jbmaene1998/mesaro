@@ -1,0 +1,30 @@
+# Categories for "Generate release notes" on GitHub Releases.
+# Label PRs with release-notes:* (or skip-release-notes).
+# https://docs.github.com/en/repositories/releasing-projects-on-github/automatically-generated-release-notes
+
+changelog:
+  exclude:
+    labels:
+      - skip-release-notes
+  categories:
+    - title: Breaking Changes
+      labels:
+        - release-notes:breaking
+    - title: Security
+      labels:
+        - release-notes:security
+    - title: Features
+      labels:
+        - release-notes:feature
+    - title: Bug Fixes
+      labels:
+        - release-notes:fix
+    - title: Documentation
+      labels:
+        - release-notes:docs
+    - title: Maintenance
+      labels:
+        - release-notes:chore
+    - title: Other Changes
+      labels:
+        - "*"

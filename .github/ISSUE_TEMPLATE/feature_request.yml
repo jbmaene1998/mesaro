@@ -1,0 +1,52 @@
+name: Feature request
+description: Propose a product or engineering change (must pass doctrine)
+title: "feat: "
+labels: ["type:feature"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Features must fit [product doctrine](../../docs/product-doctrine.md).
+        We do **not** add competitor-suite complexity for parity.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: Who is stuck, and when (owner / staff / guest)?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed change
+      description: Smallest change that solves the daily/weekly job
+    validations:
+      required: true
+  - type: checkboxes
+    id: doctrine
+    attributes:
+      label: Doctrine fit
+      options:
+        - label: This is something restaurants would use every day or every week
+          required: true
+        - label: This does not introduce commission, marketplace, or plan-matrix complexity
+          required: true
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Product surface
+      options:
+        - guest booking / embed
+        - floor / dashboard
+        - tables & hours
+        - staff
+        - planning / vacations / reports
+        - billing
+        - platform / ops (not customer-facing)
+    validations:
+      required: true
+  - type: textarea
+    id: out_of_scope
+    attributes:
+      label: Explicitly out of scope
+      placeholder: What we will not build as part of this

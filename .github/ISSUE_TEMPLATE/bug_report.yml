@@ -1,0 +1,65 @@
+name: Bug report
+description: Something broken in product, API, or ops
+title: "fix: "
+labels: ["type:bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Before filing: check [docs/flows.md](../../docs/flows.md) and recent PRs.
+        Security issues → follow SECURITY.md (no public issues).
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - booking
+        - floor-ops
+        - billing
+        - auth
+        - frontend
+        - api
+        - ops / deploy
+        - other
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1.
+        2.
+        3.
+    validations:
+      required: true
+  - type: input
+    id: env
+    attributes:
+      label: Environment
+      description: e.g. local / staging / prod, browser, commit SHA
+    validations:
+      required: true
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Severity
+      options:
+        - p0 — money / data / booking broken in prod
+        - p1 — core floor path broken
+        - p2 — workaround exists
+        - p3 — minor / cosmetic
+    validations:
+      required: true

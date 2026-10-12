@@ -1,0 +1,37 @@
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+
+  flyway:
+    enabled: true
+
+  elasticsearch:
+    uris: ${ELASTICSEARCH_URIS:http://localhost:9200}
+    username: ${ELASTICSEARCH_USERNAME:}
+    password: ${ELASTICSEARCH_PASSWORD:}
+
+management:
+  health:
+    elasticsearch:
+      enabled: false
+
+app:
+  logging:
+    elasticsearch:
+      enabled: false
+  hold:
+    token-secret: test-hold-secret-abcdefghijklmnopqrstuvwxyz123456
+  reservation:
+    token-secret: test-reservation-secret-abcdefghijklmnopqrstuvwxyz12
+  staff:
+    token-secret: test-staff-secret-abcdefghijklmnopqrstuvwxyz123456
+  security:
+    jwt:
+      secret: test-jwt-secret-abcdefghijklmnopqrstuvwxyz12345678
+
+logging:
+  level:
+    com.mesaro: DEBUG
+    org.testcontainers: INFO

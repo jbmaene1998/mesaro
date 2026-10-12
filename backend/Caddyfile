@@ -1,0 +1,29 @@
+# Mesaro reverse proxy — replace example.com with your domain.
+# API: https://api.example.com → app-prod:8080
+# App: https://app.example.com → static Vite build in /srv/frontend
+
+{
+	email {$ACME_EMAIL:ops@example.com}
+}
+
+api.{$MESARO_DOMAIN:example.com} {
+	encode gzip
+	reverse_proxy app-prod:8080
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+	}
+}
+
+app.{$MESARO_DOMAIN:example.com} {
+	encode gzip
+	root * /srv/frontend
+	try_files {path} /index.html
+	file_server
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+	}
+}

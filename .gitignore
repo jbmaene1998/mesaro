@@ -1,0 +1,44 @@
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Root workspace metadata
+*.log
+
+# Ad-hoc API scratch payloads (keep out of git)
+/avail.json
+/confirm.json
+/hold.json
+/login.json
+/login-body.json
+/plan-today.json
+/staff-body.json
+/vac.json
+/*.local.json
+
+# Claude / local agent scratch
+.claude/
+
+# Backend
+backend/target/
+backend/.m2repo/
+backend/.idea/
+backend/dev-start.log
+backend/dev-start.err.log
+backend/.env.prod
+backend/.env.prod.local
+backend/.env.dev
+backend/.env.prod.verify
+backend/frontend-dist/
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.idea/
+frontend/playwright-report/
+frontend/test-results/
+frontend/.env
+frontend/.env.local
+frontend/.env.*.local

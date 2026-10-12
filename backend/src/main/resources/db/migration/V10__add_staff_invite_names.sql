@@ -1,0 +1,4 @@
+ALTER TABLE staff_invite
+    ADD COLUMN IF NOT EXISTS first_name VARCHAR(60),
+    ADD COLUMN IF NOT EXISTS last_name VARCHAR(60);
+

@@ -1,0 +1,31 @@
+# Local production mimic — TLS via Caddy internal CA (no public ACME).
+# Hosts *.mesaro.localhost resolve to 127.0.0.1 on modern OSes (no hosts file).
+
+{
+	auto_https disable_redirects
+	local_certs
+}
+
+https://api.mesaro.localhost {
+	tls internal
+	encode gzip
+	reverse_proxy app-prod:8080
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+	}
+}
+
+https://app.mesaro.localhost {
+	tls internal
+	encode gzip
+	root * /srv/frontend
+	try_files {path} /index.html
+	file_server
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+	}
+}

@@ -1,0 +1,148 @@
+/* Marketing shell — original Mesaro: sand, terracotta, olive (scoped; does not restyle admin) */
+@import url("https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Syne:wght@500;600;700;800&display=swap");
+
+.marketing-root {
+  --mk-sand: #f6efe6;
+  --mk-sand-deep: #ebe2d4;
+  --mk-olive: #3e4a32;
+  --mk-olive-soft: #5c6658;
+  --mk-terracotta: #c8553d;
+  --mk-terracotta-deep: #b94a33;
+
+  /* Token aliases used across marketing pages */
+  --mk-ink: var(--mk-sand);
+  --mk-ink-soft: #fffaf3;
+  --mk-stone: var(--mk-olive);
+  --mk-mist: var(--mk-olive);
+  --mk-pewter: var(--mk-olive-soft);
+  --mk-brass: var(--mk-terracotta);
+  --mk-brass-hot: #d46a52;
+  --mk-line: rgba(62, 74, 50, 0.14);
+  --mk-glow: rgba(200, 85, 61, 0.18);
+  --mk-hero-scrim: rgba(42, 50, 40, 0.82);
+
+  --background: 36 43% 93%;
+  --foreground: 100 18% 16%;
+  --card: 36 43% 96%;
+  --card-foreground: 100 18% 16%;
+  --primary: 10 54% 51%;
+  --primary-foreground: 0 0% 100%;
+  --muted: 36 35% 90%;
+  --muted-foreground: 100 10% 38%;
+  --border: 36 22% 82%;
+  --ring: 10 54% 51%;
+  --accent: 36 40% 88%;
+  --accent-foreground: 100 18% 22%;
+
+  font-family: "Syne", ui-sans-serif, system-ui, sans-serif;
+  background:
+    radial-gradient(1100px 520px at 85% -8%, var(--mk-glow), transparent 55%),
+    radial-gradient(900px 480px at -8% 18%, rgba(62, 74, 50, 0.08), transparent 50%),
+    var(--mk-sand);
+  color: var(--mk-olive);
+  overflow-x: clip;
+}
+
+/* Photo heroes keep light type on dark scrims */
+.marketing-root .mk-hero {
+  --mk-mist: #f6efe6;
+  --mk-stone: #f6efe6;
+  --mk-pewter: rgba(246, 239, 230, 0.78);
+  --mk-brass: #e07a62;
+  --mk-line: rgba(246, 239, 230, 0.18);
+}
+
+.marketing-root h1,
+.marketing-root h2,
+.marketing-root h3,
+.marketing-root .mk-display {
+  font-family: "Instrument Serif", Georgia, serif;
+  font-weight: 400;
+  letter-spacing: -0.02em;
+}
+
+.marketing-root .mk-eyebrow {
+  font-family: "Syne", sans-serif;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--mk-terracotta);
+}
+
+.marketing-root .mk-hero .mk-eyebrow {
+  color: #e07a62;
+}
+
+.marketing-root .mk-grain {
+  position: relative;
+}
+
+.marketing-root .mk-grain::after {
+  content: "";
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  opacity: 0.06;
+  mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+.marketing-root .mk-btn-primary {
+  background: linear-gradient(135deg, var(--mk-brass-hot), var(--mk-terracotta));
+  color: #fff;
+  border: none;
+  box-shadow: 0 0 0 1px rgba(185, 74, 51, 0.2), 0 12px 36px rgba(200, 85, 61, 0.28);
+}
+
+.marketing-root .mk-btn-primary:hover {
+  filter: brightness(1.04);
+}
+
+.marketing-root .mk-btn-ghost {
+  border: 1px solid var(--mk-line);
+  background: rgba(255, 255, 255, 0.45);
+  color: var(--mk-olive);
+  backdrop-filter: blur(8px);
+}
+
+.marketing-root .mk-hero .mk-btn-ghost {
+  background: rgba(246, 239, 230, 0.1);
+  color: #f6efe6;
+  border-color: rgba(246, 239, 230, 0.28);
+}
+
+.marketing-root .mk-panel {
+  border: 1px solid var(--mk-line);
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.72), rgba(255, 250, 243, 0.9));
+  backdrop-filter: blur(12px);
+  box-shadow: 0 10px 40px rgba(62, 74, 50, 0.06);
+}
+
+.marketing-root .mk-divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--mk-line), transparent);
+}
+
+.marketing-root .mk-marquee {
+  mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+}
+
+.lenis.lenis-smooth {
+  scroll-behavior: auto !important;
+}
+
+.marketing-root select option {
+  background: var(--mk-ink-soft);
+  color: var(--mk-olive);
+}
+
+.marketing-root input,
+.marketing-root textarea {
+  color: var(--mk-olive);
+}
+
+.marketing-root ::selection {
+  background: rgba(200, 85, 61, 0.28);
+  color: var(--mk-olive);
+}

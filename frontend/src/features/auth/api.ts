@@ -1,0 +1,47 @@
+import { forgotPassword as forgotPasswordRequest, register as registerRequest, resetPassword as resetPasswordRequest } from "@/api/auth";
+import { apiClient } from "@/api/client";
+import type { ApiResponse, AppError, AuthResponse } from "@/api/types";
+
+export async function forgotPassword(email: string) {
+  await forgotPasswordRequest(email);
+}
+
+export interface RegisterAccountPayload {
+  email: string;
+  password: string;
+  ownerName?: string;
+  ownerPhone?: string;
+}
+
+export async function registerAccount(payload: RegisterAccountPayload) {
+  return registerRequest(payload);
+}
+
+export async function resetPassword(token: string, newPassword: string) {
+  await resetPasswordRequest(token, newPassword);
+}
+
+export async function acceptInvite(inviteToken: string, password?: string) {
+  const payload: { inviteToken: string; password?: string } = { inviteToken };
+  if (password && password.trim().length > 0) {
+    payload.password = password;
+  }
+  const { data } = await apiClient.post<ApiResponse<AuthResponse>>("/staff/accept-invite", payload);
+  return unwrapResponse(data);
+}
+
+function unwrapResponse<T>(response: ApiResponse<T>) {
+  if (response.success && response.data !== null) {
+    return response.data;
+  }
+
+  const appError: AppError = {
+    status: 400,
+    code: response.error?.code ?? "UNKNOWN",
+    message: response.error?.message ?? response.message ?? "Request failed",
+    field: response.error?.field,
+    timestamp: response.timestamp
+  };
+
+  throw appError;
+}

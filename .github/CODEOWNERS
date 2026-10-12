@@ -1,0 +1,10 @@
+# Default owners for everything in the repo.
+# Syntax: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+# When a second engineer joins, split paths by ownership and raise required reviews to 1 (no solo bypass).
+
+*       @jbmaene1998
+
+/backend/   @jbmaene1998
+/frontend/  @jbmaene1998
+/docs/      @jbmaene1998
+/.github/   @jbmaene1998
