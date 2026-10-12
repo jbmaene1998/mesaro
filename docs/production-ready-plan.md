@@ -332,7 +332,7 @@ Scope stays simple (no HR suite / BI warehouse). Each module below has a **done 
 48. [x] Guest slot time format `HH:mm` (drop seconds in UI; API times unchanged).
 49. [ ] Opening-hours close vs closures: document behavior in Settings UI (warn-only vs closure cancels); optional “create closure instead” CTA — no silent mass cancel on hours edit.
 50. [x] Remove dead FE (`BookingPage`, `route-placeholders.tsx`); rename `RegisterPlaceholderPage` → `RegisterPage`.
-51. [ ] PAST_DUE policy: define grace → UNPAID/CANCELED aligned with Stripe + dunning email; update doctrine/docs.
+51. [x] PAST_DUE policy: **7-day grace** from first `invoice.payment_failed` (`user_account.past_due_since`), then guest booking / billing-guarded access blocked like UNPAID; recovery on payment clears timestamp. Dunning email still open.
 52. [x] Refresh audit/flow docs after each phase; re-score readiness in [README.md](README.md) *(2026-10-12)*.
 
 ---
