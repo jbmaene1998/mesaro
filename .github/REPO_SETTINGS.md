@@ -47,9 +47,11 @@ CI/Actions are intentionally **not** required yet; enable status-check protectio
 
 | Rule | Value |
 |------|--------|
-| Require a pull request before merging | Recommended (feature → `dev`); direct push allowed as solo escape hatch |
+| Require a pull request before merging | ✅ (feature → `dev`) |
+| Required approvals | **0 while solo** → raise to **1** with a team |
 | Allow force pushes | ❌ |
 | Allow deletions | ❌ |
+| Admin bypass | Merge own PRs only — **no direct push** |
 
 Prefer **Rulesets** (modern) over legacy branch protection if the account supports them.
 
@@ -59,13 +61,15 @@ Prefer **Rulesets** (modern) over legacy branch protection if the account suppor
 |----------|--------|--------|
 | `deploy-staging.yml` | `dev` | Self-hosted `mesaro-staging` (Omen) |
 | `deploy-prod.yml` | `main` | GitHub-hosted stub until Hostinger VPS |
+| `require-pull-request.yml` | `dev`, `main` | Fails the push check if the commit is not from a PR |
 
 ### Free-plan note (current account)
 
-GitHub **does not allow branch protection / rulesets on private repos** without GitHub Pro (or a Team/Enterprise org). On the free plan you can still:
+GitHub **does not allow branch protection / rulesets on private repos** without GitHub Pro (or a Team/Enterprise org). On the free plan:
 
-- Keep the repo **private** and follow CONTRIBUTING as policy (honor system), or
-- Upgrade to **GitHub Pro**, or
+- Keep the repo **private** and treat CONTRIBUTING as policy
+- Use [`.github/workflows/require-pull-request.yml`](workflows/require-pull-request.yml) so direct pushes to `dev`/`main` fail the check (does not block the git push itself without Pro rulesets)
+- Upgrade to **GitHub Pro** to hard-block pushes at the API (recommended), or
 - Make the repo **public** (then protection works on free) — usually wrong for proprietary SaaS
 
 `scripts/github-bootstrap.ps1` applies merge methods + labels on any plan; protection applies only when the API allows it.
