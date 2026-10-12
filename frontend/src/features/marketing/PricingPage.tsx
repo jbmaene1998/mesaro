@@ -289,7 +289,7 @@ export function PricingPage() {
           transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
           className="max-w-3xl"
         >
-          <p className="mk-display text-[clamp(3rem,10vw,6rem)] leading-none text-[var(--mk-mist)]">Mesaro</p>
+          <p className="mk-display text-[clamp(3rem,10vw,6rem)] leading-[1.05] text-[var(--mk-mist)]">Mesaro</p>
           <p className="mk-eyebrow mt-6">{copy.heroBadge}</p>
           <h1 className="mt-3 text-2xl font-medium text-[var(--mk-stone)] sm:text-4xl">{copy.heroTitle}</h1>
           <p className="mt-4 max-w-xl text-[var(--mk-pewter)]">{copy.heroLead}</p>

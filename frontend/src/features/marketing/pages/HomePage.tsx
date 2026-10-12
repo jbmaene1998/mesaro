@@ -529,7 +529,7 @@ export function HomePage() {
             transition={{ duration: reduceMotion ? 0 : 1, ease: [0.22, 1, 0.36, 1] }}
             className="max-w-3xl"
           >
-            <p className="mk-display text-[clamp(3.5rem,12vw,7.5rem)] leading-[0.9] text-[var(--mk-mist)]">
+            <p className="mk-display text-[clamp(3.5rem,12vw,7.5rem)] leading-[1.05] text-[var(--mk-mist)]">
               Mesaro
             </p>
             <h1 className="mt-6 max-w-2xl text-2xl font-medium leading-snug text-[var(--mk-stone)] sm:text-3xl">

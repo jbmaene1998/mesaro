@@ -35,12 +35,19 @@
   --accent-foreground: 100 18% 22%;
 
   font-family: "Syne", ui-sans-serif, system-ui, sans-serif;
+  /* Syne/Instrument Serif need room for descenders (g, y, p, q) */
+  line-height: 1.5;
   background:
     radial-gradient(1100px 520px at 85% -8%, var(--mk-glow), transparent 55%),
     radial-gradient(900px 480px at -8% 18%, rgba(62, 74, 50, 0.08), transparent 50%),
     var(--mk-sand);
   color: var(--mk-olive);
-  overflow-x: clip;
+  /* overflow-x: clip forces overflow-y to clip too, which crops glyph descenders */
+  overflow-x: hidden;
+}
+
+.marketing-root :where(a, p, span, button, label, li, h1, h2, h3, h4, h5, h6) {
+  overflow: visible;
 }
 
 /* Photo heroes keep light type on dark scrims */
@@ -59,6 +66,9 @@
   font-family: "Instrument Serif", Georgia, serif;
   font-weight: 400;
   letter-spacing: -0.02em;
+  line-height: 1.15;
+  overflow: visible;
+  padding-bottom: 0.06em;
 }
 
 .marketing-root .mk-eyebrow {

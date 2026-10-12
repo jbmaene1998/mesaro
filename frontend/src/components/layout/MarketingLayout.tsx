@@ -31,7 +31,7 @@ function NavItems({ onNavigate, className }: { onNavigate?: () => void; classNam
           onClick={onNavigate}
           className={({ isActive }) =>
             cn(
-              "text-sm tracking-wide transition-colors",
+              "py-0.5 text-sm leading-normal tracking-wide transition-colors",
               isActive ? "text-[var(--mk-brass)]" : "text-[var(--mk-pewter)] hover:text-[var(--mk-mist)]",
               className
             )
@@ -120,7 +120,7 @@ export function MarketingLayout({ children }: PropsWithChildren) {
                 <>
                   <Link
                     to="/login"
-                    className="px-3 text-sm text-[var(--mk-pewter)] transition-colors hover:text-[var(--mk-mist)]"
+                    className="px-3 py-0.5 text-sm leading-normal text-[var(--mk-pewter)] transition-colors hover:text-[var(--mk-mist)]"
                   >
                     {t("common.logIn")}
                   </Link>
@@ -171,7 +171,7 @@ export function MarketingLayout({ children }: PropsWithChildren) {
                       <Link
                         to="/login"
                         onClick={() => setMobileOpen(false)}
-                        className="mk-btn-ghost inline-flex h-11 items-center justify-center rounded-full text-sm font-semibold"
+                        className="mk-btn-ghost inline-flex h-11 items-center justify-center rounded-full text-sm font-semibold leading-normal"
                       >
                         {t("common.logIn")}
                       </Link>

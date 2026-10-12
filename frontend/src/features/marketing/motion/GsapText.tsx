@@ -24,7 +24,8 @@ export function GsapSplitReveal({ children, className }: GsapSplitRevealProps) {
         el,
         { clipPath: "inset(0 0 100% 0)", opacity: 0.35 },
         {
-          clipPath: "inset(0 0 0% 0)",
+          // Negative bottom inset keeps glyph descenders (g/y/p) visible after reveal
+          clipPath: "inset(0 0 -0.2em 0)",
           opacity: 1,
           duration: 1.1,
           ease: "power3.out",
