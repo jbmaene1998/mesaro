@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ChevronDown } from "lucide-react";
+import { Link } from "react-router-dom";
 
 import { createRestaurant } from "@/api/restaurants";
 import { billingApi } from "@/api/billing";
@@ -23,9 +24,17 @@ import { useI18n } from "@/i18n";
 import { showApiError, showSuccess } from "@/lib/toast";
 import { SettingsSection } from "@/features/settings/components/SettingsSection";
 import BillingSettingsPage from "@/features/billing/BillingSettingsPage";
+import { getVacations } from "@/features/vacations/api";
+
+function interpolateTemplate(template: string, values: Record<string, string | number>) {
+  return Object.entries(values).reduce(
+    (result, [key, value]) => result.replace(new RegExp(`\\{${key}\\}`, "g"), String(value)),
+    template
+  );
+}
 
 export function SettingsPage() {
-  const { locale } = useI18n();
+  const { locale, t } = useI18n();
   const copy = COPY[locale as keyof typeof COPY];
   const auth = useAuth();
   const queryClient = useQueryClient();
@@ -62,6 +71,19 @@ export function SettingsPage() {
     queryFn: getOpeningHours,
     enabled: Boolean(selectedRestaurantId)
   });
+
+  const vacationsQuery = useQuery({
+    queryKey: ["vacations", selectedRestaurantId],
+    queryFn: getVacations,
+    enabled: Boolean(selectedRestaurantId)
+  });
+
+  const upcomingClosureCount = useMemo(() => {
+    const today = new Date().toISOString().slice(0, 10);
+    return (vacationsQuery.data ?? []).filter(
+      (item) => item.type === "RESTAURANT_CLOSURE" && item.endDate >= today
+    ).length;
+  }, [vacationsQuery.data]);
 
   useEffect(() => {
     if (!detailsQuery.data) {
@@ -556,6 +578,23 @@ export function SettingsPage() {
             ) : null}
             {!openingHoursQuery.isLoading && !openingHoursQuery.isError ? (
               <div className="space-y-3">
+                <div className="space-y-1 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+                  <p>{t("settings.openingHours.reservationsWarning")}</p>
+                  <p>
+                    {t("settings.openingHours.closuresHintPrefix")}
+                    <Link to="/vacations" className="font-medium underline underline-offset-2 hover:text-amber-950">
+                      {t("settings.openingHours.closuresLink")}
+                    </Link>
+                    {t("settings.openingHours.closuresHintSuffix")}
+                  </p>
+                  {upcomingClosureCount > 0 ? (
+                    <p className="text-xs text-amber-800">
+                      {interpolateTemplate(t("settings.openingHours.upcomingClosures"), {
+                        count: upcomingClosureCount
+                      })}
+                    </p>
+                  ) : null}
+                </div>
                 {openingHoursDraft.map((day) => (
                   <div key={day.dayOfWeek} className="grid gap-3 rounded-md border p-3 md:grid-cols-[180px,110px,1fr,1fr] md:items-center">
                     <p className="text-sm font-medium">{day.dayName.charAt(0) + day.dayName.slice(1).toLowerCase()}</p>

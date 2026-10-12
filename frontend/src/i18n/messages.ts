@@ -150,7 +150,13 @@ export const messages = {
     "reports.generatedAt": "Generated",
     "reports.noDailyData": "No daily trend data for this range.",
     "reports.noShiftData": "No shift performance data for this range.",
-    "reports.selectRestaurant": "Select a restaurant to view reports."
+    "reports.selectRestaurant": "Select a restaurant to view reports.",
+    "settings.openingHours.reservationsWarning":
+      "Shortening hours or marking a weekday closed does not cancel existing reservations. Guests who already booked may still arrive—review or adjust those bookings separately.",
+    "settings.openingHours.closuresHintPrefix": "For holidays, maintenance, or other full-day closures, use ",
+    "settings.openingHours.closuresLink": "Vacations & Closures",
+    "settings.openingHours.closuresHintSuffix": " instead of changing weekly hours here.",
+    "settings.openingHours.upcomingClosures": "{count} upcoming restaurant closure periods scheduled."
   },
   nl: {
     "nav.dashboard": "Dashboard",
@@ -301,7 +307,13 @@ export const messages = {
     "reports.generatedAt": "Gegenereerd",
     "reports.noDailyData": "Geen dagelijkse trenddata voor dit bereik.",
     "reports.noShiftData": "Geen shift-prestatiegegevens voor dit bereik.",
-    "reports.selectRestaurant": "Selecteer een restaurant om rapporten te bekijken."
+    "reports.selectRestaurant": "Selecteer een restaurant om rapporten te bekijken.",
+    "settings.openingHours.reservationsWarning":
+      "Openingstijden inkorten of een weekdag sluiten annuleert bestaande reserveringen niet. Gasten met een boeking kunnen nog steeds komen—controleer of pas die reserveringen handmatig aan.",
+    "settings.openingHours.closuresHintPrefix": "Voor feestdagen, onderhoud of andere volledige sluitingsdagen gebruikt u ",
+    "settings.openingHours.closuresLink": "Vakanties & sluitingen",
+    "settings.openingHours.closuresHintSuffix": " in plaats van de wekelijkse uren hier.",
+    "settings.openingHours.upcomingClosures": "{count} geplande restaurantsluitingen komen nog."
   },
   fr: {
     "nav.dashboard": "Tableau de bord",
@@ -452,7 +464,13 @@ export const messages = {
     "reports.generatedAt": "Genere le",
     "reports.noDailyData": "Aucune donnee de tendance quotidienne pour cette periode.",
     "reports.noShiftData": "Aucune donnee de performance de service pour cette periode.",
-    "reports.selectRestaurant": "Selectionnez un restaurant pour voir les rapports."
+    "reports.selectRestaurant": "Selectionnez un restaurant pour voir les rapports.",
+    "settings.openingHours.reservationsWarning":
+      "Raccourcir les horaires ou fermer un jour de la semaine n'annule pas les reservations existantes. Les clients deja reserves peuvent toujours venir—revoyez ou ajustez ces reservations separement.",
+    "settings.openingHours.closuresHintPrefix": "Pour les jours feries, la maintenance ou d'autres fermetures completes, utilisez ",
+    "settings.openingHours.closuresLink": "Conges et fermetures",
+    "settings.openingHours.closuresHintSuffix": " plutot que de modifier les horaires hebdomadaires ici.",
+    "settings.openingHours.upcomingClosures": "{count} periode(s) de fermeture du restaurant a venir."
   },
   es: {
     "nav.dashboard": "Panel",
@@ -603,6 +621,12 @@ export const messages = {
     "reports.generatedAt": "Generado",
     "reports.noDailyData": "No hay datos de tendencia diaria para este rango.",
     "reports.noShiftData": "No hay datos de rendimiento por turno para este rango.",
-    "reports.selectRestaurant": "Selecciona un restaurante para ver informes."
+    "reports.selectRestaurant": "Selecciona un restaurante para ver informes.",
+    "settings.openingHours.reservationsWarning":
+      "Acortar el horario o cerrar un dia entre semana no cancela las reservas existentes. Los clientes que ya reservaron pueden seguir viniendo—revise o ajuste esas reservas por separado.",
+    "settings.openingHours.closuresHintPrefix": "Para festivos, mantenimiento u otros cierres de dia completo, use ",
+    "settings.openingHours.closuresLink": "Vacaciones y cierres",
+    "settings.openingHours.closuresHintSuffix": " en lugar de cambiar el horario semanal aqui.",
+    "settings.openingHours.upcomingClosures": "{count} periodo(s) de cierre del restaurante programado(s)."
   }
 } as const;
