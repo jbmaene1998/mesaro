@@ -10,7 +10,7 @@ CI/Actions are intentionally **not** required yet; enable status-check protectio
 | Setting | Value |
 |---------|--------|
 | Visibility | Private (until public launch decision) |
-| Default branch | `main` |
+| Default branch | `dev` (day-to-day); `main` is production-ready only |
 | Features | Issues ✅ · Projects optional · Wiki ❌ · Discussions optional |
 | Preserve this repository | Recommended once shipping |
 
@@ -26,23 +26,39 @@ CI/Actions are intentionally **not** required yet; enable status-check protectio
 | Automatically delete head branches | ✅ |
 | Allow auto-merge | ✅ (useful once checks exist) |
 
-## Branch protection — `main`
+## Branch protection — `main` (prod)
 
 | Rule | Value |
 |------|--------|
 | Require a pull request before merging | ✅ |
+| Preferred head branch for promotion | `dev` (policy) |
 | Required approvals | **0 while solo** → raise to **1** when a second engineer joins |
 | Dismiss stale pull request approvals when new commits are pushed | ✅ |
 | Require review from Code Owners | ❌ while solo → ✅ with team |
 | Require conversation resolution before merging | ✅ |
-| Require status checks to pass | ❌ until Actions are enabled |
+| Require status checks to pass | ❌ until CI is required (deploy workflows exist; do not block on prod stub) |
 | Require branches to be up to date before merging | Optional; turn on with checks |
 | Admin bypass | `pull_request` mode only (merge own PRs; still no direct push) |
 | Allow force pushes | ❌ |
 | Allow deletions | ❌ |
 | Lock branch | ❌ |
 
+## Branch protection — `dev` (staging)
+
+| Rule | Value |
+|------|--------|
+| Require a pull request before merging | Recommended (feature → `dev`); direct push allowed as solo escape hatch |
+| Allow force pushes | ❌ |
+| Allow deletions | ❌ |
+
 Prefer **Rulesets** (modern) over legacy branch protection if the account supports them.
+
+## Deploy Actions
+
+| Workflow | Branch | Runner |
+|----------|--------|--------|
+| `deploy-staging.yml` | `dev` | Self-hosted `mesaro-staging` (Omen) |
+| `deploy-prod.yml` | `main` | GitHub-hosted stub until Hostinger VPS |
 
 ### Free-plan note (current account)
 

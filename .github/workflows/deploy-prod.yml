@@ -1,0 +1,23 @@
+name: Deploy production
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy to production
+    runs-on: ubuntu-latest
+    # Uncomment when Hostinger VPS + Environment secrets exist:
+    # environment: production
+    steps:
+      - name: Production deploy stub
+        run: |
+          echo "::notice title=Production not wired::main is the prod branch. Staging deploys from 'dev' (Omen self-hosted runner). Replace this job when Hostinger VPS deploy is ready."
+          echo "event=${{ github.event_name }} sha=${{ github.sha }}"
+          exit 0

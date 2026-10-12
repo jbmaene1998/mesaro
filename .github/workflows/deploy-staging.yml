@@ -1,0 +1,74 @@
+name: Deploy staging
+
+on:
+  push:
+    branches: [dev]
+  workflow_dispatch:
+
+concurrency:
+  group: staging
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    name: Deploy to Omen staging
+    runs-on: [self-hosted, linux, mesaro-staging]
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Sync code to /opt/mesaro
+        run: |
+          set -euo pipefail
+          mkdir -p /opt/mesaro
+          rsync -a --delete \
+            --exclude '.git/' \
+            --exclude 'backend/.env.staging' \
+            --exclude 'backend/frontend-dist/' \
+            --exclude 'frontend/node_modules/' \
+            --exclude 'frontend/dist/' \
+            --exclude 'frontend/.env.production.local' \
+            --exclude 'backend/target/' \
+            "${GITHUB_WORKSPACE}/" /opt/mesaro/
+          test -f /opt/mesaro/backend/.env.staging
+
+      - name: Build frontend
+        working-directory: /opt/mesaro/frontend
+        run: |
+          set -euo pipefail
+          printf '%s\n' 'VITE_API_URL=https://api.mesaro.staging/api' > .env.production.local
+          npm ci
+          npx vite build
+          mkdir -p ../backend/frontend-dist
+          rm -rf ../backend/frontend-dist/*
+          cp -a dist/. ../backend/frontend-dist/
+
+      - name: Deploy Compose stack
+        working-directory: /opt/mesaro/backend
+        run: |
+          set -euo pipefail
+          chmod +x mvnw
+          docker compose \
+            -f docker-compose.prod.yml \
+            -f docker-compose.staging.yml \
+            --env-file .env.staging \
+            up -d --build
+
+      - name: Readiness check
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:19090/actuator/health/readiness; then
+              echo
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "Timed out waiting for staging readiness" >&2
+          docker compose \
+            -f /opt/mesaro/backend/docker-compose.prod.yml \
+            -f /opt/mesaro/backend/docker-compose.staging.yml \
+            --env-file /opt/mesaro/backend/.env.staging \
+            logs --tail=100 app-prod || true
+          exit 1

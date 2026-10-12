@@ -61,5 +61,6 @@
 
   body {
     @apply bg-background text-foreground antialiased;
+    line-height: 1.5;
   }
 }

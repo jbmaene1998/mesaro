@@ -263,7 +263,7 @@ export function AppShell({ children }: PropsWithChildren) {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-64">
                   <DropdownMenuLabel className="space-y-1">
-                    <p className="text-sm font-medium leading-none">{user?.email ?? copy.unknownUser}</p>
+                    <p className="text-sm font-medium leading-snug">{user?.email ?? copy.unknownUser}</p>
                     {role ? (
                       <div>
                         <Badge className={roleBadgeClasses(role)}>{formatRole(role)}</Badge>
