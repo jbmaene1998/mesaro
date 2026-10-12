@@ -98,6 +98,15 @@
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 
+.marketing-root .mk-btn-primary,
+.marketing-root .mk-btn-ghost {
+  /* Fixed-height + backdrop-filter/filter clips Syne descenders (g/y/p) in Chromium */
+  line-height: 1.35;
+  overflow: visible;
+  padding-top: 0.7rem;
+  padding-bottom: 0.75rem;
+}
+
 .marketing-root .mk-btn-primary {
   background: linear-gradient(135deg, var(--mk-brass-hot), var(--mk-terracotta));
   color: #fff;
@@ -106,18 +115,18 @@
 }
 
 .marketing-root .mk-btn-primary:hover {
-  filter: brightness(1.04);
+  background: linear-gradient(135deg, #db735c, var(--mk-terracotta-deep));
 }
 
 .marketing-root .mk-btn-ghost {
   border: 1px solid var(--mk-line);
-  background: rgba(255, 255, 255, 0.45);
+  /* opaque-enough fill instead of backdrop-filter (backdrop-filter clips glyph ink) */
+  background: rgba(255, 250, 243, 0.88);
   color: var(--mk-olive);
-  backdrop-filter: blur(8px);
 }
 
 .marketing-root .mk-hero .mk-btn-ghost {
-  background: rgba(246, 239, 230, 0.1);
+  background: rgba(246, 239, 230, 0.16);
   color: #f6efe6;
   border-color: rgba(246, 239, 230, 0.28);
 }
@@ -150,6 +159,14 @@
 .marketing-root input,
 .marketing-root textarea {
   color: var(--mk-olive);
+  line-height: 1.4;
+}
+
+.marketing-root input {
+  /* Prefer min-height over rigid h-* so placeholders keep descenders */
+  min-height: 2.75rem;
+  padding-top: 0.55rem;
+  padding-bottom: 0.55rem;
 }
 
 .marketing-root ::selection {

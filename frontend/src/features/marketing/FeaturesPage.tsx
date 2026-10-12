@@ -267,7 +267,7 @@ export function FeaturesPage() {
             <p className="mt-4 max-w-xl text-[var(--mk-pewter)]">{copy.heroLead}</p>
             <Link
               to="/register"
-              className="mk-btn-primary mt-8 inline-flex h-12 items-center justify-center rounded-full px-7 text-sm font-semibold"
+              className="mk-btn-primary mt-8 inline-flex min-h-12 items-center justify-center rounded-full px-7 text-sm font-semibold"
             >
               {t("common.startNow")}
             </Link>

@@ -345,7 +345,7 @@ export function PricingPage() {
           </ul>
           <Link
             to="/register"
-            className="mk-btn-primary mt-8 inline-flex h-12 w-full items-center justify-center rounded-full text-sm font-semibold"
+            className="mk-btn-primary mt-8 inline-flex min-h-12 w-full items-center justify-center rounded-full text-sm font-semibold"
           >
             {copy.planCta}
           </Link>
