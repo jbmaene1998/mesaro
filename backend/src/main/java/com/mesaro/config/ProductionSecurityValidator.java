@@ -64,10 +64,7 @@ public class ProductionSecurityValidator implements ApplicationRunner {
                 AppProperties.INSECURE_DEV_STAFF_TOKEN_SECRET,
                 errors);
 
-        String emailProvider = appProperties.getEmail().getProvider();
-        if (emailProvider == null || emailProvider.isBlank() || "log".equalsIgnoreCase(emailProvider)) {
-            errors.add("app.email.provider must not be 'log' outside dev (set EMAIL_PROVIDER=resend|smtp)");
-        }
+        validateEmailConfiguration(errors);
 
         if (isBlank(stripeProperties.getSecretKey())) {
             errors.add("app.stripe.secret-key is required outside dev (STRIPE_SECRET_KEY)");
@@ -109,5 +106,46 @@ public class ProductionSecurityValidator implements ApplicationRunner {
 
     private static boolean isBlank(String value) {
         return value == null || value.isBlank();
+    }
+
+    private void validateEmailConfiguration(List<String> errors) {
+        AppProperties.Email email = appProperties.getEmail();
+        if (isBlank(email.getFromAddress())) {
+            errors.add("app.email.from-address is required outside dev (EMAIL_FROM)");
+        }
+
+        String emailProvider = email.getProvider();
+        if (emailProvider == null || emailProvider.isBlank() || "log".equalsIgnoreCase(emailProvider)) {
+            errors.add("app.email.provider must not be 'log' outside dev (set EMAIL_PROVIDER=resend|smtp)");
+            return;
+        }
+
+        if ("resend".equalsIgnoreCase(emailProvider)) {
+            if (isBlank(email.getResend().getApiKey())) {
+                errors.add("app.email.resend.api-key is required when EMAIL_PROVIDER=resend (RESEND_API_KEY)");
+            }
+            return;
+        }
+
+        if ("smtp".equalsIgnoreCase(emailProvider)) {
+            String smtpHost = environment.getProperty("spring.mail.host");
+            if (isBlank(smtpHost)) {
+                errors.add("spring.mail.host is required when EMAIL_PROVIDER=smtp (SMTP_HOST)");
+            }
+            boolean smtpAuth = environment.getProperty(
+                    "spring.mail.properties.mail.smtp.auth", Boolean.class, Boolean.TRUE);
+            if (smtpAuth) {
+                if (isBlank(environment.getProperty("spring.mail.username"))) {
+                    errors.add("spring.mail.username is required when SMTP_AUTH=true (SMTP_USERNAME)");
+                }
+                if (isBlank(environment.getProperty("spring.mail.password"))) {
+                    errors.add("spring.mail.password is required when SMTP_AUTH=true (SMTP_PASSWORD)");
+                }
+            }
+            return;
+        }
+
+        errors.add("app.email.provider must be 'resend' or 'smtp' outside dev (EMAIL_PROVIDER="
+                + emailProvider + ")");
     }
 }
