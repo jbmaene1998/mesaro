@@ -44,6 +44,16 @@ CI/Actions are intentionally **not** required yet; enable status-check protectio
 
 Prefer **Rulesets** (modern) over legacy branch protection if the account supports them.
 
+### Free-plan note (current account)
+
+GitHub **does not allow branch protection / rulesets on private repos** without GitHub Pro (or a Team/Enterprise org). On the free plan you can still:
+
+- Keep the repo **private** and follow CONTRIBUTING as policy (honor system), or
+- Upgrade to **GitHub Pro**, or
+- Make the repo **public** (then protection works on free) — usually wrong for proprietary SaaS
+
+`scripts/github-bootstrap.ps1` applies merge methods + labels on any plan; protection applies only when the API allows it.
+
 ## Labels to create
 
 Release-note categories:
