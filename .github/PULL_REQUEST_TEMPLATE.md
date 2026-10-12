@@ -1,3 +1,8 @@
+## Target branch
+
+- [ ] `dev` (normal work → staging)
+- [ ] `main` (promotion from `dev` only)
+
 ## Summary
 
 <!-- 1–3 bullets: what and why (not a file list) -->

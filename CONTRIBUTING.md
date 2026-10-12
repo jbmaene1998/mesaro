@@ -1,6 +1,9 @@
 # Contributing to Mesaro
 
-This is a production monorepo. Treat `main` as always shippable.
+This is a production monorepo.
+
+- **`dev`** — integration + staging (default branch for day-to-day work)
+- **`main`** — production-ready; only via PR from `dev`
 
 ## Before you start
 
@@ -22,10 +25,12 @@ This is a production monorepo. Treat `main` as always shippable.
 
 Rules:
 
-- Branch from the latest `main`
+- Branch from the latest **`dev`**
+- Open PRs **into `dev`** for normal work
+- Promote staging → prod with a PR **`dev` → `main`**
 - One concern per branch / PR
 - No long-lived feature branches; open a draft PR early if work spans days
-- Do not commit directly to `main`
+- Do **not** commit or push directly to `main`
 
 Examples: `feat/staff-cancel-reservation`, `fix/billing-session-confirm`, `docs/branching-rules`
 
@@ -55,7 +60,7 @@ docs: add branching and release conventions
 
 ## Pull requests
 
-1. Open against `main`
+1. Open against **`dev`** (feature work) or **`main`** only when promoting from `dev`
 2. Fill in the PR template completely
 3. Keep PRs reviewable (prefer < ~400 lines of meaningful diff; split if larger)
 4. Link issues with `Fixes #n` / `Closes #n` when applicable
@@ -66,11 +71,11 @@ docs: add branching and release conventions
 .\run-fe-test.ps1
 ```
 
-(CI will enforce this once Actions are enabled.)
+(CI will enforce this once more Actions are enabled.)
 
 ### Review expectations
 
-- While solo: PRs are still **required** (no direct push to `main`); self-merge is allowed via admin bypass
+- While solo: PRs are still **required** for `main` (no direct push); self-merge is allowed via admin bypass
 - With a team: at least **1 approving review**; author must not be the only approval; enable Code Owner review
 - Address or explicitly dismiss review comments before merge
 - Prefer small, focused follow-up PRs over drive-by scope creep in review
@@ -81,14 +86,15 @@ docs: add branching and release conventions
 |---------|--------|
 | Allowed merge method | **Squash and merge only** |
 | Merge commit / rebase | Disabled |
-| Delete head branch | On after merge |
+| Delete head branch | On after merge (never delete `dev` or `main`) |
 | Commit message on squash | Use the PR title (Conventional Commit) + PR body summary |
 
-Never force-push to `main`. Force-push on your own feature branch is fine after a rebase onto `main`.
+Never force-push to `main` or `dev`. Force-push on your own feature branch is fine after a rebase onto `dev`.
 
 ## Releases & changelog
 
-- We ship from `main` via **semver tags** `vX.Y.Z`
+- We ship from `main` via **semver tags** `vX.Y.Z` after a `dev` → `main` promotion
+- Staging is whatever is on `dev` (see [docs/deploy-staging-omen.md](docs/deploy-staging-omen.md))
 - Release notes are generated from merged PR titles/labels — see [docs/engineering/branching-and-releases.md](docs/engineering/branching-and-releases.md)
 - Update [CHANGELOG.md](CHANGELOG.md) under `Unreleased` as you merge user-facing work (or rely on the release PR that cuts the tag)
 
@@ -98,7 +104,7 @@ Version bumps:
 |--------|------|
 | Breaking API / data migration customers must know about | **MAJOR** |
 | New capability, backwards compatible | **MINOR** |
-| Bugfix / chore / docs with no API change | **PATCH** |
+| Bug fix / chore / docs with no API change | **PATCH** |
 
 ## Code conventions
 
@@ -129,7 +135,7 @@ Never commit:
 - Ad-hoc curl payloads / session dumps at the repo root (`*.json` scratch files)
 - Production dumps, customer PII, Stripe live secrets
 
-Use `.env.example` (or docs) for required variable names only.
+Use `.env.example` / `.env.*.example` (or docs) for required variable names only.
 
 ## Security issues
 

@@ -4,17 +4,25 @@ Canonical engineering process for this repository. [CONTRIBUTING.md](../../CONTR
 
 ## Model
 
-We use a **trunk-based** workflow with short-lived branches:
+Long-lived **integration** and **production** branches:
 
 ```
-main  ←── squash-merge PRs from feat/* | fix/* | chore/* | docs/* | refactor/* | test/* | …
-  │
-  └── tag vX.Y.Z  →  GitHub Release (+ notes)
+feat/* | fix/* | …  ──PR──►  dev  ──PR──►  main
+                              │              │
+                              ▼              ▼
+                         staging (Omen)   prod (Hostinger, later)
+                              │              │
+                         GHA on push      GHA on push (stub until VPS)
 ```
 
-- `main` is always production-ready (or the closest honest equivalent while we harden launch)
-- No long-lived `develop` branch
-- Hotfixes: branch `fix/<slug>` from `main`, PR back to `main`, then tag a patch release
+| Branch | Role |
+|--------|------|
+| `dev` | Default working branch. Integration + **staging** source of truth. Auto-deploys to Omen. |
+| `main` | **Production-ready** only. Advances via PR from `dev`. Future Hostinger prod deploy. |
+| `feat/*` etc. | Short-lived work. PR into `dev` (not directly into `main`). |
+
+- Hotfixes that must skip staging: still land on `dev` first when possible; emergency `fix/*` → `main` only with an explicit follow-up merge back into `dev`.
+- Tags / GitHub Releases are cut from `main`.
 
 ## Protected `main` (policy + settings)
 
@@ -23,6 +31,7 @@ main  ←── squash-merge PRs from feat/* | fix/* | chore/* | docs/* | refact
 | Rule | Setting |
 |------|---------|
 | Require a pull request | Yes |
+| Preferred head for prod promotion | `dev` (policy: open `dev` → `main` PRs) |
 | Required approving reviews | 0 while solo → ≥ 1 with a team |
 | Dismiss stale reviews on new commits | Yes |
 | Require conversation resolution | Yes |
@@ -31,7 +40,16 @@ main  ←── squash-merge PRs from feat/* | fix/* | chore/* | docs/* | refact
 | Bypass allowances | Repo admins may bypass review gates on PRs only (solo self-merge) |
 | Status checks | Required once CI is enabled (later) |
 
-Direct pushes to `main` are not allowed.
+**Direct pushes to `main` are not allowed.** Prefer not pushing directly to `dev` either — use feature branches + PRs; admin push to `dev` is an escape hatch only.
+
+## Deploy mapping
+
+| Event | Workflow | Target |
+|-------|----------|--------|
+| Push to `dev` | [`.github/workflows/deploy-staging.yml`](../../.github/workflows/deploy-staging.yml) | Omen LAN staging (self-hosted runner `mesaro-staging`) |
+| Push to `main` | [`.github/workflows/deploy-prod.yml`](../../.github/workflows/deploy-prod.yml) | Production (stub until Hostinger VPS) |
+
+See [docs/deploy-staging-omen.md](../deploy-staging-omen.md).
 
 ## Merge settings (applied on GitHub)
 
@@ -40,7 +58,7 @@ Direct pushes to `main` are not allowed.
 | Merge commits | **Disabled** |
 | Rebase and merge | **Disabled** |
 | Squash and merge | **Enabled (only)** |
-| Auto-delete head branch | **On** |
+| Auto-delete head branch | **On** (feature branches; keep `dev`) |
 | Auto-merge | Optional (on after checks exist) |
 
 Squash subject = Conventional Commit PR title. Squash body = short summary from the PR template.
@@ -63,10 +81,11 @@ Additional triage labels (optional): `area:api`, `area:web`, `area:billing`, `ar
 
 ## Cutting a release
 
-1. Ensure `main` is green and includes everything intended for the cut
-2. Confirm [CHANGELOG.md](../../CHANGELOG.md) `Unreleased` section (or generate from labeled PRs)
-3. Decide semver bump (MAJOR / MINOR / PATCH) per CONTRIBUTING
-4. Tag from `main`:
+1. Ensure `dev` has been validated on staging
+2. Open / merge PR `dev` → `main`
+3. Confirm [CHANGELOG.md](../../CHANGELOG.md) `Unreleased` section (or generate from labeled PRs)
+4. Decide semver bump (MAJOR / MINOR / PATCH) per CONTRIBUTING
+5. Tag from `main`:
 
 ```powershell
 git checkout main
@@ -75,13 +94,13 @@ git tag -a v0.1.0 -m "v0.1.0"
 git push origin v0.1.0
 ```
 
-5. Create a GitHub Release for the tag (UI or `gh release create`)
-6. Use **Generate release notes** — categories come from [`.github/release.yml`](../../.github/release.yml)
-7. Move changelog items from `Unreleased` → `[X.Y.Z] - YYYY-MM-DD` in a follow-up PR if not already done
+6. Create a GitHub Release for the tag (UI or `gh release create`)
+7. Use **Generate release notes** — categories come from [`.github/release.yml`](../../.github/release.yml)
+8. Move changelog items from `Unreleased` → `[X.Y.Z] - YYYY-MM-DD` in a follow-up PR if not already done
 
 ### Optional `release/x.y.z` branch
 
-Use only when you need a short freeze window (docs polish, version bumps, last-minute patch) without blocking unrelated `main` merges. Merge the release branch back to `main` via PR, then tag.
+Use only when you need a short freeze window. Branch from `main`, PR back to `main`, then merge `main` back into `dev` so staging stays aligned.
 
 ## Versioning contract
 
@@ -96,3 +115,4 @@ Use only when you need a short freeze window (docs polish, version bumps, last-m
 - No secrets committed
 - Docs updated if user-facing or ops behavior changed
 - Labels set for release notes
+- Feature PRs target `dev`; promotion PRs target `main` from `dev`
