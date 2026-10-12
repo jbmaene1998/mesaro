@@ -1,10 +1,9 @@
 import { useNavigate } from 'react-router-dom';
 
-/**
- * Landing page when the user cancels out of the Stripe Checkout flow.
- * No subscription was created; guide them back or try again.
- */
+import { useI18n } from '@/i18n';
+
 export default function BillingCancelPage() {
+  const { t } = useI18n();
   const navigate = useNavigate();
 
   return (
@@ -15,23 +14,21 @@ export default function BillingCancelPage() {
         </svg>
       </div>
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Checkout cancelled</h1>
-        <p className="mt-2 text-gray-600">
-          No charge was made. You can subscribe whenever you're ready.
-        </p>
+        <h1 className="text-2xl font-bold text-gray-900">{t('billing.cancel.title')}</h1>
+        <p className="mt-2 text-gray-600">{t('billing.cancel.description')}</p>
       </div>
       <div className="flex gap-3">
         <button
           onClick={() => navigate('/settings/billing')}
           className="rounded-lg bg-gray-900 px-6 py-2.5 text-sm font-semibold text-white hover:bg-gray-700"
         >
-          Try again
+          {t('billing.cancel.tryAgain')}
         </button>
         <button
           onClick={() => navigate('/dashboard')}
           className="rounded-lg border border-gray-300 bg-white px-6 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50"
         >
-          Back to dashboard
+          {t('billing.cancel.backToDashboard')}
         </button>
       </div>
     </div>

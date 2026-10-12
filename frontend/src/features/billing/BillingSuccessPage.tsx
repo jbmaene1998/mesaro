@@ -3,18 +3,12 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 
 import { billingApi } from '@/api/billing';
 import { useAuth } from '@/hooks/use-auth';
+import { useI18n } from '@/i18n';
 
 type ConfirmState = 'idle' | 'loading' | 'success' | 'error' | 'missing' | 'needs_login';
 
-/**
- * Landing page after a successful Stripe Checkout session.
- * Stripe redirects here with ?session_id=... and we proactively confirm it with
- * backend so billing status updates immediately even if webhook delivery is slow.
- *
- * Must wait for AuthProvider bootstrap — confirm requires a JWT, and the access
- * token only lands in memory after silent refresh from localStorage.
- */
 export default function BillingSuccessPage() {
+  const { t } = useI18n();
   const [searchParams] = useSearchParams();
   const sessionId = searchParams.get('session_id');
   const auth = useAuth();
@@ -46,11 +40,11 @@ export default function BillingSuccessPage() {
       const message =
         err && typeof err === 'object' && 'message' in err && typeof err.message === 'string'
           ? err.message
-          : 'Something went wrong confirming your subscription.';
+          : t('billing.success.confirmErrorDefault');
       setErrorMessage(message);
       setState('error');
     }
-  }, [sessionId, silentRefresh]);
+  }, [sessionId, silentRefresh, t]);
 
   useEffect(() => {
     if (!sessionId) {
@@ -83,9 +77,9 @@ export default function BillingSuccessPage() {
           <div className="h-10 w-10 animate-spin rounded-full border-2 border-gray-300 border-t-gray-900" />
           <div>
             <h1 className="text-2xl font-bold text-gray-900">
-              {state === 'needs_login' ? 'Signing you back in…' : 'Finalizing your subscription…'}
+              {state === 'needs_login' ? t('billing.success.signingBackIn') : t('billing.success.finalizing')}
             </h1>
-            <p className="mt-2 text-gray-600">This usually takes a few seconds.</p>
+            <p className="mt-2 text-gray-600">{t('billing.success.usuallyFewSeconds')}</p>
           </div>
         </>
       )}
@@ -98,16 +92,14 @@ export default function BillingSuccessPage() {
             </svg>
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">You&apos;re all set!</h1>
-            <p className="mt-2 text-gray-600">
-              Your subscription is now active. Welcome to Mesaro Professional.
-            </p>
+            <h1 className="text-2xl font-bold text-gray-900">{t('billing.success.allSet')}</h1>
+            <p className="mt-2 text-gray-600">{t('billing.success.activeWelcome')}</p>
           </div>
           <Link
             to="/dashboard"
             className="rounded-lg bg-gray-900 px-6 py-2.5 text-sm font-semibold text-white hover:bg-gray-700"
           >
-            Go to dashboard
+            {t('billing.success.goToDashboard')}
           </Link>
         </>
       )}
@@ -120,13 +112,9 @@ export default function BillingSuccessPage() {
             </svg>
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Something went wrong</h1>
-            <p className="mt-2 text-gray-600">
-              {errorMessage ?? 'We could not confirm your subscription yet.'}
-            </p>
-            <p className="mt-1 text-sm text-gray-500">
-              If you were charged, your access will activate shortly. You can retry confirmation.
-            </p>
+            <h1 className="text-2xl font-bold text-gray-900">{t('billing.success.somethingWrong')}</h1>
+            <p className="mt-2 text-gray-600">{errorMessage ?? t('billing.success.confirmFailed')}</p>
+            <p className="mt-1 text-sm text-gray-500">{t('billing.success.chargedRetryHint')}</p>
           </div>
           <div className="flex flex-wrap items-center justify-center gap-3">
             <button
@@ -134,13 +122,13 @@ export default function BillingSuccessPage() {
               onClick={() => void confirm()}
               className="rounded-lg bg-gray-900 px-6 py-2.5 text-sm font-semibold text-white hover:bg-gray-700"
             >
-              Retry
+              {t('common.retry')}
             </button>
             <Link
               to="/dashboard"
               className="rounded-lg border border-gray-300 px-6 py-2.5 text-sm font-semibold text-gray-900 hover:bg-gray-50"
             >
-              Go to dashboard
+              {t('billing.success.goToDashboard')}
             </Link>
           </div>
         </>
@@ -149,16 +137,14 @@ export default function BillingSuccessPage() {
       {state === 'missing' && (
         <>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">You&apos;re all set!</h1>
-            <p className="mt-2 text-gray-600">
-              Your subscription is being finalized. Open the dashboard to continue.
-            </p>
+            <h1 className="text-2xl font-bold text-gray-900">{t('billing.success.allSet')}</h1>
+            <p className="mt-2 text-gray-600">{t('billing.success.finalizingNoSession')}</p>
           </div>
           <Link
             to="/dashboard"
             className="rounded-lg bg-gray-900 px-6 py-2.5 text-sm font-semibold text-white hover:bg-gray-700"
           >
-            Go to dashboard
+            {t('billing.success.goToDashboard')}
           </Link>
         </>
       )}
