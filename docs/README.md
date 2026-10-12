@@ -39,7 +39,7 @@ Engineering depth (holds, DST, tenancy) stays **under the hood**. Marketing stay
 
 ## One-line engineering verdict
 
-**Mesaro’s core money, floor, billing-gate, and legal-page paths are implemented in code** (Phase 0–2). It is **not yet safe to run paid ads / unattended self-serve** until prod email is smoke-tested, counsel signs off Privacy/Terms, GitHub Actions are unparked and green, and a real VPS cutover with secrets is done.
+**Mesaro’s core money, floor, billing-gate, and legal-page paths are implemented in code** (Phase 0–2). Backend CI is active and green; webhook/outbox/PAST_DUE/billing i18n landings are in. It is **not yet safe to run paid ads / unattended self-serve** until prod email is smoke-tested, counsel signs off Privacy/Terms, and a real VPS cutover with secrets is done.
 
 **Do not “differentiate” by adding competitor suite features** — that violates the doctrine.
 
@@ -47,18 +47,19 @@ Engineering depth (holds, DST, tenancy) stays **under the hood**. Marketing stay
 
 ## Current status (2026-10-12)
 
-| Works in code (Phase 0–2) | Still open before paid scale |
-|---------------------------|------------------------------|
+| Works in code (Phase 0–2+) | Still open before paid scale |
+|----------------------------|------------------------------|
 | Owner / staff login → Dashboard | Real email smoke (Resend/SMTP) in prod-like env |
 | Guest avail → hold → confirm | Counsel-approved Privacy/Terms (routes exist; drafts) |
-| STAFF cancel / switch / self-vacation | Backend CI active (`.github/workflows/backend-ci.yml`); E2E still parked (`.github/ci-parked/e2e.yml`) |
+| STAFF cancel / switch / self-vacation | E2E still parked (`.github/ci-parked/e2e.yml`) |
 | Billing success → `confirmCheckout` | Hostinger VPS cutover + live secrets |
-| Webhook claim → route → done/failed | PAST_DUE / dunning policy |
-| Guest booking billing-gated | Company formation / DPA / Stripe legal entity |
-| Privacy + Terms routes + footer | Some i18n / opening-hours UX polish |
+| Webhook claim → route → done/failed (deserialize fail-fast) | Company formation / DPA / Stripe legal entity |
+| Guest booking billing-gated; PAST_DUE 7-day grace | Dunning email for PAST_DUE (policy enforced) |
+| Privacy + Terms routes + footer | |
 | Seed `maxRestaurants=2` for demo owner | |
 | `/select` wired; accept-invite set-password | |
-| Planning cold-load; reports; vacations module | |
+| Planning/reports/vacations; billing/register i18n; hours↔closures UX | |
+| Backend CI active (`.github/workflows/backend-ci.yml`) | |
 
 Full phase checklist: [production-ready-plan.md](production-ready-plan.md)
 
@@ -92,11 +93,9 @@ Full phase checklist: [production-ready-plan.md](production-ready-plan.md)
 |---|---------|--------|
 | 1 | Prod email smoke not verified | Ops / Phase 0 item 7 |
 | 2 | Privacy/Terms need counsel + company entity | Legal |
-| 3 | CI not active on GitHub (workflows parked) | Ops |
-| 4 | Live VPS deploy + secrets not cut over | Ops |
-| 5 | PAST_DUE / dunning policy undefined | Billing product |
-| 6 | Opening-hours vs closures UX polish | Settings P2 |
-| 7 | Outbox: some event types still stubs | Reliability |
+| 3 | Live VPS deploy + secrets not cut over | Ops |
+| 4 | E2E workflow still parked | Ops |
+| 5 | PAST_DUE dunning email not sent yet | Billing product |
 
 Journey catalog: **[flows.md](flows.md)**
 
@@ -107,15 +106,15 @@ Journey catalog: **[flows.md](flows.md)**
 | Domain | Score | Note |
 |--------|-------|------|
 | Booking engine | **~90%** | Hold/confirm + billing gate in code |
-| Simple floor UX | **~85%** | STAFF cancel/switch allowed; minor i18n noise |
+| Simple floor UX | **~88%** | STAFF cancel/switch; billing/register i18n landed |
 | Advanced modules | **~85%** | Planning/vacations/reports implemented; E2E in CI still parked |
-| Monetization durability | **~80%** | Confirm + webhook fixed; PAST_DUE policy open |
-| Security / tenancy | **~80%** | Select JWT + RBAC; secret scanning etc. still off on GitHub |
+| Monetization durability | **~88%** | Confirm + webhook + PAST_DUE 7-day grace; dunning email open |
+| Security / tenancy | **~82%** | Select JWT + RBAC; prod email fail-fast; secret scanning still off |
 | EU compliance (legal pages) | **~65%** | Routes + drafts live; counsel / entity pending |
-| Ops / CI | **~55%** | Compose/Caddy/runbooks exist; Actions parked; no live VPS yet |
-| Vision fit (simple €50 product) | **~75%** | Doctrine held through remediation |
+| Ops / CI | **~70%** | Backend CI active/green; staging CD live; E2E parked; no live VPS yet |
+| Vision fit (simple €50 product) | **~78%** | Doctrine held through remediation |
 
-**Company readiness overall: ~78%.** Safe for careful pilots with hand-holding. **Not** ready for paid ads until email smoke, legal counsel, active CI, and VPS cutover.
+**Company readiness overall: ~82%.** Safe for careful pilots with hand-holding. **Not** ready for paid ads until email smoke, legal counsel, and VPS cutover.
 
 ---
 

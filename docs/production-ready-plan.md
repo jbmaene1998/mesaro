@@ -1,8 +1,8 @@
 # Production-ready remediation plan
 
-**Status:** Phase 0–2 code done · Phase 3 backend CI active (E2E still parked) / VPS not cut over · Phase 4 mostly done  
-**Source audits:** [README.md](README.md), [flows.md](flows.md), [backend/audit.md](backend/audit.md), [frontend/audit.md](frontend/audit.md), [product-doctrine.md](product-doctrine.md)  
-**Updated:** 2026-10-12 (backend CI unparked to `.github/workflows/backend-ci.yml`; E2E remains in `.github/ci-parked/`)
+**Status:** Phase 0–2 code done · Phase 3 backend CI active (E2E still parked) / VPS not cut over · Phase 4 mostly done (i18n + hours UX + PAST_DUE grace landed)  
+**Source audits:** 2026-10-12 code walk + merge of PRs #5–#11; [README.md](README.md), [flows.md](flows.md), [product-doctrine.md](product-doctrine.md)  
+**Updated:** 2026-10-12 (rescore after merging backend CI, webhook, outbox, PAST_DUE grace, i18n, hours UX)
 
 Fix every audit/flow finding so Mesaro is post-deploy production-ready: money/trust P0s, STAFF floor autonomy, complete advanced modules (planning/vacations/reports), vision-aligned go-live UX with Dashboard as home, and ops/CI/legal hardening.
 
@@ -327,13 +327,13 @@ Scope stays simple (no HR suite / BI warehouse). Each module below has a **done 
 
 ## Phase 4 — Polish that audits called out (still production)
 
-46. [x] i18n: dashboard live table status tags + `document.documentElement.lang`; register/billing/consent leaks remain partial.
+46. [x] i18n: dashboard tags + `lang`; billing/register/trial toasts localized (EN/NL/FR/ES).
 47. [x] Guest cancel deep-link: confirmation email uses `app.frontend-url` + `/r/{slug}/reservation/{code}?cancelToken=`; FE reads `cancelToken` and legacy `token`.
 48. [x] Guest slot time format `HH:mm` (drop seconds in UI; API times unchanged).
-49. [ ] Opening-hours close vs closures: document behavior in Settings UI (warn-only vs closure cancels); optional “create closure instead” CTA — no silent mass cancel on hours edit.
+49. [x] Opening-hours close vs closures: Settings warns that shortening hours does not cancel bookings; points to Vacations & Closures for full-day closures.
 50. [x] Remove dead FE (`BookingPage`, `route-placeholders.tsx`); rename `RegisterPlaceholderPage` → `RegisterPage`.
 51. [x] PAST_DUE policy: **7-day grace** from first `invoice.payment_failed` (`user_account.past_due_since`), then guest booking / billing-guarded access blocked like UNPAID; recovery on payment clears timestamp. Dunning email still open.
-52. [x] Refresh audit/flow docs after each phase; re-score readiness in [README.md](README.md) *(2026-10-12)*.
+52. [x] Refresh audit/flow docs after each phase; re-score readiness in [README.md](README.md) *(2026-10-12 post-merge)*.
 
 ---
 
@@ -381,4 +381,4 @@ Phase 2 is a **full implementation** week(s), not a polish pass — block Phase 
 - [x] Phase 2C — **Reports fully implemented**
 - [x] Phase 2D — Dashboard home polish
 - [x] Phase 3 — CI / deploy / monitoring / outbox *(backend CI **active**; E2E still **parked** under `.github/ci-parked/`; hardened compose + Caddy + runbooks exist; live VPS cutover still needs secrets/purchase)*
-- [x] Phase 4 — polish + docs rescore *(46–48, 50, 52 done; 49 opening-hours UX + 51 PAST_DUE policy remain)*
+- [x] Phase 4 — polish + docs rescore *(46–52 done except dunning email under 51)*
