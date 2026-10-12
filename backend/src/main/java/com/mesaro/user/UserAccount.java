@@ -56,6 +56,10 @@ public class UserAccount {
     @Column(name = "trial_ends_at")
     private Instant trialEndsAt;
 
+    /** First invoice payment failure while subscription is billable; drives PAST_DUE grace. */
+    @Column(name = "past_due_since")
+    private Instant pastDueSince;
+
     @Column(name = "deleted_at_utc")
     private Instant deletedAtUtc;
 
@@ -182,6 +186,14 @@ public class UserAccount {
 
     public void setTrialEndsAt(Instant trialEndsAt) {
         this.trialEndsAt = trialEndsAt;
+    }
+
+    public Instant getPastDueSince() {
+        return pastDueSince;
+    }
+
+    public void setPastDueSince(Instant pastDueSince) {
+        this.pastDueSince = pastDueSince;
     }
 
 }

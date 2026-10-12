@@ -72,6 +72,7 @@ class BillingServiceTest {
     void getBillingStatus_returnsOwnerScopedFields() {
         Restaurant restaurant = restaurantForOwner(42L);
         UserAccount owner = ownerWithStatus(SubscriptionStatus.PAST_DUE);
+        owner.setPastDueSince(Instant.now().minus(1, ChronoUnit.DAYS));
         owner.setTrialEndsAt(Instant.now().plus(4, ChronoUnit.DAYS));
         owner.setStripeCustomerId("cus_owner");
         owner.setStripeSubscriptionId("sub_owner");
@@ -261,6 +262,56 @@ class BillingServiceTest {
         billingService.handleInvoicePaymentFailed(invoice);
 
         assertThat(owner.getBillingStatus()).isEqualTo(SubscriptionStatus.PAST_DUE);
+        assertThat(owner.getPastDueSince()).isNotNull();
+    }
+
+    @Test
+    void handleInvoicePaymentFailed_preservesPastDueSinceOnRepeatFailure() {
+        Instant firstFailure = Instant.now().minus(3, ChronoUnit.DAYS);
+        UserAccount owner = ownerWithStatus(SubscriptionStatus.PAST_DUE);
+        owner.setStripeCustomerId("cus_owner");
+        owner.setPastDueSince(firstFailure);
+        when(userAccountRepository.findByStripeCustomerId("cus_owner")).thenReturn(Optional.of(owner));
+
+        com.stripe.model.Invoice invoice = mock(com.stripe.model.Invoice.class);
+        when(invoice.getCustomer()).thenReturn("cus_owner");
+
+        billingService.handleInvoicePaymentFailed(invoice);
+
+        assertThat(owner.getPastDueSince()).isEqualTo(firstFailure);
+    }
+
+    @Test
+    void checkBillingAccess_allowsPastDueWithinGrace() {
+        Restaurant restaurant = restaurantForOwner(42L);
+        UserAccount owner = ownerWithStatus(SubscriptionStatus.PAST_DUE);
+        owner.setPastDueSince(Instant.now().minus(6, ChronoUnit.DAYS));
+        mockOwnerLookup(restaurant.getId(), owner);
+
+        billingService.checkBillingAccess(restaurant);
+    }
+
+    @Test
+    void checkBillingAccess_blocksPastDueAfterGrace() {
+        Restaurant restaurant = restaurantForOwner(42L);
+        UserAccount owner = ownerWithStatus(SubscriptionStatus.PAST_DUE);
+        owner.setPastDueSince(Instant.now().minus(8, ChronoUnit.DAYS));
+        mockOwnerLookup(restaurant.getId(), owner);
+
+        assertThatThrownBy(() -> billingService.checkBillingAccess(restaurant))
+                .isInstanceOf(BillingAccessBlockedException.class);
+    }
+
+    @Test
+    void getBillingStatus_accessBlockedWhenPastDueGraceExpired() {
+        Restaurant restaurant = restaurantForOwner(42L);
+        UserAccount owner = ownerWithStatus(SubscriptionStatus.PAST_DUE);
+        owner.setPastDueSince(Instant.now().minus(8, ChronoUnit.DAYS));
+        mockOwnerLookup(restaurant.getId(), owner);
+
+        BillingStatusResponse response = billingService.getBillingStatus(restaurant);
+
+        assertThat(response.accessAllowed()).isFalse();
     }
 
     @Test
@@ -276,6 +327,7 @@ class BillingServiceTest {
         billingService.handleInvoicePaymentSucceeded(invoice);
 
         assertThat(owner.getBillingStatus()).isEqualTo(SubscriptionStatus.ACTIVE);
+        assertThat(owner.getPastDueSince()).isNull();
     }
 
     @Test

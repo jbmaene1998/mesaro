@@ -12,7 +12,7 @@ public enum SubscriptionStatus {
     /** Subscription active and paid. Full access. */
     ACTIVE,
 
-    /** Payment failed; grace period applies before access is blocked. */
+    /** Payment failed; {@link BillingService} enforces a 7-day grace before blocking access. */
     PAST_DUE,
 
     /** Subscription explicitly cancelled; access blocked at period end. */
