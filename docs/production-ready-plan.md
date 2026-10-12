@@ -318,7 +318,7 @@ Scope stays simple (no HR suite / BI warehouse). Each module below has a **done 
 41. Harden `backend/docker-compose.prod.yml` for VPS: **bind DB/Redis to localhost only** (drop public `15432`/`16379`/`19200`); disable Elasticsearch for v1 unless RAM ≥4 GB; add Caddy/nginx reverse proxy with TLS.
 42. Agent deploy runbook: SSH/API to Hostinger VPS → `docker compose --env-file .env.prod up -d` → health checks; DNS A records + SSL via Hostinger DNS MCP when domain is on Hostinger.
 43. Monitoring: Actuator/prometheus scrape notes + alert stubs (webhook failures, outbox dead-letters, 5xx).
-44. Outbox: keep confirmation path; either implement or stop enqueueing stub events (`HoldExpired`, `PasswordResetRequested`, etc.) to avoid false reliability.
+44. [x] Outbox: `ReservationConfirmed` only — stopped enqueueing stub types (`HoldExpired`, `PasswordResetRequested`, `StaffAssignmentDeleted`); password reset stays sync; worker handles confirmation email only (legacy stub rows log warn + mark processed).
 45. Frontend: `vite build` → static host on VPS or Hostinger static site with `VITE_API_URL=https://api.<domain>`.
 
 **Exit criteria:** CI green; VPS stack private data plane; HTTPS live; agent can redeploy without hPanel; runbooks in `docs/`.
