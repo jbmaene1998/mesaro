@@ -2,12 +2,12 @@ name: Backend CI
 
 on:
   push:
-    branches: [main]
+    branches: [dev, main]
     paths:
       - "backend/**"
       - ".github/workflows/backend-ci.yml"
   pull_request:
-    branches: [main]
+    branches: [dev, main]
     paths:
       - "backend/**"
       - ".github/workflows/backend-ci.yml"
@@ -19,6 +19,22 @@ jobs:
       run:
         working-directory: backend
 
+    # IntegrationTestBase defaults to jdbc:postgresql://localhost:55432/mesaro
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_DB: mesaro
+          POSTGRES_USER: mesaro
+          POSTGRES_PASSWORD: mesaro
+        ports:
+          - 55432:5432
+        options: >-
+          --health-cmd "pg_isready -U mesaro -d mesaro"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -29,9 +45,13 @@ jobs:
           distribution: temurin
           java-version: "21"
           cache: maven
+          cache-dependency-path: backend/pom.xml
 
       - name: Run unit and integration tests
         run: ./mvnw -B test
+        env:
+          # Avoid requiring Redis for Spring Session during CI
+          SESSION_STORE_TYPE: none
 
       - name: Upload Surefire reports
         if: failure()

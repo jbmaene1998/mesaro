@@ -51,7 +51,7 @@ Engineering depth (holds, DST, tenancy) stays **under the hood**. Marketing stay
 |---------------------------|------------------------------|
 | Owner / staff login → Dashboard | Real email smoke (Resend/SMTP) in prod-like env |
 | Guest avail → hold → confirm | Counsel-approved Privacy/Terms (routes exist; drafts) |
-| STAFF cancel / switch / self-vacation | GitHub Actions **parked** (`.github/ci-parked/`) — not running yet |
+| STAFF cancel / switch / self-vacation | Backend CI active (`.github/workflows/backend-ci.yml`); E2E still parked (`.github/ci-parked/e2e.yml`) |
 | Billing success → `confirmCheckout` | Hostinger VPS cutover + live secrets |
 | Webhook claim → route → done/failed | PAST_DUE / dunning policy |
 | Guest booking billing-gated | Company formation / DPA / Stripe legal entity |
@@ -75,7 +75,7 @@ Full phase checklist: [production-ready-plan.md](production-ready-plan.md)
 | **Frontend** | React 18 + TypeScript + Vite + TanStack Query + Playwright |
 | **Vision core (aligned)** | Guest booking, embed, floor ops, tables/shifts, staff, flat €49.99 marketing |
 | **In-nav essentials (locked)** | Planning, vacations, reports — implemented; keep simple in marketing |
-| **Repo / process** | Private GitHub repo, CONTRIBUTING, PR templates, squash-only merges; CI parked |
+| **Repo / process** | Private GitHub repo, CONTRIBUTING, PR templates, squash-only merges; backend CI active, E2E parked |
 
 ### What is strong (keep)
 
