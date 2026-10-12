@@ -9,7 +9,7 @@
 
 ## How staging stays in sync
 
-1. Merge work into **`dev`** (feature PR → `dev`).
+1. Merge work into **`dev`** via PR only (feature → `dev`; no direct push).
 2. Actions checks out the commit, rsyncs into `/opt/mesaro` (keeps `backend/.env.staging`), builds the SPA, runs Compose.
 3. Browse `https://app.mesaro.staging` (Windows hosts → `192.168.0.129`).
 4. Promote to prod later with PR **`dev` → `main`** (prod workflow is a stub until Hostinger).

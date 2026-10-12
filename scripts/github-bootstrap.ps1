@@ -46,14 +46,14 @@ foreach ($l in $labels) {
 }
 Write-Host "Labels upserted."
 
-# --- Branch protection via ruleset ---
+# --- Branch protection via ruleset (dev + main; needs GitHub Pro on private repos) ---
 $ruleset = @{
-  name        = "main"
+  name        = "dev-and-main"
   target      = "branch"
   enforcement = "active"
   conditions  = @{
     ref_name = @{
-      include = @("refs/heads/main")
+      include = @("refs/heads/dev", "refs/heads/main")
       exclude = @()
     }
   }
@@ -63,9 +63,8 @@ $ruleset = @{
     @{
       type = "pull_request"
       parameters = @{
-        # Solo founder: PR required, reviews encouraged but not blocking.
-        # When a second engineer joins, set count=1, require_code_owner_review=$true,
-        # and remove the admin bypass below.
+        # Solo founder: PR required, reviews not blocking.
+        # When a second engineer joins, set count=1 and require_code_owner_review=$true.
         required_approving_review_count     = 0
         dismiss_stale_reviews_on_push       = $true
         require_code_owner_review           = $false
@@ -89,22 +88,24 @@ $tmp = [System.IO.Path]::GetTempFileName()
 Set-Content -Path $tmp -Value $rulesetJson -Encoding utf8
 
 try {
-  $existing = gh api "repos/$repo/rulesets" --jq '.[] | select(.name=="main") | .id' 2>$null
-  if ($existing) {
-    gh api -X DELETE "repos/$repo/rulesets/$existing" | Out-Null
+  foreach ($name in @("main", "dev-and-main")) {
+    $existing = gh api "repos/$repo/rulesets" --jq ".[] | select(.name==`"$name`") | .id" 2>$null
+    if ($existing) {
+      gh api -X DELETE "repos/$repo/rulesets/$existing" | Out-Null
+    }
   }
   gh api -X POST "repos/$repo/rulesets" --input $tmp | Out-Null
-  Write-Host "Ruleset 'main' applied (PR required, 1 approval, code owners, conversation resolution)."
+  Write-Host "Ruleset 'dev-and-main' applied (PR required on both branches)."
 }
 catch {
-  Write-Warning "Ruleset API failed; applying legacy branch protection instead."
+  Write-Warning "Ruleset API failed (often Free private plan). Use require-pull-request.yml until Pro; trying legacy protection."
   $legacy = @{
     required_status_checks        = $null
     enforce_admins                = $true
     required_pull_request_reviews = @{
       dismiss_stale_reviews           = $true
-      require_code_owner_reviews      = $true
-      required_approving_review_count = 1
+      require_code_owner_reviews      = $false
+      required_approving_review_count = 0
       require_last_push_approval      = $false
     }
     restrictions                  = $null
@@ -113,10 +114,17 @@ catch {
     required_conversation_resolution = $true
   } | ConvertTo-Json -Depth 8 -Compress
   Set-Content -Path $tmp -Value $legacy -Encoding utf8
-  gh api -X PUT "repos/$repo/branches/main/protection" `
-    -H "Accept: application/vnd.github+json" `
-    --input $tmp | Out-Null
-  Write-Host "Legacy branch protection applied."
+  foreach ($branch in @("main", "dev")) {
+    try {
+      gh api -X PUT "repos/$repo/branches/$branch/protection" `
+        -H "Accept: application/vnd.github+json" `
+        --input $tmp | Out-Null
+      Write-Host "Legacy branch protection applied on $branch."
+    }
+    catch {
+      Write-Warning "Could not protect $branch (upgrade to GitHub Pro for private repos)."
+    }
+  }
 }
 finally {
   Remove-Item $tmp -ErrorAction SilentlyContinue

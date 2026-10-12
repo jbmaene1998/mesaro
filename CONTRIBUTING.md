@@ -30,7 +30,7 @@ Rules:
 - Promote staging → prod with a PR **`dev` → `main`**
 - One concern per branch / PR
 - No long-lived feature branches; open a draft PR early if work spans days
-- Do **not** commit or push directly to `main`
+- Do **not** commit or push directly to `dev` or `main` — PRs only
 
 Examples: `feat/staff-cancel-reservation`, `fix/billing-session-confirm`, `docs/branching-rules`
 
@@ -75,7 +75,7 @@ docs: add branching and release conventions
 
 ### Review expectations
 
-- While solo: PRs are still **required** for `main` (no direct push); self-merge is allowed via admin bypass
+- While solo: PRs are still **required** for both `dev` and `main` (no direct push); self-merge is allowed
 - With a team: at least **1 approving review**; author must not be the only approval; enable Code Owner review
 - Address or explicitly dismiss review comments before merge
 - Prefer small, focused follow-up PRs over drive-by scope creep in review

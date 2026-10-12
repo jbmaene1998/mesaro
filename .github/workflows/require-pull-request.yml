@@ -1,0 +1,32 @@
+# Free-plan stand-in for branch protection: fail pushes to dev/main that are not
+# associated with a pull request (direct pushes). Native rulesets need GitHub Pro
+# on private repos — enable those when available and keep this as belt-and-braces.
+name: Require pull request
+
+on:
+  push:
+    branches: [dev, main]
+
+jobs:
+  require-pr:
+    name: Must land via pull request
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - name: Reject direct push
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+          REF: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          # Commits created by merging a PR are linked; bare git push is not.
+          count="$(gh api "repos/${REPO}/commits/${SHA}/pulls" --jq 'length')"
+          if [ "$count" -eq 0 ]; then
+            echo "::error::Direct push to '${REF}' is not allowed. Open a PR (feature → dev, or dev → main)."
+            exit 1
+          fi
+          echo "OK: commit ${SHA} is associated with ${count} pull request(s)."

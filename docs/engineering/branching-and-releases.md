@@ -24,7 +24,7 @@ feat/* | fix/* | …  ──PR──►  dev  ──PR──►  main
 - Hotfixes that must skip staging: still land on `dev` first when possible; emergency `fix/*` → `main` only with an explicit follow-up merge back into `dev`.
 - Tags / GitHub Releases are cut from `main`.
 
-## Protected `main` (policy + settings)
+## Protected `dev` and `main` (policy + settings)
 
 > **Enforcement note:** Branch protection / rulesets on a **private** repo require GitHub Pro (or Team/Enterprise). Merge methods below are applied; protection rules are policy until Pro is available. See [`.github/REPO_SETTINGS.md`](../../.github/REPO_SETTINGS.md).
 
@@ -40,7 +40,7 @@ feat/* | fix/* | …  ──PR──►  dev  ──PR──►  main
 | Bypass allowances | Repo admins may bypass review gates on PRs only (solo self-merge) |
 | Status checks | Required once CI is enabled (later) |
 
-**Direct pushes to `main` are not allowed.** Prefer not pushing directly to `dev` either — use feature branches + PRs; admin push to `dev` is an escape hatch only.
+**Direct pushes to `dev` and `main` are not allowed.** Use feature branches + PRs into `dev`, then PR `dev` → `main` to promote. On Free private repos, native rulesets need GitHub Pro; [`.github/workflows/require-pull-request.yml`](../../.github/workflows/require-pull-request.yml) fails the check when a push is not tied to a PR.
 
 ## Deploy mapping
 
