@@ -245,7 +245,7 @@ export function FeaturesPage() {
     <div className="pb-20">
       <section className="mk-hero relative min-h-[70vh] overflow-hidden">
         <motion.img
-          src="/marketing/feature-timeline.jpg"
+          src="/marketing/device-timeline.jpg"
           alt=""
           aria-hidden
           className="absolute inset-0 h-full w-full object-cover"
@@ -294,9 +294,9 @@ export function FeaturesPage() {
         </Reveal>
         <Reveal delay={0.1}>
           <ParallaxImage
-            src="/marketing/mesaro-feature-timeline.jpg"
-            alt=""
-            className="aspect-[4/3] rounded-[2rem]"
+            src="/marketing/ui-timeline.jpg"
+            alt="Mesaro service timeline"
+            className="aspect-[4/3] overflow-hidden rounded-[2rem] border border-[var(--mk-line)]"
             intensity={24}
           />
         </Reveal>
@@ -318,9 +318,9 @@ export function FeaturesPage() {
         </Reveal>
         <Reveal delay={0.1} className="lg:order-1">
           <ParallaxImage
-            src="/marketing/mesaro-feature-floor.jpg"
-            alt=""
-            className="aspect-[4/3] rounded-[2rem]"
+            src="/marketing/ui-guest-booking.jpg"
+            alt="Mesaro guest booking widget"
+            className="aspect-[4/3] overflow-hidden rounded-[2rem] border border-[var(--mk-line)]"
             intensity={24}
           />
         </Reveal>
@@ -328,17 +328,47 @@ export function FeaturesPage() {
 
       <section className="mx-auto mt-24 w-full max-w-6xl px-4">
         <div className="grid gap-6 md:grid-cols-2">
-          {[
-            { eyebrow: copy.shiftEyebrow, title: copy.shiftTitle, body: copy.shiftBody },
-            { eyebrow: copy.dashboardEyebrow, title: copy.dashboardTitle, body: copy.dashboardBody },
-            { eyebrow: copy.multiEyebrow, title: copy.multiTitle, body: copy.multiBody }
-          ].map((block, index) => (
-            <Reveal key={block.title} delay={index * 0.06} className={`mk-panel rounded-[1.75rem] p-8 ${index === 0 ? "md:col-span-2" : ""}`}>
-              <p className="mk-eyebrow">{block.eyebrow}</p>
-              <h2 className="mk-display mt-3 text-3xl text-[var(--mk-mist)] sm:text-4xl">{block.title}</h2>
-              <p className="mt-4 max-w-3xl text-[var(--mk-pewter)]">{block.body}</p>
-            </Reveal>
-          ))}
+          <Reveal className="mk-panel overflow-hidden rounded-[1.75rem] md:col-span-2">
+            <div className="grid lg:grid-cols-2 lg:items-center">
+              <div className="p-8">
+                <p className="mk-eyebrow">{copy.shiftEyebrow}</p>
+                <h2 className="mk-display mt-3 text-3xl text-[var(--mk-mist)] sm:text-4xl">{copy.shiftTitle}</h2>
+                <p className="mt-4 max-w-3xl text-[var(--mk-pewter)]">{copy.shiftBody}</p>
+              </div>
+              <ParallaxImage
+                src="/marketing/ui-tables.jpg"
+                alt="Mesaro live table status"
+                className="min-h-[220px] border-t border-[var(--mk-line)] lg:min-h-full lg:border-l lg:border-t-0"
+                intensity={18}
+              />
+            </div>
+          </Reveal>
+          <Reveal delay={0.06} className="mk-panel overflow-hidden rounded-[1.75rem]">
+            <ParallaxImage
+              src="/marketing/ui-dashboard.jpg"
+              alt="Mesaro dashboard"
+              className="aspect-[16/10] border-b border-[var(--mk-line)]"
+              intensity={16}
+            />
+            <div className="p-8">
+              <p className="mk-eyebrow">{copy.dashboardEyebrow}</p>
+              <h2 className="mk-display mt-3 text-3xl text-[var(--mk-mist)] sm:text-4xl">{copy.dashboardTitle}</h2>
+              <p className="mt-4 text-[var(--mk-pewter)]">{copy.dashboardBody}</p>
+            </div>
+          </Reveal>
+          <Reveal delay={0.12} className="mk-panel overflow-hidden rounded-[1.75rem]">
+            <ParallaxImage
+              src="/marketing/ui-reservations.jpg"
+              alt="Mesaro reservations list"
+              className="aspect-[16/10] border-b border-[var(--mk-line)]"
+              intensity={16}
+            />
+            <div className="p-8">
+              <p className="mk-eyebrow">{copy.multiEyebrow}</p>
+              <h2 className="mk-display mt-3 text-3xl text-[var(--mk-mist)] sm:text-4xl">{copy.multiTitle}</h2>
+              <p className="mt-4 text-[var(--mk-pewter)]">{copy.multiBody}</p>
+            </div>
+          </Reveal>
         </div>
       </section>
 

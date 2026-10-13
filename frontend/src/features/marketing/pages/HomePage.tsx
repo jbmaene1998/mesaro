@@ -476,7 +476,7 @@ export function HomePage() {
   usePageMeta({
     title: copy.metaTitle,
     description: copy.metaDescription,
-    ogImage: "https://mesaro.com/marketing/hero-service-night.jpg",
+    ogImage: "https://mesaro.com/marketing/ui-dashboard.jpg",
     jsonLd: {
       "@context": "https://schema.org",
       "@type": "SoftwareApplication",
@@ -608,8 +608,16 @@ export function HomePage() {
         </Reveal>
         <Reveal delay={0.12}>
           <ParallaxImage
-            src="/marketing/benefit-table.jpg"
-            alt=""
+            src="/marketing/device-dashboard.jpg"
+            alt={
+              locale === "nl"
+                ? "Mesaro dashboard op een tablet aan de hoststand"
+                : locale === "fr"
+                  ? "Tableau de bord Mesaro sur une tablette au pupitre"
+                  : locale === "es"
+                    ? "Panel de Mesaro en una tableta en el host stand"
+                    : "Mesaro dashboard on a tablet at the host stand"
+            }
             className="aspect-[4/5] rounded-[2rem]"
             intensity={28}
           />
@@ -631,23 +639,47 @@ export function HomePage() {
               >
                 {index === 0 ? (
                   <ParallaxImage
-                    src="/marketing/feature-timeline.jpg"
-                    alt=""
-                    className="aspect-[16/10] rounded-[1.75rem]"
+                    src="/marketing/ui-timeline.jpg"
+                    alt={
+                      locale === "nl"
+                        ? "Mesaro service-tijdlijn met gereserveerde tafels"
+                        : locale === "fr"
+                          ? "Timeline de service Mesaro avec réservations"
+                          : locale === "es"
+                            ? "Timeline de servicio Mesaro con reservas"
+                            : "Mesaro service timeline with table reservations"
+                    }
+                    className="aspect-[16/10] overflow-hidden rounded-[1.75rem] border border-[var(--mk-line)]"
                     intensity={22}
                   />
                 ) : index === 1 ? (
                   <ParallaxImage
-                    src="/marketing/mesaro-feature-floor.jpg"
-                    alt=""
-                    className="aspect-[16/10] rounded-[1.75rem]"
+                    src="/marketing/ui-tables.jpg"
+                    alt={
+                      locale === "nl"
+                        ? "Mesaro tafelstatus live overzicht"
+                        : locale === "fr"
+                          ? "Statut live des tables dans Mesaro"
+                          : locale === "es"
+                            ? "Estado en vivo de mesas en Mesaro"
+                            : "Mesaro live table status overview"
+                    }
+                    className="aspect-[16/10] overflow-hidden rounded-[1.75rem] border border-[var(--mk-line)]"
                     intensity={22}
                   />
                 ) : (
                   <ParallaxImage
-                    src="/marketing/mesaro-hero-dining.jpg"
-                    alt=""
-                    className="aspect-[16/10] rounded-[1.75rem]"
+                    src="/marketing/ui-guest-booking.jpg"
+                    alt={
+                      locale === "nl"
+                        ? "Gastboekingspagina met beschikbare tijdslots"
+                        : locale === "fr"
+                          ? "Page de réservation client avec créneaux disponibles"
+                          : locale === "es"
+                            ? "Página de reserva de huéspedes con horarios disponibles"
+                            : "Guest booking page with available time slots"
+                    }
+                    className="aspect-[16/10] overflow-hidden rounded-[1.75rem] border border-[var(--mk-line)]"
                     intensity={22}
                   />
                 )}
@@ -702,9 +734,17 @@ export function HomePage() {
               </Link>
             </div>
             <ParallaxImage
-              src="/marketing/mesaro-feature-timeline.jpg"
-              alt=""
-              className="min-h-[260px] lg:min-h-full"
+              src="/marketing/ui-reservations.jpg"
+              alt={
+                locale === "nl"
+                  ? "Mesaro reservatielijst met filters en status"
+                  : locale === "fr"
+                    ? "Liste des réservations Mesaro avec filtres et statut"
+                    : locale === "es"
+                      ? "Lista de reservas Mesaro con filtros y estado"
+                      : "Mesaro reservations list with filters and status"
+              }
+              className="min-h-[260px] border-t border-[var(--mk-line)] lg:min-h-full lg:border-l lg:border-t-0"
               intensity={16}
             />
           </div>

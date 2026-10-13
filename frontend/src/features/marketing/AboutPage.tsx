@@ -224,8 +224,16 @@ export function AboutPage() {
         </Reveal>
         <Reveal delay={0.1}>
           <ParallaxImage
-            src="/marketing/mesaro-about-pass.jpg"
-            alt=""
+            src="/marketing/device-dashboard.jpg"
+            alt={
+              locale === "nl"
+                ? "Mesaro op een tablet in de restaurantzaal"
+                : locale === "fr"
+                  ? "Mesaro sur une tablette en salle"
+                  : locale === "es"
+                    ? "Mesaro en una tableta en el comedor"
+                    : "Mesaro on a tablet on the restaurant floor"
+            }
             className="aspect-[4/5] rounded-[2rem]"
             intensity={26}
           />
