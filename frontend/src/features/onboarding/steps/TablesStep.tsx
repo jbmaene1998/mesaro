@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import type { DiningTable } from "@/api/types";
 import { Button } from "@/components/ui/button";
@@ -21,6 +21,27 @@ interface TablesStepProps {
   onContinue: () => void;
 }
 
+function interpolate(template: string, values: Record<string, string | number>) {
+  return Object.entries(values).reduce(
+    (result, [key, value]) => result.replaceAll(`{${key}}`, String(value)),
+    template
+  );
+}
+
+function seatMixLabel(drafts: DraftTable[]) {
+  const counts = new Map<number, number>();
+  drafts.forEach((draft) => {
+    if (draft.seats < 1) {
+      return;
+    }
+    counts.set(draft.seats, (counts.get(draft.seats) ?? 0) + 1);
+  });
+  return [...counts.entries()]
+    .sort((a, b) => a[0] - b[0])
+    .map(([seats, count]) => `${count}×${seats}`)
+    .join(" · ");
+}
+
 export function TablesStep({ copy, existingTables, onSaved, onContinue }: TablesStepProps) {
   const [drafts, setDrafts] = useState<DraftTable[]>(() =>
     existingTables.length > 0
@@ -36,6 +57,13 @@ export function TablesStep({ copy, existingTables, onSaved, onContinue }: Tables
         }))
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const alreadySaved = existingTables.length > 0;
+
+  const totalSeats = useMemo(
+    () => drafts.reduce((sum, draft) => sum + Math.max(0, draft.seats || 0), 0),
+    [drafts]
+  );
+  const mix = useMemo(() => seatMixLabel(drafts), [drafts]);
 
   const applyTemplate = (id: "small" | "medium") => {
     const pack = TABLE_TEMPLATES.find((template) => template.id === id);
@@ -52,7 +80,7 @@ export function TablesStep({ copy, existingTables, onSaved, onContinue }: Tables
   };
 
   const handleSave = async () => {
-    if (existingTables.length >= 1) {
+    if (alreadySaved) {
       onContinue();
       return;
     }
@@ -83,36 +111,61 @@ export function TablesStep({ copy, existingTables, onSaved, onContinue }: Tables
     <div className="space-y-4">
       <p className="text-sm text-muted-foreground">{copy.tablesWhy}</p>
       <p className="rounded-md border bg-muted/40 px-3 py-2 text-sm">{copy.tablesExample}</p>
-      {existingTables.length === 0 ? (
-        <div className="flex flex-wrap gap-2">
-          <Button type="button" variant="outline" size="sm" onClick={() => applyTemplate("small")}>
-            {copy.applySmall}
-          </Button>
-          <Button type="button" variant="outline" size="sm" onClick={() => applyTemplate("medium")}>
-            {copy.applyMedium}
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() =>
-              setDrafts((current) => [
-                ...current,
-                { key: `new-${Date.now()}`, label: `T${current.length + 1}`, seats: 2 }
-              ])
-            }
-          >
-            {copy.addTable}
-          </Button>
+
+      <ul className="list-disc space-y-1 pl-5 text-sm text-muted-foreground">
+        <li>{copy.tablesTip1}</li>
+        <li>{copy.tablesTip2}</li>
+        <li>{copy.tablesTip3}</li>
+      </ul>
+
+      {alreadySaved ? (
+        <p className="rounded-md border border-primary/20 bg-primary/5 px-3 py-2 text-sm">{copy.tablesAlreadyDone}</p>
+      ) : (
+        <div className="space-y-2">
+          <p className="text-sm font-medium">{copy.tablesPickTemplate}</p>
+          <div className="flex flex-wrap gap-2">
+            <Button type="button" variant="outline" size="sm" onClick={() => applyTemplate("small")}>
+              {copy.applySmall}
+            </Button>
+            <Button type="button" variant="outline" size="sm" onClick={() => applyTemplate("medium")}>
+              {copy.applyMedium}
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() =>
+                setDrafts((current) => [
+                  ...current,
+                  { key: `new-${Date.now()}`, label: `T${current.length + 1}`, seats: 2 }
+                ])
+              }
+            >
+              {copy.addTable}
+            </Button>
+          </div>
         </div>
-      ) : null}
+      )}
+
+      <div className="flex flex-wrap gap-x-4 gap-y-1 rounded-md border px-3 py-2 text-sm">
+        <span className="font-medium">
+          {interpolate(copy.tablesSummary, { count: drafts.length, seats: totalSeats })}
+        </span>
+        {mix ? <span className="text-muted-foreground">{interpolate(copy.tablesMix, { mix })}</span> : null}
+      </div>
+
       <div className="space-y-2">
+        <div className="grid grid-cols-[1fr_100px_auto] gap-2 px-1 text-xs font-medium text-muted-foreground">
+          <span>{copy.tablesHeaderLabel}</span>
+          <span>{copy.tablesHeaderSeats}</span>
+          <span className="w-16" />
+        </div>
         {drafts.map((draft, index) => (
           <div key={draft.key} className="grid grid-cols-[1fr_100px_auto] gap-2">
             <Input
               aria-label={copy.tableLabel}
               value={draft.label}
-              disabled={existingTables.length > 0}
+              disabled={alreadySaved}
               onChange={(event) => {
                 const value = event.target.value;
                 setDrafts((current) =>
@@ -127,7 +180,7 @@ export function TablesStep({ copy, existingTables, onSaved, onContinue }: Tables
               min={1}
               aria-label={copy.tableSeats}
               value={draft.seats}
-              disabled={existingTables.length > 0}
+              disabled={alreadySaved}
               onChange={(event) => {
                 const value = Number(event.target.value) || 1;
                 setDrafts((current) =>
@@ -137,23 +190,25 @@ export function TablesStep({ copy, existingTables, onSaved, onContinue }: Tables
                 );
               }}
             />
-            {existingTables.length === 0 ? (
+            {alreadySaved ? (
+              <span className="w-16" />
+            ) : (
               <Button
                 type="button"
                 variant="ghost"
                 size="sm"
+                className="w-16"
                 onClick={() => setDrafts((current) => current.filter((_, i) => i !== index))}
               >
                 {copy.remove}
               </Button>
-            ) : (
-              <span />
             )}
           </div>
         ))}
       </div>
+
       <Button type="button" onClick={() => void handleSave()} disabled={isSubmitting || drafts.length === 0}>
-        {isSubmitting ? copy.saving : existingTables.length > 0 ? copy.continue : copy.saveTables}
+        {isSubmitting ? copy.saving : alreadySaved ? copy.continue : copy.saveTables}
       </Button>
     </div>
   );
