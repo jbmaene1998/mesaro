@@ -289,6 +289,17 @@ public class VacationService {
 
         Vacation saved = vacationRepository.save(vacation);
         log.info("Updated vacation {} for restaurant {}", vacationId, restaurantId);
+        auditService.record(
+                AuditEventType.VACATION_UPDATED,
+                restaurantId,
+                null,
+                vacationId,
+                "VACATION",
+                Map.of(
+                        "type", saved.getType() == null ? "" : saved.getType().name(),
+                        "status", saved.getStatus() == null ? "" : saved.getStatus().name()
+                )
+        );
         return saved;
     }
 
@@ -457,8 +468,17 @@ public class VacationService {
     @PreAuthorize("@restaurantAccessGuard.hasAtLeastRole(#restaurantId, 'MANAGER')")
     public void delete(Long restaurantId, Long vacationId) {
         Vacation vacation = findByIdAndRestaurant(vacationId, restaurantId);
+        String type = vacation.getType() == null ? "" : vacation.getType().name();
         vacationRepository.delete(vacation);
         log.info("Deleted vacation {} from restaurant {}", vacationId, restaurantId);
+        auditService.record(
+                AuditEventType.VACATION_DELETED,
+                restaurantId,
+                null,
+                vacationId,
+                "VACATION",
+                Map.of("type", type)
+        );
     }
 
     private void validateDateRange(LocalDate startDate, LocalDate endDate) {

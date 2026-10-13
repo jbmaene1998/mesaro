@@ -93,6 +93,82 @@ function Wait-ForPort {
     return $false
 }
 
+function Wait-ForKibanaApiReady {
+    param(
+        [string]$KibanaUrl = "http://localhost:5601",
+        [int]$TimeoutSeconds = 180
+    )
+
+    $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
+    while ((Get-Date) -lt $deadline) {
+        try {
+            $status = Invoke-RestMethod -Method Get -Uri "$KibanaUrl/api/status" -TimeoutSec 15
+            if ($null -ne $status) {
+                Write-Host "Kibana API is ready."
+                return $true
+            }
+        }
+        catch {
+            # Keep waiting until Kibana finishes startup.
+        }
+        Start-Sleep -Seconds 3
+    }
+
+    return $false
+}
+
+function Ensure-KibanaDataView {
+    param(
+        [string]$KibanaUrl = "http://localhost:5601",
+        [string]$DataViewTitle,
+        [string]$DataViewName,
+        [string]$TimeFieldName = "@timestamp"
+    )
+
+    $headers = @{ "kbn-xsrf" = "true" }
+    $listUri = "$KibanaUrl/api/data_views/data_views"
+
+    try {
+        $existing = Invoke-RestMethod -Method Get -Uri $listUri -Headers $headers -TimeoutSec 20
+        $match = @($existing.data_view | Where-Object { $_.title -eq $DataViewTitle })
+        if ($match.Count -gt 0) {
+            Write-Host "Kibana data view '$DataViewTitle' already exists."
+            return
+        }
+    }
+    catch {
+        Write-Warning "Could not check existing Kibana data views. Will try creating one anyway. $($_.Exception.Message)"
+    }
+
+    $payload = @{
+        data_view = @{
+            title = $DataViewTitle
+            name = $DataViewName
+            timeFieldName = $TimeFieldName
+            allowNoIndex = $true
+        }
+    } | ConvertTo-Json -Depth 5
+
+    try {
+        Invoke-RestMethod `
+            -Method Post `
+            -Uri "$KibanaUrl/api/data_views/data_view" `
+            -Headers $headers `
+            -ContentType "application/json" `
+            -Body $payload `
+            -TimeoutSec 20 | Out-Null
+        Write-Host "Created Kibana data view '$DataViewTitle'."
+    }
+    catch {
+        $errorMessage = $_.Exception.Message
+        if ($errorMessage -match "409" -or $errorMessage -match "conflict" -or $errorMessage -match "already exists") {
+            Write-Host "Kibana data view '$DataViewTitle' already exists."
+            return
+        }
+        Write-Warning "Failed to create Kibana data view '$DataViewTitle'. $errorMessage"
+    }
+}
+
 function Stop-ProcessListeningOnPort {
     param(
         [Parameter(Mandatory = $true)]
@@ -203,6 +279,13 @@ if (-not (Wait-ForPort -Port 5601 -ServiceName "Kibana" -TimeoutSeconds 180)) {
         throw "Kibana is not reachable on localhost:5601. Start your local Kibana service and retry."
     }
     throw "Kibana is not reachable on localhost:5601. Run .\run-infra.ps1 and retry."
+}
+if (-not (Wait-ForKibanaApiReady -KibanaUrl "http://localhost:5601" -TimeoutSeconds 180)) {
+    Write-Warning "Kibana API is not ready; skipping data view setup."
+}
+else {
+    Ensure-KibanaDataView -DataViewTitle "mesaro-api-actions*" -DataViewName "Mesaro API Actions"
+    Ensure-KibanaDataView -DataViewTitle "mesaro-audit-events*" -DataViewName "Mesaro Audit Events"
 }
 
 Stop-ProcessListeningOnPort -Port 8080 -ServiceName "Backend"

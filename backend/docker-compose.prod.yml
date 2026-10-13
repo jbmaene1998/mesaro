@@ -78,6 +78,27 @@ services:
     networks:
       - mesaro-internal
 
+  kibana-prod:
+    profiles: ["elastic"]
+    image: docker.elastic.co/kibana/kibana:8.11.4
+    container_name: mesaro-prod-kibana
+    environment:
+      ELASTICSEARCH_HOSTS: ${KIBANA_ELASTICSEARCH_HOSTS:-http://elasticsearch-prod:9200}
+    ports:
+      - "127.0.0.1:5601:5601"
+    depends_on:
+      elasticsearch-prod:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:5601/api/status >/dev/null || exit 1"]
+      interval: 20s
+      timeout: 10s
+      retries: 15
+      start_period: 45s
+    restart: unless-stopped
+    networks:
+      - mesaro-internal
+
   app-prod:
     build:
       context: .
@@ -100,12 +121,14 @@ services:
       REDIS_PASSWORD: ${REDIS_PASSWORD?REDIS_PASSWORD is required}
       SESSION_STORE_TYPE: redis
 
-      # v1 default: disable ES action logging unless elastic profile is used
+      # v1 default: disable ES observability unless elastic profile is used
       ELASTICSEARCH_URIS: ${ELASTICSEARCH_URIS:-}
       ELASTICSEARCH_USERNAME: ${ELASTICSEARCH_USERNAME:-}
       ELASTICSEARCH_PASSWORD: ${ELASTICSEARCH_PASSWORD:-}
       ELASTICSEARCH_HEALTH_ENABLED: ${ELASTICSEARCH_HEALTH_ENABLED:-false}
       APP_LOG_ELASTIC_ENABLED: ${APP_LOG_ELASTIC_ENABLED:-false}
+      APP_LOG_ELASTIC_INDEX: ${APP_LOG_ELASTIC_INDEX:-mesaro-api-actions-prod}
+      APP_LOG_ELASTIC_AUDIT_INDEX: ${APP_LOG_ELASTIC_AUDIT_INDEX:-mesaro-audit-events-prod}
 
       JWT_SECRET: ${JWT_SECRET?JWT_SECRET is required}
       HOLD_TOKEN_SECRET: ${HOLD_TOKEN_SECRET?HOLD_TOKEN_SECRET is required}

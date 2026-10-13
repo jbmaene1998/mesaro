@@ -15,7 +15,7 @@ Run the same DevOps shape as a Hostinger VPS deploy — on your machine.
 | Outbound email capture | Mailpit UI on `:8025` |
 | Healthchecks | Compose + `/actuator/health/readiness` |
 
-Elasticsearch stays off by default (lighter). Real VPS steps: `docs/deploy-hostinger-vps.md`.
+Elasticsearch + Kibana stay off by default (lighter). Enable with compose `--profile elastic`. Real VPS steps: `docs/deploy-hostinger-vps.md`.
 
 ## Quick start
 

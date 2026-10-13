@@ -1,5 +1,7 @@
 package com.mesaro.table;
 
+import com.mesaro.audit.AuditEventType;
+import com.mesaro.audit.AuditService;
 import com.mesaro.common.exception.ConflictException;
 import com.mesaro.common.exception.NotFoundException;
 import com.mesaro.common.exception.ValidationException;
@@ -13,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 import jakarta.persistence.EntityManager;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 @Service
@@ -25,16 +28,19 @@ public class TableCombinationService {
     private final DiningTableRepository tableRepository;
     private final RestaurantService restaurantService;
     private final EntityManager entityManager;
+    private final AuditService auditService;
 
     public TableCombinationService(
             TableCombinationRepository combinationRepository,
             DiningTableRepository tableRepository,
             RestaurantService restaurantService,
-            EntityManager entityManager) {
+            EntityManager entityManager,
+            AuditService auditService) {
         this.combinationRepository = combinationRepository;
         this.tableRepository = tableRepository;
         this.restaurantService = restaurantService;
         this.entityManager = entityManager;
+        this.auditService = auditService;
     }
 
     public TableCombination findById(Long id) {
@@ -90,6 +96,14 @@ public class TableCombinationService {
         TableCombination saved = combinationRepository.save(combination);
         log.info("Created combination '{}' with {} tables for restaurant {}",
                 saved.getName(), tables.size(), restaurantId);
+        auditService.record(
+                AuditEventType.TABLE_COMBINATION_CREATED,
+                restaurantId,
+                null,
+                saved.getId(),
+                "TABLE_COMBINATION",
+                Map.of("name", saved.getName(), "tableCount", tables.size())
+        );
         return saved;
     }
 
@@ -130,14 +144,31 @@ public class TableCombinationService {
 
         TableCombination saved = combinationRepository.save(combination);
         log.info("Updated combination '{}' for restaurant {}", saved.getName(), restaurantId);
+        auditService.record(
+                AuditEventType.TABLE_COMBINATION_UPDATED,
+                restaurantId,
+                null,
+                saved.getId(),
+                "TABLE_COMBINATION",
+                Map.of("name", saved.getName())
+        );
         return saved;
     }
 
     @Transactional
     public void delete(Long restaurantId, Long combinationId) {
         TableCombination combination = findByIdAndRestaurant(combinationId, restaurantId);
+        String name = combination.getName();
         combinationRepository.delete(combination);
-        log.info("Deleted combination '{}' from restaurant {}", combination.getName(), restaurantId);
+        log.info("Deleted combination '{}' from restaurant {}", name, restaurantId);
+        auditService.record(
+                AuditEventType.TABLE_COMBINATION_DELETED,
+                restaurantId,
+                null,
+                combinationId,
+                "TABLE_COMBINATION",
+                Map.of("name", name)
+        );
     }
 
     private Set<DiningTable> resolveAndValidateTables(Long restaurantId, List<Long> tableIds, Long excludeCombinationId) {

@@ -127,6 +127,8 @@ public class AuthService {
             } catch (Exception ex) {
                 log.warn("Failed to send welcome email for user {}", savedUser.getId());
             }
+            auditAuthEvent(AuditEventType.USER_REGISTERED, savedUser.getId(), savedUser.getEmail(),
+                    Map.of("outcome", "SUCCESS"));
             return issueTokens(savedUser, Instant.now());
         } catch (DataIntegrityViolationException ex) {
             throw mapRegistrationIntegrityViolation(ex);
@@ -231,6 +233,8 @@ public class AuthService {
         user.setFullName(trimToNull(request.fullName()));
         user.setPhone(trimToNull(request.phone()));
         userAccountRepository.save(user);
+        auditAuthEvent(AuditEventType.USER_UPDATED, userId, user.getEmail(),
+                Map.of("outcome", "SUCCESS"));
 
         List<AuthRestaurantSummary> restaurants = userRestaurantRepository.findRestaurantSummariesByUserId(userId);
         return new CurrentUserResponse(
@@ -303,6 +307,8 @@ public class AuthService {
         userAccountRepository.save(user);
 
         log.info("Soft deleted account for user {}", userId);
+        auditAuthEvent(AuditEventType.USER_DELETED, userId, null,
+                Map.of("outcome", "SUCCESS", "ownedRestaurantCount", ownedRestaurantIds.size()));
     }
 
     private Optional<RefreshToken> findActiveRefreshTokenForUpdate(String tokenHash) {

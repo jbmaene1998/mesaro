@@ -1,5 +1,6 @@
 package com.mesaro.billing;
 
+import com.mesaro.audit.AuditService;
 import com.mesaro.common.exception.BillingAccessBlockedException;
 import com.mesaro.infra.EmailService;
 import com.mesaro.restaurant.Restaurant;
@@ -36,6 +37,7 @@ class BillingServiceTest {
     @Mock private UserAccountRepository userAccountRepository;
     @Mock private EmailService emailService;
     @Mock private JdbcTemplate jdbcTemplate;
+    @Mock private AuditService auditService;
 
     private BillingService billingService;
 
@@ -43,7 +45,7 @@ class BillingServiceTest {
     void setUp() {
         billingService = new BillingService(
                 stripeService, userRestaurantRepository, userAccountRepository,
-                emailService, jdbcTemplate);
+                emailService, jdbcTemplate, auditService);
     }
 
     @Test

@@ -47,7 +47,7 @@ curl -fsSI https://app.yourdomain.com
 | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_ID` | Live or test |
 | `APP_BASE_URL`, `API_BASE_URL`, `FRONTEND_URL`, `API_CORS_ORIGINS` | `https://…` |
 
-Optional Elasticsearch: `--profile elastic` and set `ELASTICSEARCH_URIS` + `APP_LOG_ELASTIC_ENABLED=true`.
+Optional Elasticsearch + Kibana: `--profile elastic` and set `ELASTICSEARCH_URIS=http://elasticsearch-prod:9200` + `APP_LOG_ELASTIC_ENABLED=true`. Kibana is bound to `127.0.0.1:5601`. In Discover use data views `mesaro-api-actions*` (HTTP) and `mesaro-audit-events*` (domain audit).
 
 ## Redeploy (agent-friendly)
 

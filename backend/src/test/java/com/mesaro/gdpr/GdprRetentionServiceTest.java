@@ -1,5 +1,6 @@
 package com.mesaro.gdpr;
 
+import com.mesaro.audit.AuditService;
 import com.mesaro.config.AppProperties;
 import com.mesaro.reservation.ReservationRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -28,6 +29,9 @@ class GdprRetentionServiceTest {
     @Mock
     private JdbcTemplate jdbcTemplate;
 
+    @Mock
+    private AuditService auditService;
+
     private AppProperties appProperties;
     private GdprRetentionService gdprRetentionService;
 
@@ -38,7 +42,8 @@ class GdprRetentionServiceTest {
         appProperties.getGdpr().setReservationPiiRetentionDays(365);
         appProperties.getGdpr().setEmailLogRetentionDays(365);
         appProperties.getGdpr().setAuditLogRetentionDays(365);
-        gdprRetentionService = new GdprRetentionService(appProperties, reservationRepository, jdbcTemplate);
+        gdprRetentionService = new GdprRetentionService(
+                appProperties, reservationRepository, jdbcTemplate, auditService);
     }
 
     @Test
