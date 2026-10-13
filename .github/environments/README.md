@@ -42,16 +42,16 @@ Admins set values. Collaborators cannot read secret values after save. When hiri
 | `API_BASE_URL` | `https://api.mesaro.staging` |
 | `FRONTEND_URL` | `https://app.mesaro.staging` |
 | `API_CORS_ORIGINS` | `https://app.mesaro.staging` |
-| `EMAIL_PROVIDER` | `smtp` (Mailpit on staging) |
-| `SMTP_HOST` | `mailpit` |
+| `EMAIL_PROVIDER` | `resend` (real delivery; Mailpit unused while resend) |
+| `SMTP_HOST` | `mailpit` (unused while `EMAIL_PROVIDER=resend`) |
 | `SMTP_PORT` | `1025` |
 | `SMTP_USERNAME` | empty |
 | `SMTP_AUTH` | `false` |
 | `SMTP_STARTTLS` | `false` |
-| `EMAIL_FROM` | `noreply@mesaro.staging` |
+| `EMAIL_FROM` | verified Resend domain, e.g. `noreply@tsjap.com` (`mesaro.com` pending DNS) |
 | `EMAIL_FROM_NAME` | `Mesaro Staging` |
-| `EMAIL_SUPPORT_ADDRESS` | `support@mesaro.staging` |
-| `RESEND_API_BASE_URL` | `https://api.resend.com` (unused if smtp) |
+| `EMAIL_SUPPORT_ADDRESS` | e.g. `support@tsjap.com` |
+| `RESEND_API_BASE_URL` | `https://api.resend.com` |
 | `STRIPE_PRICE_ID` | test price id |
 | `STRIPE_SUCCESS_URL` | `https://app.mesaro.staging/billing/success` |
 | `STRIPE_CANCEL_URL` | `https://app.mesaro.staging/billing/cancel` |
@@ -69,8 +69,8 @@ Admins set values. Collaborators cannot read secret values after save. When hiri
 | `HOLD_TOKEN_SECRET` | ≥32 chars |
 | `RESERVATION_TOKEN_SECRET` | ≥32 chars |
 | `STAFF_TOKEN_SECRET` | ≥32 chars |
-| `SMTP_PASSWORD` | empty OK with Mailpit + `SMTP_AUTH=false` |
-| `RESEND_API_KEY` | empty OK while `EMAIL_PROVIDER=smtp` |
+| `SMTP_PASSWORD` | empty OK (unused while `EMAIL_PROVIDER=resend`) |
+| `RESEND_API_KEY` | required while `EMAIL_PROVIDER=resend` |
 | `STRIPE_SECRET_KEY` | `sk_test_…` |
 | `STRIPE_WEBHOOK_SECRET` | `whsec_…` |
 
