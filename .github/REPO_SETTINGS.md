@@ -70,7 +70,7 @@ Prefer **Rulesets** (modern) over legacy branch protection if the account suppor
 | `backend-ci.yml` | PR/push `dev`/`main` | `ubuntu-latest` | — |
 | `frontend-ci.yml` | PR/push `dev`/`main` | `ubuntu-latest` | — |
 | `e2e.yml` | PR/push `dev`/`main` | `ubuntu-latest` (ephemeral API + Playwright) | optional `E2E_*` repo secrets |
-| `deploy-staging.yml` | `dev` | Self-hosted `mesaro-staging` + post-deploy smoke on `ubuntu-latest` | `staging` |
+| `deploy-staging.yml` | `dev` | Self-hosted `mesaro-staging` + post-deploy smoke (Playwright Docker on same host) | `staging` |
 | `deploy-prod.yml` | `main` | GitHub-hosted stub until Hostinger VPS | `production` |
 | `require-pull-request.yml` | `dev`, `main` | Fails the push check if the commit is not from a PR | — |
 
