@@ -34,7 +34,7 @@ public class Restaurant {
     private String locale = "en";
 
     @Column(name = "booking_enabled", nullable = false)
-    private boolean bookingEnabled = true;
+    private boolean bookingEnabled = false;
 
     @Column(name = "slot_interval_minutes", nullable = false)
     private int slotIntervalMinutes = 15;

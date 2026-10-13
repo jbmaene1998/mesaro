@@ -1,5 +1,5 @@
 import { apiClient } from "@/api/client";
-import type { ApiResponse, AppError, OpeningHoursDay, RestaurantSummary } from "@/api/types";
+import type { ApiResponse, AppError, RestaurantSummary } from "@/api/types";
 import { getRestaurantId } from "@/stores/restaurant-session";
 
 export interface RestaurantUpdatePayload {
@@ -13,13 +13,6 @@ export interface RestaurantUpdatePayload {
   maxAdvanceDays?: number;
   maxPartySize?: number;
   assignmentMode?: "AUTO" | "MANUAL";
-}
-
-export interface OpeningHoursUpdateDayPayload {
-  dayOfWeek: number;
-  open: boolean;
-  openLocalTime: string | null;
-  closeLocalTime: string | null;
 }
 
 function unwrapResponse<T>(response: ApiResponse<T> | T): T {
@@ -62,23 +55,6 @@ export async function updateRestaurant(payload: RestaurantUpdatePayload): Promis
   const restaurantId = requireRestaurantId();
   const { data } = await apiClient.put<ApiResponse<RestaurantSummary> | RestaurantSummary>(
     `/restaurants/${restaurantId}`,
-    payload
-  );
-  return unwrapResponse(data);
-}
-
-export async function getOpeningHours(): Promise<OpeningHoursDay[]> {
-  const restaurantId = requireRestaurantId();
-  const { data } = await apiClient.get<ApiResponse<OpeningHoursDay[]> | OpeningHoursDay[]>(
-    `/restaurants/${restaurantId}/opening-hours`
-  );
-  return unwrapResponse(data);
-}
-
-export async function updateOpeningHours(payload: OpeningHoursUpdateDayPayload[]): Promise<OpeningHoursDay[]> {
-  const restaurantId = requireRestaurantId();
-  const { data } = await apiClient.put<ApiResponse<OpeningHoursDay[]> | OpeningHoursDay[]>(
-    `/restaurants/${restaurantId}/opening-hours`,
     payload
   );
   return unwrapResponse(data);

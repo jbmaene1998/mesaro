@@ -1,5 +1,5 @@
 import { lazy, Suspense } from "react";
-import { Navigate, Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes, useSearchParams } from "react-router-dom";
 
 import { AppShell } from "@/components/layout/AppShell";
 import { AuthLayout } from "@/components/layout/AuthLayout";
@@ -16,7 +16,7 @@ import { ConfirmReservationPage } from "@/features/booking/ConfirmReservationPag
 import { GuestBookingPage } from "@/features/booking/GuestBookingPage";
 import { ReservationDetailsPage } from "@/features/booking/ReservationDetailsPage";
 import { DashboardPage } from "@/features/dashboard/DashboardPage";
-import { OwnerRestaurantSetupPage } from "@/features/onboarding/OwnerRestaurantSetupPage";
+import { GoLiveWizardPage } from "@/features/onboarding/GoLiveWizardPage";
 import { StaffPlanningPage } from "@/features/planning/StaffPlanningPage";
 import { ReservationDetailPage } from "@/features/reservations/ReservationDetailPage";
 import { ReservationListPage } from "@/features/reservations/ReservationListPage";
@@ -60,6 +60,17 @@ const TermsPage = lazy(() =>
 
 function MarketingFallback() {
   return <div className="min-h-[40vh]" aria-hidden />;
+}
+
+function InviteAcceptRedirect() {
+  const [params] = useSearchParams();
+  const token = params.get("token");
+  return (
+    <Navigate
+      to={token ? `/accept-invite?token=${encodeURIComponent(token)}` : "/accept-invite"}
+      replace
+    />
+  );
 }
 
 export function AppRoutes() {
@@ -138,6 +149,7 @@ export function AppRoutes() {
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route path="/accept-invite" element={<AcceptInvitePage />} />
+        <Route path="/invite/accept" element={<InviteAcceptRedirect />} />
       </Route>
 
       <Route element={<GuestLayout />}>
@@ -229,13 +241,14 @@ export function AppRoutes() {
       <Route path="/billing/cancel" element={<BillingCancelPage />} />
 
       <Route
-        path="/onboarding/setup"
+        path="/onboarding"
         element={
           <ProtectedRoute>
-            <OwnerRestaurantSetupPage />
+            <GoLiveWizardPage />
           </ProtectedRoute>
         }
       />
+      <Route path="/onboarding/setup" element={<Navigate to="/onboarding" replace />} />
 
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

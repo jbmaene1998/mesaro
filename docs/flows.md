@@ -71,11 +71,10 @@ Marketing → Register → Onboard restaurant
 | 1 | Register | SETUP | `/register` | `POST /api/auth/register` | OK |
 | 2 | Login / refresh / logout | SETUP | `/login` | `/api/auth/login\|refresh\|logout` | OK (logout denylists access JWT) |
 | 3 | Forgot / reset password | SETUP | `/forgot-password`, `/reset-password` | `/api/auth/forgot-password`, `/reset-password` | OK (needs real email smoke in prod) |
-| 4 | Onboarding first restaurant | SETUP | `/onboarding/setup` | `POST /api/restaurants` | OK |
+| 4 | Onboarding go-live wizard | SETUP | `/onboarding` | restaurants + tables + shifts/bulk + booking | OK |
 | 5 | Select restaurant context | SETUP | AppShell selector | `POST .../select` + `X-Restaurant-Id` | OK |
 | 6 | Tables + combinations | SETUP | `/tables` | `/api/restaurants/{id}/tables*` | OK |
 | 7 | Shifts | SETUP | `/shifts` | `/api/restaurants/{id}/shifts*` | OK |
-| 8 | Opening hours | SETUP | `/settings` hours tab | `PUT .../opening-hours` | PARTIAL — close vs closure UX polish open |
 | 9 | Staff invite | SETUP | `/staff` | `POST /api/staff/invite` | OK |
 | 10 | Accept invite | SETUP | `/accept-invite` | `POST /api/staff/accept-invite` | OK (set-password UX) |
 | 11 | Availability | CORE | Guest booking | `GET /api/availability?restaurantSlug=` | OK |
@@ -104,7 +103,7 @@ Marketing → Register → Onboard restaurant
 ### A. Owner same-day live (CORE)
 
 1. `/register` → tokens  
-2. `/onboarding/setup` → create restaurant  
+2. `/onboarding` wizard → restaurant → tables → shifts → rules → booking → share → staff  
 3. `/tables` → add tables  
 4. `/shifts` + `/settings` hours → availability possible  
 5. Enable booking → open `/r/{slug}` or embed  

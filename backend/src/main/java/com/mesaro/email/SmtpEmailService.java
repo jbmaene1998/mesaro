@@ -72,7 +72,7 @@ public class SmtpEmailService implements EmailService {
     @Override
     public void sendStaffInvite(String email, String restaurantName, RestaurantRole role, String inviteToken) {
         String subject = "You've been invited to join " + restaurantName + " on Mesaro";
-        String inviteUrl = baseUrl + "/invite/accept?token=" + inviteToken;
+        String inviteUrl = baseUrl + "/accept-invite?token=" + inviteToken;
         String plainBody = String.format("""
                 You have been invited to join %s as a %s.
 
@@ -143,7 +143,7 @@ public class SmtpEmailService implements EmailService {
                 email, subject, plainBody, "Welcome to Mesaro", "Your account is ready",
                 "<p>Hi <strong>" + escapeHtml(displayName) + "</strong>,</p>" +
                         "<p>Your account is ready. Start by setting up your first restaurant and publishing your booking page.</p>",
-                "Start Setup", baseUrl + "/onboarding/setup"
+                "Start Setup", baseUrl + "/onboarding"
         );
     }
 

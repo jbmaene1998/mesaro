@@ -61,7 +61,9 @@ class HoldConfirmCleanupRaceIntegrationTest extends IntegrationTestBase {
 
     @Test
     void cleanupSkipsLockedHoldDuringConfirm() throws Exception {
-        Restaurant restaurant = restaurantRepository.save(new Restaurant("Confirm Race", "confirm-race-" + System.nanoTime(), "UTC"));
+        Restaurant restaurant = new Restaurant("Confirm Race", "confirm-race-" + System.nanoTime(), "UTC");
+        restaurant.setBookingEnabled(true);
+        restaurant = restaurantRepository.save(restaurant);
         diningTableRepository.save(new DiningTable(restaurant, "T1", 2));
         LocalDate date = LocalDate.now(ZoneId.of("UTC")).plusDays(1);
         Shift shift = new Shift(restaurant, "Lunch", date.getDayOfWeek(), LocalTime.of(11, 0), LocalTime.of(15, 0), 50);

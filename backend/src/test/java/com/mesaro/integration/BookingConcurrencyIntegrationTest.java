@@ -72,7 +72,9 @@ class BookingConcurrencyIntegrationTest extends IntegrationTestBase {
 
     @RepeatedTest(50)
     void concurrentHoldRequests_sameSlot_onlyOneSucceeds() throws Exception {
-        Restaurant restaurant = restaurantRepository.save(new Restaurant("Race Hold", "race-hold", "UTC"));
+        Restaurant restaurantDraft = new Restaurant("Race Hold", "race-hold", "UTC");
+        restaurantDraft.setBookingEnabled(true);
+        Restaurant restaurant = restaurantRepository.save(restaurantDraft);
         diningTableRepository.save(new DiningTable(restaurant, "T1", 2));
 
         LocalDate date = LocalDate.now(ZoneId.of("UTC")).plusDays(1);
@@ -102,7 +104,9 @@ class BookingConcurrencyIntegrationTest extends IntegrationTestBase {
 
     @RepeatedTest(3)
     void concurrentWalkInAtCapacityBoundary_onlyOneSucceeds() throws Exception {
-        Restaurant restaurant = restaurantRepository.save(new Restaurant("Race Capacity", "race-capacity", "UTC"));
+        Restaurant restaurantDraft = new Restaurant("Race Capacity", "race-capacity", "UTC");
+        restaurantDraft.setBookingEnabled(true);
+        Restaurant restaurant = restaurantRepository.save(restaurantDraft);
         diningTableRepository.save(new DiningTable(restaurant, "T1", 2));
         diningTableRepository.save(new DiningTable(restaurant, "T2", 2));
 
@@ -132,9 +136,10 @@ class BookingConcurrencyIntegrationTest extends IntegrationTestBase {
         );
         String payload = objectMapper.writeValueAsString(request);
 
+        String restaurantId = restaurant.getId().toString();
         List<Integer> statuses = runInParallel(2, () -> mockMvc.perform(post("/api/admin/reservations")
                         .with(authentication(auth))
-                        .param("restaurantId", restaurant.getId().toString())
+                        .param("restaurantId", restaurantId)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(payload))
                 .andReturn()

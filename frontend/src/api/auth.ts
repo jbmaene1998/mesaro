@@ -103,6 +103,8 @@ export async function changePassword(currentPassword: string, newPassword: strin
   await apiClient.post<ApiResponse<null>>("/auth/change-password", payload);
 }
 
-export async function deleteCurrentUser() {
-  await apiClient.delete<ApiResponse<null>>("/auth/current-user");
+export async function deleteCurrentUser(password: string, confirmPhrase: string) {
+  await apiClient.delete<ApiResponse<null>>("/auth/current-user", {
+    data: { password, confirmPhrase }
+  });
 }

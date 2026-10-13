@@ -60,14 +60,13 @@
 
 ## CORE / SETUP flows
 
-### 1. Marketing → register → onboard → first booking — Complete (high friction)
+### 1. Marketing → register → onboard → first booking — Complete (guided wizard)
 
 | | |
 |--|--|
-| **Routes** | Marketing → `/register` → `/onboarding/setup` → `/dashboard` checklist → `/tables` → `/shifts` → `/settings` → `/r/{slug}` |
-| **APIs** | `POST /auth/register`, `POST /restaurants`, tables/shifts/settings GETs, guest `availability` / `holds` / confirm |
-| **Friction** | **High for €50 vision** — account + restaurant + tables + **active** shifts + booking toggle before first live booking. No single 2-minute wizard. |
-| **Note** | `RegisterPlaceholderPage` is misnamed — register works |
+| **Routes** | Marketing → `/register` → `/onboarding` wizard (restaurant → tables → shifts → rules → enable booking → share → optional staff) → `/dashboard` |
+| **APIs** | `POST /auth/register`, `POST /restaurants`, tables CRUD, `POST /shifts/bulk`, restaurant PUT (rules + bookingEnabled), staff invite |
+| **Friction** | Guided in-wizard create with templates/examples; resume banner on dashboard if incomplete. `/onboarding/setup` redirects to `/onboarding`. |
 
 ### 2. Login / forgot / reset — Complete
 
@@ -77,12 +76,11 @@
 | Forgot | `/forgot-password` | `POST /auth/forgot-password` |
 | Reset | `/reset-password?token=` | `POST /auth/reset-password` |
 
-0 restaurants after login → `/onboarding/setup`.
+0 restaurants after login → `/onboarding`.
 
-### 3. Accept invite — Complete (BE password gap)
+### 3. Accept invite — Complete
 
-`/accept-invite?token=` → auto `POST /staff/accept-invite` → tokens → `/dashboard`.  
-No password UI (matches BE random password — **re-login risk**).
+`/accept-invite?token=` (legacy `/invite/accept` redirects) → `GET /staff/invites/preview` → set password if new → `POST /staff/accept-invite` → tokens → `/dashboard?tour=1` (STAFF/MANAGER first-day tour).
 
 ### 4. Restaurant context select — RISK / Partial
 
@@ -126,7 +124,7 @@ Cancel needs token from session / nav / query — **Partial** if email link omit
 
 ### 8. Settings — Complete
 
-`/settings` OWNER: profile, booking rules, opening hours, embed snippet, extra restaurant, billing tab. Assignment mode UI locked to AUTO.
+`/settings` OWNER: profile, booking rules, embed snippet, extra restaurant, billing tab. Assignment mode UI locked to AUTO.
 
 ### 9. Billing — Partial (success Broken vs claim)
 
@@ -138,7 +136,7 @@ Cancel needs token from session / nav / query — **Partial** if email link omit
 
 ### 10. Account — Complete
 
-`/account`: profile, change password (logout), delete account.
+`/account`: profile, change password (logout), delete account (password + type `DELETE`; owned restaurants soft-deleted then GDPR-purged).
 
 ### 11. Contact / analytics consent — Complete
 

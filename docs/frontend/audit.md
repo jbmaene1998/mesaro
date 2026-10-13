@@ -38,7 +38,7 @@ Marketing already sells **€49.99 flat**. Doctrine says the differentiator is *
 
 | Sell & default-nav (doctrine) | Remaining polish |
 |-------------------------------|------------------|
-| Marketing → register → onboard → tables/shifts → guest/embed → **Dashboard** floor (STAFF cancel/switch) → staff → **planning / vacations / reports** → settings/billing → Privacy/Terms | Residual i18n; opening-hours vs closures UX; counsel on legal drafts |
+| Marketing → register → onboard → tables/shifts → guest/embed → **Dashboard** floor (STAFF cancel/switch) → staff → **planning / vacations / reports** → settings/billing → Privacy/Terms | Residual i18n; counsel on legal drafts |
 
 **Product work:** do not add deposits/SMS/waitlist/guest modify unless doctrine changes.
 

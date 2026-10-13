@@ -220,6 +220,32 @@ public class StaffService {
         return new StaffInviteWithToken(saved, rawToken);
     }
 
+    public StaffInvitePreviewResponse previewInvite(String inviteToken) {
+        String rawToken = validateInviteToken(inviteToken);
+        String tokenHash = tokenService.hashToken(rawToken);
+
+        StaffInvite invite = staffInviteRepository.findByTokenHash(tokenHash)
+                .orElseThrow(() -> new ValidationException("Invalid or expired invite token", "inviteToken"));
+
+        if (!tokenService.verifyToken(rawToken, invite.getTokenHash())) {
+            throw new ValidationException("Invalid or expired invite token", "inviteToken");
+        }
+
+        Instant now = timeService.now();
+        boolean alreadyAccepted = invite.getAcceptedAtUtc() != null;
+        boolean expired = invite.getRevokedAtUtc() != null || invite.getExpiresAtUtc().isBefore(now);
+        boolean passwordRequired = userAccountRepository.findByEmailIgnoreCase(invite.getEmail()).isEmpty();
+
+        return new StaffInvitePreviewResponse(
+                invite.getRestaurant().getName(),
+                invite.getRole(),
+                invite.getEmail(),
+                passwordRequired,
+                expired && !alreadyAccepted,
+                alreadyAccepted
+        );
+    }
+
     @Transactional
     public AuthResponse acceptInvite(String inviteToken, String password) {
         String rawToken = validateInviteToken(inviteToken);

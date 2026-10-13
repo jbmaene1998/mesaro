@@ -83,35 +83,6 @@ public class RestaurantController {
         return ApiResponse.success(RestaurantSummaryResponse.from(restaurant), "Restaurant updated");
     }
 
-    @GetMapping("/{id}/opening-hours")
-    @Operation(summary = "Get opening hours", description = "Get opening hours for all weekdays")
-    public ApiResponse<List<OpeningHoursResponse>> getOpeningHours(
-            @Parameter(description = "Restaurant ID") @PathVariable Long id) {
-        List<OpeningHoursResponse> response = toOpeningHoursResponse(restaurantService.findOpeningHoursWithAccess(id));
-        return ApiResponse.success(response);
-    }
-
-    @PutMapping("/{id}/opening-hours")
-    @Operation(summary = "Update opening hours", description = "Replace opening hours for all weekdays")
-    @PreAuthorize("@restaurantAccessGuard.hasAtLeastRole(#id, 'OWNER')")
-    public ApiResponse<List<OpeningHoursResponse>> updateOpeningHours(
-            @Parameter(description = "Restaurant ID") @PathVariable Long id,
-            @Valid @RequestBody List<UpdateOpeningHoursDayRequest> days) {
-        List<OpeningHoursResponse> response = toOpeningHoursResponse(restaurantService.updateOpeningHours(id, days));
-        return ApiResponse.success(response, "Opening hours updated");
-    }
-
-    private List<OpeningHoursResponse> toOpeningHoursResponse(List<com.mesaro.openinghours.OpeningHours> openingHours) {
-        java.util.Map<Integer, com.mesaro.openinghours.OpeningHours> byDay = openingHours.stream()
-                .collect(java.util.stream.Collectors.toMap(com.mesaro.openinghours.OpeningHours::getDayOfWeek, value -> value));
-        java.util.List<OpeningHoursResponse> rows = new java.util.ArrayList<>();
-        for (int day = 1; day <= 7; day++) {
-            com.mesaro.openinghours.OpeningHours current = byDay.get(day);
-            rows.add(current != null ? OpeningHoursResponse.from(current) : OpeningHoursResponse.closed(day));
-        }
-        return rows;
-    }
-
     private AuthPrincipal getPrincipal() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null || !(authentication.getPrincipal() instanceof AuthPrincipal principal)) {

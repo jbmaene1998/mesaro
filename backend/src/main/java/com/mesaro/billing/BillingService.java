@@ -353,6 +353,41 @@ public class BillingService {
     }
 
     /**
+     * Best-effort Stripe cancel + local billing scrub for account deletion.
+     * Does not persist the owner; caller saves after anonymizing the account.
+     */
+    public void cancelBillingForAccountDeletion(UserAccount owner) {
+        String subscriptionId = owner.getStripeSubscriptionId();
+        if (subscriptionId != null && !subscriptionId.isBlank()) {
+            try {
+                stripeService.cancelSubscriptionAtPeriodEnd(subscriptionId);
+                log.info("Canceled Stripe subscription {} for deleted owner {}", subscriptionId, owner.getId());
+            } catch (StripeException ex) {
+                log.warn(
+                        "Failed to cancel Stripe subscription {} for deleted owner {}: {}",
+                        subscriptionId,
+                        owner.getId(),
+                        ex.getMessage()
+                );
+            }
+        }
+
+        owner.setBillingStatus(SubscriptionStatus.CANCELED);
+        owner.setStripeSubscriptionId(null);
+        owner.setStripeCustomerId(null);
+        owner.setPastDueSince(null);
+        owner.setMaxRestaurants(1);
+        auditService.record(
+                AuditEventType.BILLING_SUBSCRIPTION_DELETED,
+                null,
+                owner.getId(),
+                owner.getId(),
+                "BILLING",
+                Map.of("billingStatus", SubscriptionStatus.CANCELED.name(), "reason", "ACCOUNT_DELETED")
+        );
+    }
+
+    /**
      * Handles {@code customer.subscription.deleted}.
      * Marks owner CANCELED, clears subscription ID, and sets base quota.
      */

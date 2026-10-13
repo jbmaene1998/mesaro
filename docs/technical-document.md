@@ -51,7 +51,7 @@ Mesaro is a **multi-restaurant reservation SaaS** for independent restaurants an
 |------|----------------|
 | Guest | Book online, confirmation email (+ ICS), cancel with token |
 | Floor | Dashboard (primary), walk-in, seat / complete / no-show / cancel / switch |
-| Setup | Tables (+ combinations), shifts / opening hours, staff roles |
+| Setup | Tables (+ combinations), shifts, staff roles |
 | Weekly | Staff planning, vacations / closures, simple reports + CSV |
 | Trust | No double booking (holds/overlaps under the hood) |
 
@@ -292,7 +292,7 @@ Categories (EN ids):
 ```text
 Marketing pages
     → /register (trial)
-    → /onboarding/setup (restaurant)
+    → /onboarding (go-live wizard)
     → /tables + /shifts + /settings (hours + embed)
     → Guests: /r/:slug or /embed/:slug
     → Floor: /dashboard
@@ -347,7 +347,7 @@ Same booking components under `/embed/:slug/...` (compact chrome + locale).
 | `/settings` | OWNER | Restaurant settings |
 | `/settings/billing` | OWNER | Billing |
 | `/account` | any | Profile |
-| `/onboarding/setup` | owner setup | First restaurant |
+| `/onboarding` | owner setup | Go-live wizard (tables, shifts, booking, share, staff) |
 | `/billing/success`, `/billing/cancel` | public return | Stripe redirects |
 
 ### 5.2 Feature modules
@@ -384,7 +384,7 @@ Default nav (`AppShell`): Dashboard · Timeline · Reservations · Tables · Shi
 
 ### 6.1 Packages (`com.mesaro.*`)
 
-`analytics` · `audit` · `auth` · `availability` · `billing` · `common` · `config` · `contact` · `dashboard` · `email` · `gdpr` · `health` · `hold` · `infra` · `logging` · `openinghours` · `outbox` · `planning` · `ratelimit` · `report` · `reservation` · `restaurant` · `security` · `shift` · `staff` · `table` · `user` · `vacation`
+`analytics` · `audit` · `auth` · `availability` · `billing` · `common` · `config` · `contact` · `dashboard` · `email` · `gdpr` · `health` · `hold` · `infra` · `logging` · `outbox` · `planning` · `ratelimit` · `report` · `reservation` · `restaurant` · `security` · `shift` · `staff` · `table` · `user` · `vacation`
 
 Patterns: JPA entities, request/response records, `@RestController`, `@PreAuthorize`, Flyway (including DB triggers), `@Scheduled`.
 
@@ -402,7 +402,9 @@ Base API prefix: **`/api`**. Envelope: `ApiResponse<T>`. Docs: `/swagger-ui.html
 | POST | `/api/analytics/events` |
 | POST | `/api/contact` |
 | POST | `/api/auth/login\|register\|refresh\|logout\|forgot-password\|reset-password` |
+| GET | `/api/staff/invites/preview` |
 | POST | `/api/staff/accept-invite` |
+| POST | `/api/restaurants/{id}/shifts/bulk` |
 | POST | `/api/webhooks/stripe` |
 | GET | `/actuator/health/**` |
 
@@ -410,8 +412,8 @@ Base API prefix: **`/api`**. Envelope: `ApiResponse<T>`. Docs: `/swagger-ui.html
 
 | Area | Paths |
 |------|-------|
-| Auth profile | `/api/auth/current-user`, change-password |
-| Restaurants | CRUD `/api/restaurants`, opening-hours, `POST .../select`, `/api/context` |
+| Auth profile | `/api/auth/current-user`, change-password, delete account |
+| Restaurants | CRUD `/api/restaurants`, `POST .../select`, `/api/context` |
 | Admin reservations | `/api/admin/reservations` (+ seat/complete/noshow/cancel/switch) |
 | Tables / combinations | `/api/restaurants/{id}/tables*`, `/api/tables/{id}`, combinations |
 | Shifts | `/api/restaurants/{id}/shifts*`, `/api/shifts/{id}` |
@@ -429,7 +431,6 @@ Base API prefix: **`/api`**. Envelope: `ApiResponse<T>`. Docs: `/swagger-ui.html
 | `UserAccount` | Email, password, `maxRestaurants`, Stripe ids, `billingStatus`, `trialEndsAt` |
 | `UserRestaurant` | Role `OWNER \| MANAGER \| STAFF` |
 | `Restaurant` | Slug (immutable), timezone, locale, booking rules, `assignmentMode` AUTO/MANUAL, version |
-| `OpeningHours` | Per weekday open/close |
 | `DiningTable` | Label, seats, AVAILABLE/UNAVAILABLE |
 | `TableCombination` | Multi-table join for larger parties |
 | `Shift` | Day, start/end/last reservation, max covers, slot duration, overnight, ACTIVE/INACTIVE |
@@ -472,7 +473,7 @@ Base API prefix: **`/api`**. Envelope: `ApiResponse<T>`. Docs: `/swagger-ui.html
 
 `GET /api/availability?restaurantSlug=&date=&partySize=`
 
-Pipeline: booking enabled → opening hours → restaurant closures → ACTIVE shifts → slot interval → table selection (AUTO/MANUAL) → overlap vs holds + reservations.
+Pipeline: booking enabled → restaurant closures → ACTIVE shifts → slot interval → table selection (AUTO/MANUAL) → overlap vs holds + reservations.
 
 ### Hold → confirm
 
@@ -522,8 +523,8 @@ Primary floor surface: **Dashboard** (doctrine). Timeline and list are secondary
 
 ### Settings / onboarding
 
-Owner: restaurant profile, opening hours, booking flags, embed snippet, billing.  
-Onboarding: `/onboarding/setup` → create first restaurant → tables → shifts/hours → share link/embed.
+Owner: restaurant profile, booking flags, embed snippet, billing.  
+Onboarding: `/onboarding` wizard → restaurant → tables → shifts → rules → enable booking → share link/embed → optional staff.
 
 ---
 

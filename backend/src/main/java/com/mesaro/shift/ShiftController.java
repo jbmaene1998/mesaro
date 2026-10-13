@@ -55,6 +55,19 @@ public class ShiftController {
         return ApiResponse.success(ShiftResponse.from(shift), "Shift created");
     }
 
+    @PostMapping("/restaurants/{id}/shifts/bulk")
+    @Operation(summary = "Bulk create shifts", description = "Create multiple shifts (optionally activate) for onboarding templates")
+    @PreAuthorize("@restaurantAccessGuard.hasAtLeastRole(#id, 'MANAGER')")
+    @ResponseStatus(HttpStatus.CREATED)
+    public ApiResponse<List<ShiftResponse>> createShiftsBulk(
+            @Parameter(description = "Restaurant ID") @PathVariable Long id,
+            @Valid @RequestBody BulkCreateShiftsRequest request) {
+        List<ShiftResponse> shifts = shiftService.createBulk(id, request).stream()
+                .map(ShiftResponse::from)
+                .toList();
+        return ApiResponse.success(shifts, "Shifts created");
+    }
+
     @GetMapping("/shifts/{id}")
     @Operation(summary = "Get shift", description = "Get shift details by ID")
     @PreAuthorize("@restaurantAccessGuard.hasAtLeastRole(#restaurantId, 'STAFF')")
@@ -74,6 +87,37 @@ public class ShiftController {
             @Valid @RequestBody UpdateShiftRequest request) {
         Shift updated = shiftService.update(restaurantId, id, request);
         return ApiResponse.success(ShiftResponse.from(updated), "Shift updated");
+    }
+
+    @PostMapping("/shifts/{id}/activate")
+    @Operation(summary = "Publish shift", description = "Publish a draft or inactive shift so it becomes bookable")
+    @PreAuthorize("@restaurantAccessGuard.hasAtLeastRole(#restaurantId, 'MANAGER')")
+    public ApiResponse<ShiftResponse> activateShift(
+            @Parameter(description = "Shift ID") @PathVariable Long id,
+            @Parameter(description = "Restaurant ID") @RequestParam Long restaurantId) {
+        Shift activated = shiftService.activate(restaurantId, id);
+        return ApiResponse.success(ShiftResponse.from(activated), "Shift published");
+    }
+
+    @PostMapping("/restaurants/{id}/shifts/publish")
+    @Operation(summary = "Publish draft shifts", description = "Publish all draft shifts for a restaurant")
+    @PreAuthorize("@restaurantAccessGuard.hasAtLeastRole(#id, 'MANAGER')")
+    public ApiResponse<List<ShiftResponse>> publishDraftShifts(
+            @Parameter(description = "Restaurant ID") @PathVariable Long id) {
+        List<ShiftResponse> published = shiftService.publishDrafts(id).stream()
+                .map(ShiftResponse::from)
+                .toList();
+        return ApiResponse.success(published, "Draft shifts published");
+    }
+
+    @PostMapping("/shifts/{id}/deactivate")
+    @Operation(summary = "Deactivate shift", description = "Deactivate an active shift")
+    @PreAuthorize("@restaurantAccessGuard.hasAtLeastRole(#restaurantId, 'MANAGER')")
+    public ApiResponse<ShiftResponse> deactivateShift(
+            @Parameter(description = "Shift ID") @PathVariable Long id,
+            @Parameter(description = "Restaurant ID") @RequestParam Long restaurantId) {
+        Shift deactivated = shiftService.deactivate(restaurantId, id);
+        return ApiResponse.success(ShiftResponse.from(deactivated), "Shift deactivated");
     }
 
     @DeleteMapping("/shifts/{id}")

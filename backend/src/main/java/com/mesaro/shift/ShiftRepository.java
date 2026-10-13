@@ -63,6 +63,8 @@ public interface ShiftRepository extends JpaRepository<Shift, Long> {
 
     boolean existsByRestaurantIdAndNameAndDayOfWeek(Long restaurantId, String name, int dayOfWeek);
 
+    boolean existsByRestaurantIdAndStatus(Long restaurantId, ShiftStatus status);
+
     @Modifying
     long deleteByRestaurant_Id(Long restaurantId);
 }

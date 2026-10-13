@@ -72,7 +72,7 @@ const COPY: Record<SupportedLocale, Copy> = {
         id: "setup",
         title: "Setup & Migration",
         items: [
-          { question: "How long does it take to set up Mesaro?", answer: "Most restaurants are live within 30 minutes. The setup flow walks you through tables, shifts, and opening hours. Embedding the widget on your website takes under five minutes on any standard CMS." },
+          { question: "How long does it take to set up Mesaro?", answer: "Most restaurants are live within 30 minutes. The setup flow walks you through tables and shifts. Embedding the widget on your website takes under five minutes on any standard CMS." },
           { question: "Can I import reservations from another system?", answer: "There is no automated import tool at this time. We recommend going live with Mesaro for new reservations from your start date and manually entering any confirmed future bookings from your old system." },
           { question: "Can I migrate from Zenchef, Resengo, or Formitable?", answer: "Yes. Export your current reservation data from your existing tool before your migration date. Enter any upcoming confirmed reservations into Mesaro manually. Most restaurants switch during a quieter midweek period and go live before the following weekend service." },
           { question: "Do I need technical skills to set up Mesaro?", answer: "No. The admin interface is designed for restaurant operators. Embedding the booking widget requires pasting one line of HTML. If you need help at any step, our support team will walk you through it." }
@@ -92,7 +92,7 @@ const COPY: Record<SupportedLocale, Copy> = {
         title: "Staff & Roles",
         items: [
           { question: "What are the staff roles in Mesaro?", answer: "Three roles: Owner, Manager, and Staff. Owner has full access including billing and restaurant settings. Manager handles reservations, shifts, staff management, and reports. Staff can see their assigned shifts and manage reservations during their service window." },
-          { question: "How do I invite a new staff member?", answer: "Enter their email address in the Staff section of your restaurant settings. They receive an invitation email and set their password on first login. The process takes under two minutes." },
+          { question: "How do I invite a new staff member?", answer: "Invite them from the go-live wizard or the Staff page. They open the email link, set a password if they are new, and land on a short floor tour. The process takes under two minutes." },
           { question: "Can I remove a staff member immediately?", answer: "Yes. Remove them from the staff list and their access is revoked immediately. There is no delay." },
           { question: "Can a staff member see billing details?", answer: "No. Billing is visible only to the Owner role." }
         ]
@@ -194,7 +194,7 @@ const COPY: Record<SupportedLocale, Copy> = {
         title: "Personeel & Rollen",
         items: [
           { question: "Wat zijn de personeelsrollen in Mesaro?", answer: "Drie rollen: Eigenaar, Manager en Medewerker. Eigenaar heeft volledige toegang inclusief facturering. Manager beheert reservaties, shifts en personeel. Medewerker ziet hun shifts en de reservaties van de dag." },
-          { question: "Hoe nodig ik een nieuw personeelslid uit?", answer: "Voer hun e-mailadres in de sectie Personeel van je restaurantinstellingen in. Ze ontvangen een uitnodigingsmail en stellen hun wachtwoord in bij het eerste inloggen. Minder dan twee minuten." },
+          { question: "Hoe nodig ik een nieuw personeelslid uit?", answer: "Nodig ze uit via de go-live wizard of de pagina Personeel. Ze openen de e-maillink, stellen een wachtwoord in als ze nieuw zijn, en krijgen een korte floor-tour. Minder dan twee minuten." },
           { question: "Kan een personeelslid factureringsgegevens zien?", answer: "Nee. Facturering is alleen zichtbaar voor de eigenaarsrol." }
         ]
       },
@@ -294,7 +294,7 @@ const COPY: Record<SupportedLocale, Copy> = {
         title: "Personnel & Roles",
         items: [
           { question: "Quels sont les roles du personnel dans Mesaro ?", answer: "Trois roles : Proprietaire, Manager et Personnel. Le proprietaire a un acces complet. Le manager gere les reservations, les services et le personnel. Le personnel voit ses services et les reservations du jour." },
-          { question: "Comment inviter un nouveau membre du personnel ?", answer: "Saisissez son adresse email dans la section Personnel des parametres de votre restaurant. Il recoit un email d'invitation. En moins de deux minutes." },
+          { question: "Comment inviter un nouveau membre du personnel ?", answer: "Invitez-les depuis l'assistant go-live ou la page Personnel. Ils ouvrent le lien email, definissent un mot de passe s'ils sont nouveaux, puis voient une courte visite du floor. En moins de deux minutes." },
           { question: "Un employe peut-il voir les informations de facturation ?", answer: "Non. La facturation n'est visible que pour le role Proprietaire." }
         ]
       },
@@ -394,7 +394,7 @@ const COPY: Record<SupportedLocale, Copy> = {
         title: "Personal & Roles",
         items: [
           { question: "¿Cuales son los roles del personal en Mesaro?", answer: "Tres roles: Propietario, Gestor y Personal. El propietario tiene acceso completo. El gestor administra reservas, turnos y personal. El personal ve sus turnos y las reservas del dia." },
-          { question: "¿Como invito a un nuevo empleado?", answer: "Introduce su correo en la seccion Personal de los ajustes de tu restaurante. Recibe un correo de invitacion. En menos de dos minutos." },
+          { question: "¿Como invito a un nuevo empleado?", answer: "Invitalo desde el asistente go-live o la pagina Personal. Abre el enlace del correo, elige contrasena si es nuevo, y ve un recorrido corto del floor. En menos de dos minutos." },
           { question: "¿Puede un empleado ver los datos de facturacion?", answer: "No. La facturacion solo es visible para el rol de Propietario." }
         ]
       },

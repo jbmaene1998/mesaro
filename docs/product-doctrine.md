@@ -63,7 +63,7 @@ This is the **100% used** surface. If it is not in this list, it is not the prod
 ### Setup (once, then rarely)
 
 8. Tables (+ simple combinations if needed)
-9. Opening hours / shifts (enough to drive availability)
+9. Shifts (enough to drive availability)
 10. Staff accounts with **simple roles** (OWNER / MANAGER / STAFF)
 
 ### Weekly ops (essential — keep in nav, finish fully)
@@ -122,7 +122,7 @@ These are competitor suite features. Shipping them as first-class *marketing* **
 | **Default nav** | Dashboard · timeline/reservations · tables · shifts · **planning** · staff · **vacations** · **reports** · settings/billing |
 | **Floor** | Dashboard primary; STAFF can cancel/switch |
 | **Marketing site** | Sell daily guest+floor outcomes + €50 flat + embed; mention planning/vacations/reports lightly or not at all |
-| **Onboarding** | Restaurant → tables → hours/shifts → embed → live. Planning optional after first booking |
+| **Onboarding** | Interactive `/onboarding` wizard: restaurant → tables → shifts → rules → enable booking → share link → optional staff. Planning optional after first booking |
 
 Technical audits document bugs; **roadmap priority** is money/trust P0s, then STAFF floor, then finishing weekly modules — not competitor feature parity.
 

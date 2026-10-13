@@ -2,7 +2,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { AlertTriangle, CalendarClock, CalendarDays, PlusCircle, Users } from "lucide-react";
 import { format } from "date-fns";
 import { useContext, useEffect, useMemo, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -21,8 +21,10 @@ import {
 } from "@/features/dashboard/api";
 import { StatCard } from "@/features/dashboard/components/StatCard";
 import { StatsSection } from "@/features/dashboard/StatsSection";
-import { OnboardingChecklist } from "@/features/onboarding/OnboardingChecklist";
 import { useOnboardingStatus } from "@/features/onboarding/hooks/useOnboardingStatus";
+import { StaffFirstRunTour } from "@/features/onboarding/StaffFirstRunTour";
+import { shouldShowStaffFirstRun } from "@/features/onboarding/staffFirstRun";
+import { getWizardCopy } from "@/features/onboarding/wizardCopy";
 import { getReservations } from "@/features/reservations/api";
 import { ManualReservationDialog } from "@/features/reservations/components/ManualReservationDialog";
 import { ReservationActions } from "@/features/reservations/components/ReservationActions";
@@ -101,23 +103,38 @@ export function DashboardPage() {
   const restaurantContext = useContext(RestaurantContext);
   const role = useUserRole();
   const selectedRestaurantId = useSelectedRestaurantId();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [selectedDate, setSelectedDate] = useState(format(new Date(), "yyyy-MM-dd"));
   const [openWalkIn, setOpenWalkIn] = useState(false);
   const [openManualReservation, setOpenManualReservation] = useState(false);
-  const [isChecklistDismissed, setIsChecklistDismissed] = useState(false);
-  const onboarding = useOnboardingStatus(role === "OWNER");
-  const dismissalStorageKey = selectedRestaurantId
-    ? `mesaro.onboarding.dismissed.${selectedRestaurantId}`
-    : null;
+  const [showStaffTour, setShowStaffTour] = useState(false);
+  const onboarding = useOnboardingStatus(role === "OWNER" || role === "MANAGER");
+  const wizardCopy = getWizardCopy(locale);
 
   useEffect(() => {
-    if (!dismissalStorageKey) {
-      setIsChecklistDismissed(false);
-      return;
+    if (searchParams.get("live") === "1") {
+      showSuccess(wizardCopy.youreLive);
+      const next = new URLSearchParams(searchParams);
+      next.delete("live");
+      setSearchParams(next, { replace: true });
     }
+  }, [searchParams, setSearchParams, wizardCopy.youreLive]);
 
-    setIsChecklistDismissed(localStorage.getItem(dismissalStorageKey) === "1");
-  }, [dismissalStorageKey]);
+  useEffect(() => {
+    const forceTour = searchParams.get("tour") === "1";
+    const shouldShow = shouldShowStaffFirstRun({
+      userId: auth.user?.id,
+      restaurantId: selectedRestaurantId,
+      role,
+      forceFromQuery: forceTour
+    });
+    setShowStaffTour(shouldShow);
+    if (forceTour) {
+      const next = new URLSearchParams(searchParams);
+      next.delete("tour");
+      setSearchParams(next, { replace: true });
+    }
+  }, [auth.user?.id, role, searchParams, selectedRestaurantId, setSearchParams]);
 
   const dashboardQuery = useQuery({
     queryKey: ["dashboard", selectedRestaurantId, selectedDate],
@@ -175,8 +192,7 @@ export function DashboardPage() {
     [currentShiftQuery.data, dashboardQuery.data, t]
   );
 
-  const showOnboardingChecklist = role === "OWNER" && !onboarding.isComplete && !isChecklistDismissed;
-  const showOnboardingResume = role === "OWNER" && !onboarding.isComplete && isChecklistDismissed;
+  const showOnboardingResume = role === "OWNER" && !onboarding.isComplete && !onboarding.isLoading;
   const billingStatusQuery = useQuery({
     queryKey: ["billing", "status", selectedRestaurantId],
     queryFn: () => billingApi.getStatus(selectedRestaurantId!),
@@ -307,44 +323,28 @@ export function DashboardPage() {
         </Card>
       ) : null}
 
-      {showOnboardingChecklist ? (
-        <OnboardingChecklist
-          requiredSteps={onboarding.requiredSteps}
-          optionalSteps={onboarding.optionalSteps}
-          nextStep={onboarding.nextStep}
-          completedCount={onboarding.completedCount}
-          totalCount={onboarding.totalCount}
-          isLoading={onboarding.isLoading}
-          hasError={onboarding.hasError}
-          onDismiss={() => {
-            if (dismissalStorageKey) {
-              localStorage.setItem(dismissalStorageKey, "1");
-            }
-            setIsChecklistDismissed(true);
-          }}
+      {showStaffTour && auth.user?.id && selectedRestaurantId && (role === "STAFF" || role === "MANAGER") ? (
+        <StaffFirstRunTour
+          userId={auth.user.id}
+          restaurantId={selectedRestaurantId}
+          role={role}
+          onboardingIncomplete={role === "MANAGER" && !onboarding.isGoLiveReady}
+          onDismiss={() => setShowStaffTour(false)}
         />
       ) : null}
 
       {showOnboardingResume ? (
-        <Card>
+        <Card className="border-primary/30 bg-primary/5">
           <CardHeader className="space-y-2">
-            <CardTitle>Onboarding hidden</CardTitle>
+            <CardTitle>{wizardCopy.resumeBanner}</CardTitle>
             <CardDescription>
-              You still have setup tasks before launch: {onboarding.completedCount}/{onboarding.totalCount} required steps complete.
+              {onboarding.completedCount}/{onboarding.totalCount} required steps complete
+              {onboarding.nextStep ? ` — next: ${onboarding.nextStep.title}` : ""}.
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                if (dismissalStorageKey) {
-                  localStorage.removeItem(dismissalStorageKey);
-                }
-                setIsChecklistDismissed(false);
-              }}
-            >
-              Resume onboarding
+            <Button asChild size="sm">
+              <Link to="/onboarding">{wizardCopy.resumeCta}</Link>
             </Button>
           </CardContent>
         </Card>

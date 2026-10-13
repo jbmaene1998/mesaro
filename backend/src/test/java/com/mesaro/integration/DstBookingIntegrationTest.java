@@ -45,7 +45,9 @@ class DstBookingIntegrationTest extends IntegrationTestBase {
     void createsReservationsAroundDstGapBoundary() throws Exception {
         ZoneId zone = ZoneId.of("America/New_York");
         LocalDate gapDate = findGapDate(zone);
-        Restaurant restaurant = restaurantRepository.save(new Restaurant("DST Test", "dst-test-" + System.nanoTime(), zone.getId()));
+        Restaurant restaurant = new Restaurant("DST Test", "dst-test-" + System.nanoTime(), zone.getId());
+        restaurant.setBookingEnabled(true);
+        restaurant = restaurantRepository.save(restaurant);
         diningTableRepository.save(new DiningTable(restaurant, "T1", 4));
         Shift shift = new Shift(restaurant, "Night", gapDate.getDayOfWeek(),
                 LocalTime.of(0, 0), LocalTime.of(4, 0), 50);

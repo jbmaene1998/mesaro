@@ -248,11 +248,3 @@ export interface CurrentUser {
   phone?: string | null;
   restaurants: UserRestaurant[];
 }
-
-export interface OpeningHoursDay {
-  dayOfWeek: number;
-  dayName: string;
-  open: boolean;
-  openLocalTime: string | null;
-  closeLocalTime: string | null;
-}

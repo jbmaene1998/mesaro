@@ -23,6 +23,8 @@ public interface DiningTableRepository extends JpaRepository<DiningTable, Long> 
 
     boolean existsByRestaurantIdAndLabel(Long restaurantId, String label);
 
+    boolean existsByRestaurantId(Long restaurantId);
+
     @Query("SELECT t FROM DiningTable t JOIN FETCH t.restaurant WHERE t.id = :id")
     Optional<DiningTable> findByIdWithRestaurant(Long id);
 

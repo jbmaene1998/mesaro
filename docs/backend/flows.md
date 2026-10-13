@@ -75,13 +75,14 @@
 | **Reset** | `POST /api/auth/reset-password` → validate → update password → revoke all refresh |
 | **Change** | `POST /api/auth/change-password` (auth) → verify current → revoke refresh → notice email |
 
-### 6. Accept invite — Partial
+### 6. Accept invite — Complete
 
 | | |
 |--|--|
+| **Preview** | `GET /api/staff/invites/preview?token=` (public) → restaurant name, role, whether password required |
 | **Entry** | `POST /api/staff/accept-invite` → `StaffService.acceptInvite` |
-| **Steps** | Lock invite → validate → find-or-create user (**random password** if new) → membership → mark accepted → tokens → audit |
-| **Gaps** | New staff logged in once but **cannot re-login** without forgot-password |
+| **Steps** | Lock invite → validate → find-or-create user (**password required** for new) → membership → mark accepted → tokens → audit |
+| **Email** | Invite CTA uses `/accept-invite?token=` |
 
 ### 7. Create restaurant / settings / hours — Complete
 
@@ -90,10 +91,9 @@
 | `POST /api/restaurants` | Authenticated |
 | `GET /api/restaurants`, `GET /{id}` | Member |
 | `PUT /api/restaurants/{id}`, `DELETE` (archive) | OWNER |
-| `GET\|PUT /api/restaurants/{id}/opening-hours` | STAFF read / OWNER write |
 | `POST /api/restaurants/{id}/select`, `GET /api/context` | Auth |
 
-**Notes:** No dedicated onboarding API. Closing hours **warn** only (no auto-cancel). Closures (vacation module) **do** cancel bookings. Select re-issues JWT; FE currently ignores it.
+**Notes:** Go-live wizard uses existing restaurant/tables APIs plus `POST /api/restaurants/{id}/shifts/bulk`. Closures (vacation module) **do** cancel bookings. Select re-issues JWT.
 
 ### 8. Tables + combinations — Complete
 
@@ -181,7 +181,7 @@ Guest booking still allowed if `bookingEnabled` when subscription dead.
 | Hold expiry | `HoldExpiryScheduler` → cleanup + audit; outbox `HoldExpired` log-only | Cleanup Complete; outbox Stub |
 | Outbox worker | `OutboxWorker` every ~5s | **Partial** — only `ReservationConfirmed` sends email |
 | Reservation reminders | cron ~120 min before | Complete |
-| GDPR retention / purge | crons; soft-delete `DELETE /api/auth/current-user` | Complete (if enabled) |
+| GDPR retention / purge | crons; soft-delete `DELETE /api/auth/current-user` (password + `DELETE` confirm; cancels Stripe; cleans SSA/vacations) | Complete (if enabled) |
 | Staff invite cleanup | hourly | Complete |
 | Analytics | `POST /api/analytics/events` | **Stub** (log only) |
 

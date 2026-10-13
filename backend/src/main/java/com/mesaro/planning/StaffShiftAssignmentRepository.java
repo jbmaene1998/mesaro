@@ -46,6 +46,10 @@ public interface StaffShiftAssignmentRepository extends JpaRepository<StaffShift
     @Modifying
     void deleteByRestaurant_Id(Long restaurantId);
 
+    @Modifying
+    @Query("DELETE FROM StaffShiftAssignment a WHERE a.user.id = :userId")
+    int deleteByUser_Id(Long userId);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""
             SELECT a
