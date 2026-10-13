@@ -6,9 +6,9 @@ Some GitHub Actions workflows are intentionally **not active** yet.
 
 | Workflow | When | Job names (for required checks) |
 |----------|------|----------------------------------|
-| `backend-ci.yml` | Every PR/push to `dev`/`main` | `Backend CI / test` |
-| `frontend-ci.yml` | Every PR/push to `dev`/`main` | `Frontend CI / test` |
-| `e2e.yml` | Every PR/push to `dev`/`main` | `E2E Tests / playwright` |
+| `backend-ci.yml` | Every PR/push to `dev`/`main` | `Backend CI / Backend unit tests` |
+| `frontend-ci.yml` | Every PR/push to `dev`/`main` | `Frontend CI / Frontend unit tests` |
+| `e2e.yml` | Every PR/push to `dev`/`main` | `E2E Tests / Playwright E2E` |
 | `deploy-staging.yml` | Push to `dev` | includes `E2E smoke (staging)` after deploy |
 
 When enabling branch protection / rulesets, require the three PR check names above (exact job titles). See [`.github/REPO_SETTINGS.md`](../REPO_SETTINGS.md).
