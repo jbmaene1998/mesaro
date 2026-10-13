@@ -169,6 +169,7 @@ public class VacationService {
                             reservation.getGuestEmail(),
                             reservation.getGuestName(),
                             restaurant.getName(),
+                            restaurant.getSlug(),
                             reservation.getConfirmationCode(),
                             "RESTAURANT_CLOSURE"
                     );

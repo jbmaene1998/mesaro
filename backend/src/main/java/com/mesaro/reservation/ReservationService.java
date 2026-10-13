@@ -521,6 +521,7 @@ public class ReservationService {
                     guestEmail,
                     reservation.getGuestName(),
                     reservation.getRestaurant().getName(),
+                    reservation.getRestaurant().getSlug(),
                     reservation.getConfirmationCode(),
                     cancelledBy
             );

@@ -700,6 +700,7 @@ public class ReservationAdminService {
                     guestEmail,
                     reservation.getGuestName(),
                     reservation.getRestaurant().getName(),
+                    reservation.getRestaurant().getSlug(),
                     reservation.getConfirmationCode(),
                     cancelledBy
             );
@@ -719,6 +720,7 @@ public class ReservationAdminService {
                     guestEmail,
                     reservation.getGuestName(),
                     reservation.getRestaurant().getName(),
+                    reservation.getRestaurant().getSlug(),
                     reservation.getConfirmationCode()
             );
         } catch (Exception ex) {

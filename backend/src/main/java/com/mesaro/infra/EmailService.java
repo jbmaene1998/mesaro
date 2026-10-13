@@ -1,5 +1,6 @@
 package com.mesaro.infra;
 
+import com.mesaro.email.layout.EmailDocument;
 import com.mesaro.security.RestaurantRole;
 
 import java.time.Instant;
@@ -29,32 +30,32 @@ public interface EmailService {
 
     /**
      * Send a reservation confirmation email with ICS calendar attachment.
-     *
-     * @param toEmail            Recipient email address
-     * @param subject            Email subject line
-     * @param bodyText           Plain text email body
-     * @param icsAttachmentBytes ICS calendar file content
      */
-    void sendReservationConfirmation(String toEmail, String subject, String bodyText, byte[] icsAttachmentBytes);
+    void sendReservationConfirmation(String toEmail,
+                                     String subject,
+                                     String plainBody,
+                                     EmailDocument document,
+                                     byte[] icsAttachmentBytes);
 
     /**
      * Send a reservation reminder email.
-     *
-     * @param toEmail  Recipient email address
-     * @param subject  Email subject line
-     * @param bodyText Plain text email body
      */
-    void sendReservationReminder(String toEmail, String subject, String bodyText);
+    void sendReservationReminder(String toEmail,
+                                 String subject,
+                                 String plainBody,
+                                 EmailDocument document);
 
     void sendReservationCancelled(String toEmail,
                                   String guestName,
                                   String restaurantName,
+                                  String restaurantSlug,
                                   String confirmationCode,
                                   String cancelledBy);
 
     void sendReservationUpdated(String toEmail,
                                 String guestName,
                                 String restaurantName,
+                                String restaurantSlug,
                                 String confirmationCode);
 
     void sendContactFormSubmission(String toEmail,
