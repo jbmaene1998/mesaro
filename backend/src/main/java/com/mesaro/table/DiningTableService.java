@@ -84,6 +84,12 @@ public class DiningTableService {
         validateLabelUnique(restaurantId, request.label(), null);
 
         DiningTable table = new DiningTable(restaurant, request.label(), request.seats());
+        if (request.area() != null) {
+            table.setArea(request.area());
+        }
+        if (request.allowCrossAreaCombine() != null) {
+            table.setAllowCrossAreaCombine(request.allowCrossAreaCombine());
+        }
         DiningTable saved = tableRepository.save(table);
         log.info("Created table '{}' for restaurant {}", saved.getLabel(), restaurantId);
         auditService.record(
@@ -108,6 +114,14 @@ public class DiningTableService {
 
         if (request.seats() != null) {
             table.setSeats(request.seats());
+        }
+
+        if (request.area() != null) {
+            table.setArea(request.area());
+        }
+
+        if (request.allowCrossAreaCombine() != null) {
+            table.setAllowCrossAreaCombine(request.allowCrossAreaCombine());
         }
 
         if (request.status() != null) {

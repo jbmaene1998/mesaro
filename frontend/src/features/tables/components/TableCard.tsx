@@ -10,6 +10,7 @@ import {
   DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu";
 import type { TableStatus } from "@/features/tables/api";
+import { displayTableArea } from "@/features/tables/tableArea";
 import { useI18n } from "@/i18n";
 
 interface TableCardProps {
@@ -57,6 +58,7 @@ export function TableCard({ table, liveStatus, onEdit, onDelete, readOnly = fals
             <Users className="h-4 w-4" />
             {table.seats} {copy.seats}
           </p>
+          <p className="mt-1 text-xs text-muted-foreground">{displayTableArea(table.area)}</p>
         </div>
 
         {!readOnly && !isOccupied ? (

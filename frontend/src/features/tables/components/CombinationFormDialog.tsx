@@ -17,6 +17,7 @@ import {
   deleteCombination,
   updateCombination
 } from "@/features/tables/api";
+import { canCombineTables, displayTableArea } from "@/features/tables/tableArea";
 import { useSelectedRestaurantId } from "@/hooks/use-auth";
 import { useI18n } from "@/i18n";
 import { showApiError, showSuccess } from "@/lib/toast";
@@ -134,6 +135,10 @@ export function CombinationFormDialog({
       setError(copy.atLeastTwoTables);
       return;
     }
+    if (!canCombineTables(selectedTables)) {
+      setError(copy.areaConflict);
+      return;
+    }
     if (minCapacity > maxCapacity) {
       setError(copy.minCannotExceedMax);
       return;
@@ -152,6 +157,7 @@ export function CombinationFormDialog({
           </DialogHeader>
 
           <div className="space-y-3">
+            <p className="rounded-md border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">{copy.areaRuleHint}</p>
             <div className="space-y-1">
               <label className="text-sm font-medium" htmlFor="combination-name">{copy.name}</label>
               <Input
@@ -173,6 +179,10 @@ export function CombinationFormDialog({
                     <label key={table.id} className="flex items-center justify-between gap-2 rounded-md border p-2">
                       <span className="text-sm">
                         {table.label} ({table.seats} {copy.seats})
+                        <span className="ml-1 text-muted-foreground">· {displayTableArea(table.area)}</span>
+                        {table.allowCrossAreaCombine ? (
+                          <span className="ml-1 text-[11px] text-muted-foreground">({copy.crossArea})</span>
+                        ) : null}
                       </span>
                       <input
                         type="checkbox"
@@ -291,10 +301,14 @@ const COPY = {
     combinationDeleted: "Combination deleted",
     nameRequired: "Name is required",
     atLeastTwoTables: "At least 2 tables are required",
+    areaConflict:
+      "Selected tables span different areas. Enable “Allow combining with other areas” on at least one mismatched table.",
     minCannotExceedMax: "Min capacity cannot exceed max capacity",
     editCombination: "Edit Combination",
     addCombination: "Add Combination",
     combineTablesDescription: "Combine tables to support larger or flexible party seating.",
+    areaRuleHint: "Tables must share an area, unless at least one allows cross-area combining.",
+    crossArea: "cross-area",
     name: "Name",
     largeParty: "Large Party",
     tables: "Tables",
@@ -321,10 +335,14 @@ const COPY = {
     combinationDeleted: "Combinatie verwijderd",
     nameRequired: "Naam is verplicht",
     atLeastTwoTables: "Minstens 2 tafels zijn vereist",
+    areaConflict:
+      "Geselecteerde tafels liggen in verschillende zones. Zet “Mag combineren met andere zones” aan op minstens één tafel.",
     minCannotExceedMax: "Min capaciteit mag max capaciteit niet overschrijden",
     editCombination: "Combinatie bewerken",
     addCombination: "Combinatie toevoegen",
     combineTablesDescription: "Combineer tafels voor grotere of flexibele groepsplaatsing.",
+    areaRuleHint: "Tafels moeten dezelfde zone delen, tenzij minstens één cross-zone combineren toelaat.",
+    crossArea: "cross-zone",
     name: "Naam",
     largeParty: "Grote groep",
     tables: "Tafels",
@@ -351,10 +369,14 @@ const COPY = {
     combinationDeleted: "Combinaison supprimee",
     nameRequired: "Le nom est requis",
     atLeastTwoTables: "Au moins 2 tables sont requises",
+    areaConflict:
+      "Les tables selectionnees sont dans des zones differentes. Activez la combinaison hors zone sur au moins une table.",
     minCannotExceedMax: "La capacite min ne peut pas depasser la capacite max",
     editCombination: "Modifier la combinaison",
     addCombination: "Ajouter une combinaison",
     combineTablesDescription: "Combinez les tables pour accueillir des groupes plus grands.",
+    areaRuleHint: "Les tables doivent partager une zone, sauf si au moins une autorise le hors zone.",
+    crossArea: "hors zone",
     name: "Nom",
     largeParty: "Grand groupe",
     tables: "Tables",
@@ -381,10 +403,14 @@ const COPY = {
     combinationDeleted: "Combinacion eliminada",
     nameRequired: "El nombre es obligatorio",
     atLeastTwoTables: "Se requieren al menos 2 mesas",
+    areaConflict:
+      "Las mesas seleccionadas estan en zonas distintas. Activa “Permitir combinar con otras zonas” en al menos una mesa.",
     minCannotExceedMax: "La capacidad minima no puede superar la maxima",
     editCombination: "Editar combinacion",
     addCombination: "Agregar combinacion",
     combineTablesDescription: "Combina mesas para grupos grandes o asignacion flexible.",
+    areaRuleHint: "Las mesas deben compartir zona, salvo que al menos una permita combinar fuera de zona.",
+    crossArea: "fuera de zona",
     name: "Nombre",
     largeParty: "Grupo grande",
     tables: "Mesas",

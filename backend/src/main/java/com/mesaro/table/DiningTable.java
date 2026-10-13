@@ -40,6 +40,12 @@ public class DiningTable {
     @Column(nullable = false, length = 20)
     private TableStatus status = TableStatus.AVAILABLE;
 
+    @Column(nullable = false, length = 80)
+    private String area = "Main hall";
+
+    @Column(name = "allow_cross_area_combine", nullable = false)
+    private boolean allowCrossAreaCombine = false;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -103,6 +109,22 @@ public class DiningTable {
 
     public void setStatus(TableStatus status) {
         this.status = status;
+    }
+
+    public String getArea() {
+        return area;
+    }
+
+    public void setArea(String area) {
+        this.area = area == null || area.isBlank() ? "Main hall" : area.trim();
+    }
+
+    public boolean isAllowCrossAreaCombine() {
+        return allowCrossAreaCombine;
+    }
+
+    public void setAllowCrossAreaCombine(boolean allowCrossAreaCombine) {
+        this.allowCrossAreaCombine = allowCrossAreaCombine;
     }
 
     public Instant getCreatedAt() {

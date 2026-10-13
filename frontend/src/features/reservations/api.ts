@@ -57,6 +57,8 @@ interface RawTableStatusItem {
   label?: string;
   seats?: number;
   status?: string;
+  area?: string;
+  allowCrossAreaCombine?: boolean;
   available?: boolean;
 }
 
@@ -232,6 +234,8 @@ export async function getTableStatus(params?: {
     label: String(item.label ?? ""),
     seats: Number(item.seats ?? 0),
     status: String(item.status ?? "UNAVAILABLE"),
+    area: String(item.area ?? "Main hall"),
+    allowCrossAreaCombine: item.allowCrossAreaCombine === true,
     available: typeof item.available === "boolean" ? item.available : undefined
   }));
 }

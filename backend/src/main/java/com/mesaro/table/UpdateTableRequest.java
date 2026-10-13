@@ -12,6 +12,11 @@ public record UpdateTableRequest(
         @Max(value = 50, message = "Seats must not exceed 50")
         Integer seats,
 
-        TableStatus status
+        TableStatus status,
+
+        @Size(max = 80, message = "Area must not exceed 80 characters")
+        String area,
+
+        Boolean allowCrossAreaCombine
 ) {
 }

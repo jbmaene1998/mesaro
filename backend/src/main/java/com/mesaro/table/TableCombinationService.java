@@ -192,6 +192,10 @@ public class TableCombinationService {
             tables.add(table);
         }
 
+        if (!TableAreaCompatibility.canCombineAll(tables)) {
+            throw new ValidationException(TableAreaCompatibility.describeConflict(tables), "tableIds");
+        }
+
         return tables;
     }
 

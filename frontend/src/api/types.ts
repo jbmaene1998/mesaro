@@ -78,6 +78,8 @@ export interface DiningTable {
   label: string;
   seats: number;
   status: TableStatus;
+  area: string;
+  allowCrossAreaCombine: boolean;
 }
 
 export interface TableCombination {

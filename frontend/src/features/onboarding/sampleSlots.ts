@@ -22,19 +22,30 @@ export function tomorrowInTimezone(timeZone: string, now = new Date()): { date: 
   return { date, dayOfWeek };
 }
 
+/** Minimal shift shape for sample-slot preview (saved shifts or expanded drafts). */
+export type SampleSlotSource = Pick<
+  Shift,
+  "dayOfWeek" | "startTime" | "endTime" | "lastReservationTime" | "slotDurationMinutes"
+> & {
+  status?: Shift["status"];
+};
+
 /**
- * Guest-style sample start times from active shifts for a given ISO day of week.
+ * Guest-style sample start times for a given ISO day of week.
  * Used in onboarding before online booking is enabled (public /availability returns empty then).
  */
 export function buildSampleSlotsFromShifts(
-  shifts: Shift[],
+  shifts: SampleSlotSource[],
   dayOfWeek: number,
   limit = 8
 ): string[] {
   const times: string[] = [];
 
   for (const shift of shifts) {
-    if (shift.status !== "ACTIVE" || shift.dayOfWeek !== dayOfWeek) {
+    if (shift.status && shift.status !== "ACTIVE") {
+      continue;
+    }
+    if (shift.dayOfWeek !== dayOfWeek) {
       continue;
     }
 
