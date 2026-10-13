@@ -13,11 +13,20 @@ jobs:
   deploy:
     name: Deploy to production
     runs-on: ubuntu-latest
-    # Uncomment when Hostinger VPS + Environment secrets exist:
-    # environment: production
+    environment: production
     steps:
       - name: Production deploy stub
+        env:
+          # Bound so Hostinger cutover can reuse the same Environment names as staging.
+          # Until secrets/vars exist, this step only documents the contract (does not fail).
+          MESARO_DOMAIN: ${{ vars.MESARO_DOMAIN }}
+          EMAIL_FROM: ${{ vars.EMAIL_FROM }}
+          EMAIL_SUPPORT_ADDRESS: ${{ vars.EMAIL_SUPPORT_ADDRESS }}
+          STRIPE_PRICE_ID: ${{ vars.STRIPE_PRICE_ID }}
         run: |
-          echo "::notice title=Production not wired::main is the prod branch. Staging deploys from 'dev' (Omen self-hosted runner). Replace this job when Hostinger VPS deploy is ready."
+          set -euo pipefail
+          echo "::notice title=Production not wired::main is the prod branch. Staging deploys from 'dev' (Omen). Replace this job when Hostinger VPS deploy is ready — materialize .env.prod from Environment 'production' the same way deploy-staging.yml does for staging."
           echo "event=${{ github.event_name }} sha=${{ github.sha }}"
+          echo "Environment production config present (non-secret check): MESARO_DOMAIN=${MESARO_DOMAIN:+set} EMAIL_FROM=${EMAIL_FROM:+set} EMAIL_SUPPORT_ADDRESS=${EMAIL_SUPPORT_ADDRESS:+set} STRIPE_PRICE_ID=${STRIPE_PRICE_ID:+set}"
+          echo "Schema: .github/environments/README.md and backend/.env.prod.example"
           exit 0

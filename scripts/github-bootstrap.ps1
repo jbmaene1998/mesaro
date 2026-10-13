@@ -138,4 +138,17 @@ catch {
   Write-Warning "Could not enable private vulnerability reporting (plan/permission)."
 }
 
+# --- Deploy Environments (empty shells; fill vars/secrets per .github/environments/README.md) ---
+foreach ($envName in @("staging", "production")) {
+  try {
+    gh api -X PUT "repos/$repo/environments/$envName" | Out-Null
+    Write-Host "Environment upserted: $envName"
+  }
+  catch {
+    Write-Warning "Could not create Environment $envName (permission)."
+  }
+}
+Write-Host "Fill Environment vars/secrets: https://github.com/$repo/settings/environments"
+Write-Host "Checklist: .github/environments/README.md"
+
 Write-Host "Done. Review: https://github.com/$repo/settings"

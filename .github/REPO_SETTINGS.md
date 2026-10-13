@@ -57,11 +57,36 @@ Prefer **Rulesets** (modern) over legacy branch protection if the account suppor
 
 ## Deploy Actions
 
-| Workflow | Branch | Runner |
-|----------|--------|--------|
-| `deploy-staging.yml` | `dev` | Self-hosted `mesaro-staging` (Omen) |
-| `deploy-prod.yml` | `main` | GitHub-hosted stub until Hostinger VPS |
-| `require-pull-request.yml` | `dev`, `main` | Fails the push check if the commit is not from a PR |
+| Workflow | Branch | Runner | GitHub Environment |
+|----------|--------|--------|--------------------|
+| `deploy-staging.yml` | `dev` | Self-hosted `mesaro-staging` (Omen) | `staging` |
+| `deploy-prod.yml` | `main` | GitHub-hosted stub until Hostinger VPS | `production` |
+| `require-pull-request.yml` | `dev`, `main` | Fails the push check if the commit is not from a PR | — |
+
+### Environments (secrets & config)
+
+| Environment | Source of truth for values | Schema |
+|-------------|----------------------------|--------|
+| `staging` | Settings → Environments → staging (Variables + Secrets) | [`backend/.env.staging.example`](../backend/.env.staging.example) |
+| `production` | Settings → Environments → production | [`backend/.env.prod.example`](../backend/.env.prod.example) |
+
+Full var/secret checklist: [`.github/environments/README.md`](environments/README.md).
+
+Deploy jobs **rewrite** host `.env.staging` / (future) `.env.prod` from the Environment on every run. Do not treat the file on disk as editable source of truth.
+
+**Who can access**
+
+| Role | Secrets UI | Effect |
+|------|------------|--------|
+| Repo admin (you) | Create/update Variables & Secrets (values never shown again after save) | Servers receive them via Actions |
+| Future employees (write) | Cannot read secret values | Can still exfiltrate if they change a workflow that prints secrets |
+
+**When a second engineer joins**
+
+1. Raise required PR approvals to **1** on `dev`/`main` (and enable CODEOWNERS).
+2. Add CODEOWNERS for `.github/workflows/**` and `.github/environments/**` (admin-only review).
+3. On Environment `production` (and optionally `staging`): enable **Required reviewers** so only you approve deploys that receive secrets.
+4. Do not grant admin to employees who should not manage credentials.
 
 ### Free-plan note (current account)
 
