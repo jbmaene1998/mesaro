@@ -68,7 +68,8 @@ jobs:
           nohup ./mvnw -B spring-boot:run -DskipTests > /tmp/mesaro-api.log 2>&1 &
           echo $! > /tmp/mesaro-api.pid
           for i in $(seq 1 90); do
-            if curl -fsS http://127.0.0.1:8080/actuator/health >/dev/null 2>&1; then
+            # Management port is separate from the API (default 9090).
+            if curl -fsS http://127.0.0.1:9090/actuator/health >/dev/null 2>&1; then
               echo "API healthy"
               exit 0
             fi
