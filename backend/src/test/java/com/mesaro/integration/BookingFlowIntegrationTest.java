@@ -51,7 +51,9 @@ class BookingFlowIntegrationTest extends IntegrationTestBase {
 
     @Test
     void fullBookingFlow_createsHold_confirms_and_cancels() throws Exception {
-        Restaurant restaurant = restaurantRepository.save(new Restaurant("Test", "test", "UTC"));
+        Restaurant restaurant = new Restaurant("Test", "test", "UTC");
+        restaurant.setBookingEnabled(true);
+        restaurant = restaurantRepository.save(restaurant);
 
         DiningTable table = new DiningTable(restaurant, "T1", 4);
         diningTableRepository.save(table);

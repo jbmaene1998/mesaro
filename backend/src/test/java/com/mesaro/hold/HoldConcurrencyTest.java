@@ -57,7 +57,9 @@ class HoldConcurrencyTest extends IntegrationTestBase {
 
     @Test
     void holdCreationAndConfirmationConcurrentlyDoNotDeadlock() throws Exception {
-        Restaurant restaurant = restaurantRepository.save(new Restaurant("Hold Concurrency", "hold-concurrency-" + System.nanoTime(), "UTC"));
+        Restaurant restaurant = new Restaurant("Hold Concurrency", "hold-concurrency-" + System.nanoTime(), "UTC");
+        restaurant.setBookingEnabled(true);
+        restaurant = restaurantRepository.save(restaurant);
         attachOwner(restaurant);
         DiningTable table1 = diningTableRepository.save(new DiningTable(restaurant, "T1", 2));
         diningTableRepository.save(new DiningTable(restaurant, "T2", 8));
@@ -116,7 +118,9 @@ class HoldConcurrencyTest extends IntegrationTestBase {
 
     @Test
     void concurrentHoldsNeverExceedShiftMaxCovers() throws Exception {
-        Restaurant restaurant = restaurantRepository.save(new Restaurant("Capacity Concurrency", "capacity-concurrency-" + System.nanoTime(), "UTC"));
+        Restaurant restaurant = new Restaurant("Capacity Concurrency", "capacity-concurrency-" + System.nanoTime(), "UTC");
+        restaurant.setBookingEnabled(true);
+        restaurant = restaurantRepository.save(restaurant);
         attachOwner(restaurant);
         for (int i = 1; i <= 10; i++) {
             diningTableRepository.save(new DiningTable(restaurant, "T" + i, 10));
