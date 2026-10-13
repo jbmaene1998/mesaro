@@ -1,4 +1,5 @@
 import { apiClient } from "@/api/client";
+import { refreshAuthTokens } from "@/api/token-refresh";
 import type { ApiResponse, AppError, AuthTokens, CurrentUser } from "@/api/types";
 import { clearAuthSession, setAuthSession } from "@/stores/auth-session";
 
@@ -66,10 +67,16 @@ export async function register(payload: RegisterPayload) {
 }
 
 export async function refresh(refreshToken: string) {
-  const payload: TokenPayload = { refreshToken };
-  const { data } = await apiClient.post<ApiResponse<AuthTokens>>("/auth/refresh", payload);
-  const tokens = unwrapResponse(data);
-  setAuthSession(tokens.accessToken, tokens.refreshToken);
+  const tokens = await refreshAuthTokens(refreshToken);
+  if (!tokens) {
+    const appError: AppError = {
+      status: 401,
+      code: "UNAUTHORIZED",
+      message: "Refresh token rejected",
+      timestamp: new Date().toISOString()
+    };
+    throw appError;
+  }
   return tokens;
 }
 

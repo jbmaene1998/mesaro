@@ -1,9 +1,10 @@
 import axios, { type AxiosError, type AxiosResponse, type InternalAxiosRequestConfig, isAxiosError } from "axios";
 
-import type { ApiResponse, AppError, AuthTokens, UserRole } from "@/api/types";
+import { getLastRefreshError, refreshAuthTokens } from "@/api/token-refresh";
+import type { ApiResponse, AppError, UserRole } from "@/api/types";
 import { API_URL } from "@/lib/constants";
 import { showWarning } from "@/lib/toast";
-import { clearAuthSession, getAccessToken, getRefreshToken, setAuthSession } from "@/stores/auth-session";
+import { clearAuthSession, getAccessToken } from "@/stores/auth-session";
 import { getRestaurantId } from "@/stores/restaurant-session";
 
 declare module "axios" {
@@ -15,17 +16,7 @@ declare module "axios" {
 
 const REFRESH_ENDPOINT = "/auth/refresh";
 const LOGIN_ENDPOINT = "/auth/login";
-
-const refreshClient = axios.create({
-  baseURL: API_URL,
-  timeout: 10_000,
-  headers: {
-    "Content-Type": "application/json"
-  }
-});
-
-let refreshPromise: Promise<string | null> | null = null;
-let lastRefreshError: AppError | null = null;
+const REGISTER_ENDPOINT = "/auth/register";
 
 function parseRetryAfterSeconds(headers?: AxiosResponse["headers"]): number | undefined {
   if (!headers) {
@@ -95,42 +86,8 @@ function toAppError(error: unknown, overrideMessage?: string): AppError {
 }
 
 async function refreshAccessTokenSilently() {
-  // Prefer in-memory token; fall back to persisted refresh so cold loads
-  // (e.g. Stripe Checkout return) can recover before AuthProvider finishes.
-  const refreshToken =
-    getRefreshToken() ??
-    (typeof window !== "undefined" ? window.localStorage.getItem("mesaro.refreshToken") : null);
-  if (!refreshToken) {
-    return null;
-  }
-
-  if (!refreshPromise) {
-    refreshPromise = (async () => {
-      try {
-        const { data } = await refreshClient.post<ApiResponse<AuthTokens>>(REFRESH_ENDPOINT, { refreshToken });
-        if (!data.success || !data.data) {
-          lastRefreshError = {
-            status: 401,
-            code: "UNAUTHORIZED",
-            message: "Refresh token rejected",
-            timestamp: new Date().toISOString()
-          };
-          return null;
-        }
-
-        setAuthSession(data.data.accessToken, data.data.refreshToken);
-        lastRefreshError = null;
-        return data.data.accessToken;
-      } catch (error) {
-        lastRefreshError = toAppError(error);
-        return null;
-      } finally {
-        refreshPromise = null;
-      }
-    })();
-  }
-
-  return refreshPromise;
+  const tokens = await refreshAuthTokens();
+  return tokens?.accessToken ?? null;
 }
 
 function redirectToLogin() {
@@ -247,7 +204,10 @@ apiClient.interceptors.response.use(
 
     if (status === 401 && originalRequest && !originalRequest._retry401) {
       const url = originalRequest.url ?? "";
-      const shouldSkipRefresh = url.includes(REFRESH_ENDPOINT) || url.includes(LOGIN_ENDPOINT);
+      const shouldSkipRefresh =
+        url.includes(REFRESH_ENDPOINT) ||
+        url.includes(LOGIN_ENDPOINT) ||
+        url.includes(REGISTER_ENDPOINT);
 
       if (!shouldSkipRefresh) {
         originalRequest._retry401 = true;
@@ -259,8 +219,13 @@ apiClient.interceptors.response.use(
         }
       }
 
-      clearAuthSession();
-      redirectToLogin();
+      // Refresh calls must not hard-redirect: a concurrent winner may already
+      // hold a valid session, and register/login never need this path.
+      if (!shouldSkipRefresh) {
+        clearAuthSession();
+        redirectToLogin();
+      }
+      const lastRefreshError = getLastRefreshError();
       const message = lastRefreshError?.status === 0
         ? "Could not refresh your session because the server is unreachable. Please sign in again."
         : "Session expired. Please sign in again";
