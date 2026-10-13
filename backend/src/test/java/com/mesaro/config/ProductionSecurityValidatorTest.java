@@ -110,6 +110,21 @@ class ProductionSecurityValidatorTest {
     }
 
     @Test
+    void prodProfile_rejectsBlankSupportAddress() {
+        environment.setActiveProfiles("prod");
+        appProperties.getEmail().setProvider("resend");
+        appProperties.getEmail().getResend().setApiKey("re_test_key");
+        appProperties.getEmail().setSupportAddress("   ");
+
+        ProductionSecurityValidator validator =
+                new ProductionSecurityValidator(environment, appProperties, stripeProperties);
+
+        assertThatThrownBy(() -> validator.run(new DefaultApplicationArguments()))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("app.email.support-address");
+    }
+
+    @Test
     void prodProfile_rejectsLogProvider() {
         environment.setActiveProfiles("prod");
         appProperties.getEmail().setProvider("log");
@@ -130,6 +145,7 @@ class ProductionSecurityValidatorTest {
         props.getStaff().setTokenSecret("prod-staff-secret-at-least-32-chars");
         props.getEmail().setProvider("resend");
         props.getEmail().setFromAddress("noreply@example.com");
+        props.getEmail().setSupportAddress("support@example.com");
         props.getEmail().getResend().setApiKey("re_test_key");
         return props;
     }

@@ -113,6 +113,9 @@ public class ProductionSecurityValidator implements ApplicationRunner {
         if (isBlank(email.getFromAddress())) {
             errors.add("app.email.from-address is required outside dev (EMAIL_FROM)");
         }
+        if (isBlank(email.getSupportAddress())) {
+            errors.add("app.email.support-address is required outside dev (EMAIL_SUPPORT_ADDRESS)");
+        }
 
         String emailProvider = email.getProvider();
         if (emailProvider == null || emailProvider.isBlank() || "log".equalsIgnoreCase(emailProvider)) {

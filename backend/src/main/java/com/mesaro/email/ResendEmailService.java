@@ -36,6 +36,7 @@ public class ResendEmailService implements EmailService {
     private final String apiBaseUrl;
     private final String apiKey;
     private final String fromAddress;
+    private final String supportAddress;
     private final String baseUrl;
 
     public ResendEmailService(AppProperties appProperties, ObjectMapper objectMapper) {
@@ -46,6 +47,7 @@ public class ResendEmailService implements EmailService {
         this.apiBaseUrl = trimTrailingSlash(appProperties.getEmail().getResend().getApiBaseUrl());
         this.apiKey = appProperties.getEmail().getResend().getApiKey();
         this.fromAddress = appProperties.getEmail().getFormattedFrom();
+        this.supportAddress = trimToNull(appProperties.getEmail().getSupportAddress());
         this.baseUrl = appProperties.getBaseUrl();
     }
 
@@ -280,7 +282,8 @@ public class ResendEmailService implements EmailService {
                         "<p><strong>Restaurant:</strong> " + escapeHtml(safeRestaurantName) + "</p>" +
                         "<p><strong>Message:</strong></p><p>" + nl2br(escapeHtml(message)) + "</p>",
                 null,
-                null
+                null,
+                trimToNull(senderEmail)
         );
     }
 
@@ -292,10 +295,31 @@ public class ResendEmailService implements EmailService {
                                String contentHtml,
                                String ctaLabel,
                                String ctaUrl) {
-        sendEmail(to, subject, plainBody, buildEmailLayout(title, preheader, contentHtml, ctaLabel, ctaUrl), null);
+        sendHtmlEmail(to, subject, plainBody, title, preheader, contentHtml, ctaLabel, ctaUrl, supportAddress);
+    }
+
+    private void sendHtmlEmail(String to,
+                               String subject,
+                               String plainBody,
+                               String title,
+                               String preheader,
+                               String contentHtml,
+                               String ctaLabel,
+                               String ctaUrl,
+                               String replyTo) {
+        sendEmail(to, subject, plainBody, buildEmailLayout(title, preheader, contentHtml, ctaLabel, ctaUrl), null, replyTo);
     }
 
     private void sendEmail(String to, String subject, String textBody, String htmlBody, byte[] attachmentBytes) {
+        sendEmail(to, subject, textBody, htmlBody, attachmentBytes, supportAddress);
+    }
+
+    private void sendEmail(String to,
+                           String subject,
+                           String textBody,
+                           String htmlBody,
+                           byte[] attachmentBytes,
+                           String replyTo) {
         try {
             Map<String, Object> payload = new LinkedHashMap<>();
             payload.put("from", fromAddress);
@@ -303,6 +327,9 @@ public class ResendEmailService implements EmailService {
             payload.put("subject", subject);
             payload.put("text", textBody);
             payload.put("html", htmlBody);
+            if (replyTo != null && !replyTo.isBlank()) {
+                payload.put("reply_to", List.of(replyTo));
+            }
             if (attachmentBytes != null && attachmentBytes.length > 0) {
                 payload.put("attachments", List.of(Map.of(
                         "filename", "reservation.ics",
@@ -331,6 +358,14 @@ public class ResendEmailService implements EmailService {
                     LogSanitizer.maskEmail(to), LogSanitizer.exceptionType(e));
             throw new EmailSendException("Failed to send email via Resend", e);
         }
+    }
+
+    private String trimToNull(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
     }
 
     private String buildEmailLayout(String title,
