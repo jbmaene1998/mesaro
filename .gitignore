@@ -32,6 +32,8 @@ backend/.env.prod.local
 backend/.env.staging
 backend/.env.dev
 backend/.env.prod.verify
+backend/.env.resend.secrets.local
+backend/*.secrets.local
 backend/frontend-dist/
 
 # Frontend
