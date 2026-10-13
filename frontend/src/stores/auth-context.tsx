@@ -224,6 +224,11 @@ export function AuthProvider({ children }: PropsWithChildren) {
         applyTokens(tokens);
         return true;
       } catch {
+        // A concurrent refresh may already have rotated the session in memory.
+        const newestRefreshToken = getRefreshToken() ?? getStoredRefreshToken();
+        if (newestRefreshToken && newestRefreshToken !== activeRefreshToken) {
+          return true;
+        }
         clearState();
         return false;
       } finally {
