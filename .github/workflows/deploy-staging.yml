@@ -185,7 +185,8 @@ jobs:
         working-directory: /opt/mesaro/frontend
         run: |
           set -euo pipefail
-          printf '%s\n' 'VITE_API_URL=https://api.mesaro.staging/api' > .env.production.local
+          # Same origin as the SPA so one Caddy internal-cert accept covers API calls.
+          printf '%s\n' 'VITE_API_URL=https://app.mesaro.staging/api' > .env.production.local
           npm ci
           npx vite build
           mkdir -p ../backend/frontend-dist

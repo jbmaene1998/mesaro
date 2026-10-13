@@ -20,9 +20,16 @@ https://api.mesaro.staging {
 https://app.mesaro.staging {
 	tls internal
 	encode gzip
-	root * /srv/frontend
-	try_files {path} /index.html
-	file_server
+	# Same-origin /api so browsers that only accepted the app cert can call the API
+	# (XHR to api.mesaro.staging fails silently on untrusted internal CA).
+	handle /api* {
+		reverse_proxy app-prod:8080
+	}
+	handle {
+		root * /srv/frontend
+		try_files {path} /index.html
+		file_server
+	}
 	header {
 		Strict-Transport-Security "max-age=31536000; includeSubDomains"
 		X-Content-Type-Options nosniff

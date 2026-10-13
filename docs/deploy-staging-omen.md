@@ -46,7 +46,7 @@ Prefer Actions. If you must redeploy by hand, the env file must already exist (f
 cd /opt/mesaro
 # refresh from a machine that can reach GitHub, or wait for Actions
 cd frontend
-echo 'VITE_API_URL=https://api.mesaro.staging/api' > .env.production.local
+echo 'VITE_API_URL=https://app.mesaro.staging/api' > .env.production.local
 npm ci
 npx vite build
 mkdir -p ../backend/frontend-dist
@@ -66,6 +66,7 @@ curl -fsS http://127.0.0.1:19090/actuator/health/readiness
 ```
 
 Browser: `https://app.mesaro.staging` (accept Caddy internal cert warning once).  
+The SPA calls the API on the same host (`/api`) so you do not need a second cert accept for `api.mesaro.staging`.  
 Mailpit: `ssh -L 8025:127.0.0.1:8025 mesaro-staging` → http://127.0.0.1:8025
 
 ## SSH from Windows (Cursor)

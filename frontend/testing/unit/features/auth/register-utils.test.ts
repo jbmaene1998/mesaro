@@ -22,5 +22,11 @@ describe("register-utils", () => {
 
     expect(getSignupErrorMessage(error)).toBe("This booking URL slug is already taken. Please choose another.");
   });
+
+  it("maps unreachable server errors to a connection message", () => {
+    expect(getSignupErrorMessage({ status: 0, message: "Network Error" })).toBe(
+      "Could not reach the server. Check your connection (and that the staging certificate is trusted), then try again."
+    );
+  });
 });
 

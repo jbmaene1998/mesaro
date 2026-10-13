@@ -1,7 +1,7 @@
 import { Link, Navigate, useNavigate } from "react-router-dom";
 import { useState } from "react";
 
-import { EMAIL_REGEX } from "@/features/auth/register-utils";
+import { EMAIL_REGEX, getSignupErrorMessage } from "@/features/auth/register-utils";
 import { useAuth } from "@/hooks/use-auth";
 import { useI18n } from "@/i18n";
 import { showApiError } from "@/lib/toast";
@@ -49,7 +49,7 @@ export function RegisterPage() {
       });
       navigate("/onboarding/setup", { replace: true });
     } catch (submitError) {
-      setError(t("register.registerFailed"));
+      setError(getSignupErrorMessage(submitError));
       showApiError(submitError);
     } finally {
       setIsSubmitting(false);
