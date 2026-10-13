@@ -2,13 +2,16 @@ name: E2E Tests
 
 on:
   push:
-    branches: [main]
+    branches: [dev, main]
   pull_request:
-    branches: [main]
+    branches: [dev, main]
 
 jobs:
   playwright:
+    name: playwright
     runs-on: ubuntu-latest
+    timeout-minutes: 45
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -26,32 +29,42 @@ jobs:
           distribution: temurin
           java-version: "21"
           cache: maven
+          cache-dependency-path: backend/pom.xml
 
       - name: Start infra (Postgres + Redis)
         working-directory: backend
         run: |
-          docker compose -f docker-compose.infra.yml up -d
-          # Wait for Postgres readiness on published port if present
-          for i in $(seq 1 30); do
-            if docker compose -f docker-compose.infra.yml ps | grep -qi healthy; then
-              break
+          set -euo pipefail
+          docker compose -f docker-compose.infra.yml up -d postgres-dev redis-dev
+          for i in $(seq 1 60); do
+            if docker compose -f docker-compose.infra.yml exec -T postgres-dev pg_isready -U mesaro -d mesaro_dev >/dev/null 2>&1; then
+              echo "Postgres ready"
+              exit 0
             fi
             sleep 2
           done
+          echo "Postgres failed to become ready" >&2
+          docker compose -f docker-compose.infra.yml logs postgres-dev || true
+          exit 1
 
       - name: Install frontend dependencies
         working-directory: frontend
         run: npm ci
 
-      - name: Install Playwright (Chromium only)
+      - name: Install Playwright Chromium
         working-directory: frontend
         run: npx playwright install --with-deps chromium
 
-      - name: Start Spring Boot (dev profile)
+      - name: Start Spring Boot (dev profile + seed)
         working-directory: backend
         env:
           SPRING_PROFILES_ACTIVE: dev
+          SESSION_STORE_TYPE: none
+          APP_LOG_ELASTIC_ENABLED: "false"
+          ELASTICSEARCH_HEALTH_ENABLED: "false"
         run: |
+          set -euo pipefail
+          chmod +x mvnw
           nohup ./mvnw -B spring-boot:run -DskipTests > /tmp/mesaro-api.log 2>&1 &
           echo $! > /tmp/mesaro-api.pid
           for i in $(seq 1 90); do
@@ -61,19 +74,24 @@ jobs:
             fi
             sleep 5
           done
-          echo "API failed to become healthy"
+          echo "API failed to become healthy" >&2
           tail -n 200 /tmp/mesaro-api.log || true
           exit 1
 
       - name: Run Playwright E2E tests
         working-directory: frontend
         env:
-          VITE_API_URL: http://127.0.0.1:8080
+          CI: "true"
+          VITE_API_URL: http://127.0.0.1:8080/api
+          E2E_RESTAURANT_SLUG: demo-restaurant
+          # Optional overrides; auth helper falls back to demo seed users.
+          E2E_OWNER_EMAIL: ${{ secrets.E2E_OWNER_EMAIL }}
+          E2E_OWNER_PASSWORD: ${{ secrets.E2E_OWNER_PASSWORD }}
           E2E_MANAGER_EMAIL: ${{ secrets.E2E_MANAGER_EMAIL }}
           E2E_MANAGER_PASSWORD: ${{ secrets.E2E_MANAGER_PASSWORD }}
           E2E_STAFF_EMAIL: ${{ secrets.E2E_STAFF_EMAIL }}
           E2E_STAFF_PASSWORD: ${{ secrets.E2E_STAFF_PASSWORD }}
-        run: npx playwright test
+        run: npx playwright test --project=chromium
 
       - name: Upload Playwright HTML report
         if: always()
@@ -81,6 +99,7 @@ jobs:
         with:
           name: playwright-report
           path: frontend/playwright-report
+          if-no-files-found: ignore
 
       - name: Upload API logs
         if: failure()
@@ -88,10 +107,11 @@ jobs:
         with:
           name: api-logs
           path: /tmp/mesaro-api.log
+          if-no-files-found: ignore
 
       - name: Stop API and infra
         if: always()
         working-directory: backend
         run: |
-          if [ -f /tmp/mesaro-api.pid ]; then kill $(cat /tmp/mesaro-api.pid) || true; fi
+          if [ -f /tmp/mesaro-api.pid ]; then kill "$(cat /tmp/mesaro-api.pid)" || true; fi
           docker compose -f docker-compose.infra.yml down || true

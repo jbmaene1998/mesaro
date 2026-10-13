@@ -27,19 +27,24 @@ class TimeServiceDstTest {
     }
 
     @Test
-    void dstOverlap_requiresOffsetAndPinsUtc() {
+    void dstOverlap_defaultsToEarlierOffsetAndPinsWhenProvided() {
         ZoneId zone = ZoneId.of("America/New_York");
         LocalDate overlapDate = findOverlapDate(zone);
         LocalDateTime ldt = LocalDateTime.of(overlapDate, LocalTime.of(1, 30));
         List<ZoneOffset> offsets = zone.getRules().getValidOffsets(ldt);
 
         assertThat(offsets).hasSize(2);
-        assertThatThrownBy(() -> timeService.toUtcStrict(overlapDate, LocalTime.of(1, 30), zone, null))
-                .isInstanceOf(UnprocessableEntityException.class);
+        ZoneOffset earlier = offsets.stream().min(ZoneOffset::compareTo).orElseThrow();
+        ZoneOffset later = offsets.stream().max(ZoneOffset::compareTo).orElseThrow();
 
-        var first = timeService.toUtcStrict(overlapDate, LocalTime.of(1, 30), zone, offsets.get(0).getTotalSeconds() / 60);
-        var second = timeService.toUtcStrict(overlapDate, LocalTime.of(1, 30), zone, offsets.get(1).getTotalSeconds() / 60);
-        assertThat(first).isNotEqualTo(second);
+        var defaulted = timeService.toUtcStrict(overlapDate, LocalTime.of(1, 30), zone, null);
+        var earlierPinned = timeService.toUtcStrict(
+                overlapDate, LocalTime.of(1, 30), zone, earlier.getTotalSeconds() / 60);
+        var laterPinned = timeService.toUtcStrict(
+                overlapDate, LocalTime.of(1, 30), zone, later.getTotalSeconds() / 60);
+
+        assertThat(defaulted).isEqualTo(earlierPinned);
+        assertThat(laterPinned).isNotEqualTo(earlierPinned);
     }
 
     @Test

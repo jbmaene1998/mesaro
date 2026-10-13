@@ -50,4 +50,9 @@ public class HoldOverlapCheckRepository implements OverlapCheckRepository {
     public int countCoversForShift(Long shiftId, Instant startUtc, Instant endUtc) {
         return reservationRepository.countCoversForShift(shiftId, startUtc, endUtc);
     }
+
+    @Override
+    public int countActiveHoldCoversForShift(Long shiftId, Instant startUtc, Instant endUtc) {
+        return holdRepository.countActiveHoldCoversForShift(shiftId, startUtc, endUtc, timeService.now());
+    }
 }

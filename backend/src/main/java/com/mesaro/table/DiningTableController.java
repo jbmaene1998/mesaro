@@ -84,10 +84,15 @@ public class DiningTableController {
         Instant endUtc = null;
         if (date != null && startTime != null) {
             startUtc = timeService.toUtc(date, startTime, timezone);
-            LocalTime effectiveEndTime = endTime != null
-                    ? endTime
-                    : startTime.plusMinutes(defaultDurationMinutes);
-            endUtc = timeService.toUtc(date, effectiveEndTime, timezone);
+            if (endTime != null) {
+                endUtc = timeService.toUtc(date, endTime, timezone);
+                // Overnight window: end clock time is earlier than start on the same local date.
+                if (!endUtc.isAfter(startUtc)) {
+                    endUtc = timeService.toUtc(date.plusDays(1), endTime, timezone);
+                }
+            } else {
+                endUtc = startUtc.plusSeconds(Math.max(1, defaultDurationMinutes) * 60L);
+            }
             if (!endUtc.isAfter(startUtc)) {
                 endUtc = startUtc.plusSeconds(1);
             }

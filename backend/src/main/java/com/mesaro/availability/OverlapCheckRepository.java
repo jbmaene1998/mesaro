@@ -31,12 +31,17 @@ public interface OverlapCheckRepository {
     Set<Long> findTablesWithActiveHolds(List<Long> tableIds, Instant startUtc, Instant endUtc);
 
     /**
-     * Count current covers (confirmed reservations) for a shift on a date.
+     * Count current covers (confirmed reservations) for a shift in a UTC window.
      *
      * @param shiftId    The shift ID
-     * @param startUtc   Start of the day in UTC
-     * @param endUtc     End of the day in UTC
+     * @param startUtc   Window start (inclusive)
+     * @param endUtc     Window end (exclusive)
      * @return Total covers booked
      */
     int countCoversForShift(Long shiftId, Instant startUtc, Instant endUtc);
+
+    /**
+     * Count party sizes on active (non-expired, non-confirmed) holds for a shift window.
+     */
+    int countActiveHoldCoversForShift(Long shiftId, Instant startUtc, Instant endUtc);
 }

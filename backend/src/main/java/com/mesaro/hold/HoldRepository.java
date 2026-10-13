@@ -59,6 +59,31 @@ public interface HoldRepository extends JpaRepository<Hold, Long> {
             "AND h.endAtUtc > :startUtc")
     boolean existsActiveHoldForTables(List<Long> tableIds, Instant startUtc, Instant endUtc, Instant now);
 
+    @Query("SELECT CASE WHEN COUNT(h) > 0 THEN true ELSE false END " +
+            "FROM Hold h JOIN h.tables t " +
+            "WHERE t.id IN :tableIds " +
+            "AND h.id <> :excludeHoldId " +
+            "AND h.confirmed = false " +
+            "AND h.expiresAtUtc > :now " +
+            "AND h.startAtUtc < :endUtc " +
+            "AND h.endAtUtc > :startUtc")
+    boolean existsActiveHoldForTablesExcluding(List<Long> tableIds,
+                                               Instant startUtc,
+                                               Instant endUtc,
+                                               Instant now,
+                                               Long excludeHoldId);
+
+    @Query("SELECT COALESCE(SUM(h.partySize), 0) FROM Hold h " +
+            "WHERE h.id IN (" +
+            "  SELECT DISTINCT held.id FROM Hold held JOIN held.tables t " +
+            "  WHERE held.shift.id = :shiftId " +
+            "  AND held.confirmed = false " +
+            "  AND held.expiresAtUtc > :now " +
+            "  AND held.startAtUtc >= :dayStart " +
+            "  AND held.startAtUtc < :dayEnd" +
+            ")")
+    int countDistinctActiveHoldCoversForShift(Long shiftId, Instant dayStart, Instant dayEnd, Instant now);
+
     /**
      * Delete expired holds (cleanup job).
      */
@@ -93,14 +118,9 @@ public interface HoldRepository extends JpaRepository<Hold, Long> {
             """, nativeQuery = true)
     List<ExpiredHoldDeletion> deleteExpiredHoldsSkipLocked(Instant cutoff);
 
-    @Query("SELECT COALESCE(SUM(h.partySize), 0) FROM Hold h " +
-            "JOIN h.tables t " +
-            "WHERE h.shift.id = :shiftId " +
-            "AND h.confirmed = false " +
-            "AND h.expiresAtUtc > :now " +
-            "AND h.startAtUtc >= :dayStart " +
-            "AND h.startAtUtc < :dayEnd")
-    int countActiveHoldCoversForShift(Long shiftId, Instant dayStart, Instant dayEnd, Instant now);
+    default int countActiveHoldCoversForShift(Long shiftId, Instant dayStart, Instant dayEnd, Instant now) {
+        return countDistinctActiveHoldCoversForShift(shiftId, dayStart, dayEnd, now);
+    }
 
     @Query("SELECT COUNT(DISTINCT h.id) FROM Hold h " +
             "JOIN h.tables t " +

@@ -9,6 +9,7 @@ import com.mesaro.infra.TimeService;
 import com.mesaro.restaurant.Restaurant;
 import com.mesaro.restaurant.RestaurantService;
 import com.mesaro.security.RestaurantAccessGuard;
+import com.mesaro.shift.ShiftCapacityService;
 import com.mesaro.shift.ShiftRepository;
 import com.mesaro.table.DiningTableLockRepository;
 import com.mesaro.table.DiningTableService;
@@ -65,6 +66,8 @@ class ReservationAdminServiceTest {
     private TimeService timeService;
     @Mock
     private EmailService emailService;
+    @Mock
+    private ShiftCapacityService shiftCapacityService;
 
     private ReservationAdminService service;
 
@@ -83,7 +86,8 @@ class ReservationAdminServiceTest {
                 restaurantAccessGuard,
                 auditService,
                 timeService,
-                emailService
+                emailService,
+                shiftCapacityService
         );
     }
 
@@ -93,7 +97,7 @@ class ReservationAdminServiceTest {
         when(restaurantService.findOperationalById(1L)).thenReturn(restaurant);
         doNothing().when(restaurantService).assertCanAcceptBookings(restaurant);
         when(timeService.now()).thenReturn(Instant.parse("2026-01-01T12:00:30Z"));
-        when(timeService.toUtc(LocalDate.of(2026, 1, 1), LocalTime.of(12, 0), java.time.ZoneId.of("UTC")))
+        when(timeService.toUtcStrict(LocalDate.of(2026, 1, 1), LocalTime.of(12, 0), java.time.ZoneId.of("UTC"), null))
                 .thenReturn(Instant.parse("2026-01-01T12:00:00Z"));
         when(shiftRepository.findActiveShiftAtTimeIncludingOvernight(1L, 4, 3, LocalTime.of(12, 0)))
                 .thenReturn(java.util.List.of());
@@ -123,7 +127,7 @@ class ReservationAdminServiceTest {
         when(restaurantService.findOperationalById(1L)).thenReturn(restaurant);
         doNothing().when(restaurantService).assertCanAcceptBookings(restaurant);
         when(timeService.now()).thenReturn(Instant.parse("2026-01-01T12:01:01Z"));
-        when(timeService.toUtc(LocalDate.of(2026, 1, 1), LocalTime.of(12, 0), java.time.ZoneId.of("UTC")))
+        when(timeService.toUtcStrict(LocalDate.of(2026, 1, 1), LocalTime.of(12, 0), java.time.ZoneId.of("UTC"), null))
                 .thenReturn(Instant.parse("2026-01-01T12:00:00Z"));
 
         AdminReservationCreateRequest request = new AdminReservationCreateRequest(

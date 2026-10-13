@@ -30,6 +30,7 @@ function mergeRestaurants(claimRestaurants: UserRestaurant[], summaries: Restaur
       name: summary?.name ?? `Restaurant ${claim.restaurantId.slice(0, 8)}`,
       timezone: summary?.timezone,
       locale: summary?.locale,
+      defaultDurationMinutes: summary?.defaultDurationMinutes,
       role: claim.role
     } satisfies RestaurantContextItem;
   });

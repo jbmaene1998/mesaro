@@ -11,6 +11,7 @@ import com.mesaro.reservation.ReservationRepository;
 import com.mesaro.restaurant.Restaurant;
 import com.mesaro.restaurant.RestaurantService;
 import com.mesaro.shift.Shift;
+import com.mesaro.shift.ShiftCapacityService;
 import com.mesaro.shift.ShiftRepository;
 import com.mesaro.table.DiningTable;
 import com.mesaro.table.DiningTableLockRepository;
@@ -37,6 +38,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
@@ -71,6 +73,8 @@ class HoldServiceTest {
     private MeterRegistry meterRegistry;
     @Mock
     private Counter counter;
+    @Mock
+    private ShiftCapacityService shiftCapacityService;
 
     private HoldService holdService;
 
@@ -88,13 +92,22 @@ class HoldServiceTest {
                 tokenService,
                 timeService,
                 auditService,
-                meterRegistry
+                meterRegistry,
+                shiftCapacityService
         );
         org.mockito.Mockito.lenient().when(meterRegistry.counter(org.mockito.ArgumentMatchers.anyString())).thenReturn(counter);
         org.mockito.Mockito.lenient().when(meterRegistry.counter(
                 org.mockito.ArgumentMatchers.anyString(),
                 org.mockito.ArgumentMatchers.anyString(),
                 org.mockito.ArgumentMatchers.anyString())).thenReturn(counter);
+        org.mockito.Mockito.lenient().when(shiftCapacityService.durationFitsService(any(), any(), any(), anyInt()))
+                .thenReturn(true);
+        org.mockito.Mockito.lenient().when(shiftCapacityService.occurrenceWindow(any(), any(), any(), any()))
+                .thenReturn(new ShiftCapacityService.OccurrenceWindow(
+                        Instant.parse("2025-01-02T00:00:00Z"),
+                        Instant.parse("2025-01-03T00:00:00Z"),
+                        LocalDate.of(2025, 1, 2)));
+        org.mockito.Mockito.lenient().when(shiftCapacityService.totalCovers(any(), any(), any())).thenReturn(0);
         ReflectionTestUtils.setField(holdService, "holdDurationMinutes", 3);
     }
 
@@ -121,7 +134,7 @@ class HoldServiceTest {
         when(vacationService.isRestaurantClosed(1L, date)).thenReturn(false);
         when(timeService.now()).thenReturn(now);
         when(timeService.today(ZoneId.of("UTC"))).thenReturn(LocalDate.of(2025, 1, 1));
-        when(timeService.toUtc(date, time, ZoneId.of("UTC"))).thenReturn(startUtc);
+        when(timeService.toUtcStrict(date, time, ZoneId.of("UTC"), null)).thenReturn(startUtc);
         when(shiftRepository.findActiveShiftAtTimeIncludingOvernight(eq(1L), eq(date.getDayOfWeek().getValue()), eq(3), eq(time)))
                 .thenReturn(List.of(shift));
         when(shiftRepository.findByIdForUpdate(50L)).thenReturn(Optional.of(shift));
@@ -213,7 +226,7 @@ class HoldServiceTest {
         when(vacationService.isRestaurantClosed(1L, date)).thenReturn(false);
         when(timeService.now()).thenReturn(now);
         when(timeService.today(ZoneId.of("UTC"))).thenReturn(LocalDate.of(2025, 1, 1));
-        when(timeService.toUtc(date, time, ZoneId.of("UTC"))).thenReturn(startUtc);
+        when(timeService.toUtcStrict(date, time, ZoneId.of("UTC"), null)).thenReturn(startUtc);
         when(shiftRepository.findActiveShiftAtTimeIncludingOvernight(eq(1L), eq(date.getDayOfWeek().getValue()), eq(3), eq(time)))
                 .thenReturn(List.of(shift));
         when(shiftRepository.findByIdForUpdate(50L)).thenReturn(Optional.of(shift));
@@ -258,7 +271,7 @@ class HoldServiceTest {
         when(vacationService.isRestaurantClosed(1L, date)).thenReturn(false);
         when(timeService.now()).thenReturn(now);
         when(timeService.today(ZoneId.of("UTC"))).thenReturn(LocalDate.of(2025, 1, 1));
-        when(timeService.toUtc(date, time, ZoneId.of("UTC"))).thenReturn(startUtc);
+        when(timeService.toUtcStrict(date, time, ZoneId.of("UTC"), null)).thenReturn(startUtc);
         when(shiftRepository.findActiveShiftAtTimeIncludingOvernight(eq(1L), eq(date.getDayOfWeek().getValue()), eq(3), eq(time)))
                 .thenReturn(List.of(shift));
         when(shiftRepository.findByIdForUpdate(50L)).thenReturn(Optional.of(shift));

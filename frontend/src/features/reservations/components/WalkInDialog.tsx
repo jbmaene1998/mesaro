@@ -26,6 +26,7 @@ import { useI18n } from "@/i18n";
 import { createWalkIn } from "@/features/reservations/api";
 import { useAvailableTables } from "@/features/reservations/hooks/useAvailableTables";
 import { getCombinations } from "@/features/tables/api";
+import { durationOptionsMinutes } from "@/lib/date";
 import { RestaurantContext } from "@/stores/restaurant-context";
 import { showApiError, showSuccess } from "@/lib/toast";
 
@@ -63,11 +64,13 @@ export function WalkInDialog({ open, onOpenChange, onCreated }: WalkInDialogProp
   const selectedRestaurantId = useSelectedRestaurantId();
   const restaurantContext = useContext(RestaurantContext);
   const restaurantTimezone = restaurantContext?.currentRestaurant?.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone ?? "UTC";
+  const defaultDurationMinutes = restaurantContext?.currentRestaurant?.defaultDurationMinutes ?? 90;
+  const durationChoices = useMemo(() => durationOptionsMinutes(defaultDurationMinutes), [defaultDurationMinutes]);
   const [baseTime, setBaseTime] = useState<Date>(new Date());
   const [partySize, setPartySize] = useState(2);
   const [guestName, setGuestName] = useState("");
   const [guestPhone, setGuestPhone] = useState("");
-  const [durationMinutes, setDurationMinutes] = useState<60 | 90 | 120>(90);
+  const [durationMinutes, setDurationMinutes] = useState(defaultDurationMinutes);
   const [notes, setNotes] = useState("");
   const [selectedItem, setSelectedItem] = useState<SelectedItem>(null);
 
@@ -134,7 +137,8 @@ export function WalkInDialog({ open, onOpenChange, onCreated }: WalkInDialogProp
       return;
     }
     setBaseTime(roundUpToNextMinute(new Date()));
-  }, [open]);
+    setDurationMinutes(defaultDurationMinutes);
+  }, [defaultDurationMinutes, open]);
 
   // Auto-select best fit table once when available.
   useEffect(() => {
@@ -242,14 +246,16 @@ export function WalkInDialog({ open, onOpenChange, onCreated }: WalkInDialogProp
 
           <div className="space-y-1">
             <label className="text-sm font-medium" htmlFor="walkin-duration">{copy.duration}</label>
-            <Select value={String(durationMinutes)} onValueChange={(value) => setDurationMinutes(Number(value) as 60 | 90 | 120)}>
+            <Select value={String(durationMinutes)} onValueChange={(value) => setDurationMinutes(Number(value))}>
               <SelectTrigger id="walkin-duration">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="60">60 min</SelectItem>
-                <SelectItem value="90">90 min</SelectItem>
-                <SelectItem value="120">120 min</SelectItem>
+                {durationChoices.map((minutes) => (
+                  <SelectItem key={minutes} value={String(minutes)}>
+                    {minutes} min
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>

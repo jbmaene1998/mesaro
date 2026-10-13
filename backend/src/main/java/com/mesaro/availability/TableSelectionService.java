@@ -207,8 +207,12 @@ public class TableSelectionService {
                         .thenComparingLong(TableCombination::getId))
                 .toList();
 
-        // Check each combination for availability
+        // Check each combination for availability and physical seats
         for (TableCombination combination : sorted) {
+            int physicalSeats = combination.getTotalSeats();
+            if (physicalSeats > 0 && physicalSeats < partySize) {
+                continue;
+            }
             if (isCombinationAvailable(combination, startUtc, endUtc)) {
                 int waste = combination.getMaxCapacity() - partySize;
                 log.debug("Selected combination {} (capacity={}-{}, waste={}) for party of {}",

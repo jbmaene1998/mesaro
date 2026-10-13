@@ -24,6 +24,8 @@
 
 ## How tested
 
+CI on every PR to `dev`/`main`: **Backend CI / test**, **Frontend CI / test**, **E2E Tests / playwright**.
+
 - [ ] Backend tests (`.\run-be-test.ps1` or scoped Maven)
 - [ ] Frontend unit tests (`.\run-fe-test.ps1` / vitest)
 - [ ] Playwright / manual path for guest or floor flows (if touched)

@@ -73,6 +73,20 @@ Admins set values. Collaborators cannot read secret values after save. When hiri
 | `RESEND_API_KEY` | required while `EMAIL_PROVIDER=resend` |
 | `STRIPE_SECRET_KEY` | `sk_test_…` |
 | `STRIPE_WEBHOOK_SECRET` | `whsec_…` |
+| `E2E_STAFF_EMAIL` | Staff user for post-deploy Playwright `@smoke` |
+| `E2E_STAFF_PASSWORD` | |
+| `E2E_MANAGER_EMAIL` | Optional; used by fuller E2E suites |
+| `E2E_MANAGER_PASSWORD` | |
+| `E2E_OWNER_EMAIL` | Optional |
+| `E2E_OWNER_PASSWORD` | |
+
+### Staging — Variables for E2E smoke
+
+| Name | Example / notes |
+|------|-----------------|
+| `E2E_RESTAURANT_SLUG` | Bookable public slug (e.g. `gastropub-gaspard`). Guest `@smoke` booking uses this. |
+
+Ephemeral PR E2E (`e2e.yml`) uses the dev seed (`demo-restaurant`, `*@demo.com` / `demo123`) and does not require these secrets.
 
 ## Production — same split
 

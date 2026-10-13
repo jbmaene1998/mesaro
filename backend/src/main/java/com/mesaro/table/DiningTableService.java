@@ -112,6 +112,7 @@ public class DiningTableService {
             table.setLabel(request.label());
         }
 
+        int previousSeats = table.getSeats();
         if (request.seats() != null) {
             table.setSeats(request.seats());
         }
@@ -143,6 +144,9 @@ public class DiningTableService {
         }
 
         DiningTable saved = tableRepository.save(table);
+        if (request.seats() != null && request.seats() != previousSeats) {
+            clampCombinationsForTable(saved);
+        }
         log.info("Updated table '{}' for restaurant {}", saved.getLabel(), restaurantId);
         auditService.record(
                 AuditEventType.TABLE_UPDATED,
@@ -153,6 +157,22 @@ public class DiningTableService {
                 Map.of("label", saved.getLabel(), "status", saved.getStatus().name())
         );
         return saved;
+    }
+
+    private void clampCombinationsForTable(DiningTable table) {
+        List<TableCombination> combinations = combinationRepository.findByTableId(table.getId());
+        for (TableCombination combination : combinations) {
+            Integer seatsSum = combinationRepository.sumSeatsByComboId(combination.getId());
+            int totalSeats = seatsSum != null ? seatsSum : 0;
+            if (combination.getMaxCapacity() > totalSeats) {
+                combination.setMaxCapacity(totalSeats);
+            }
+            if (combination.getMinCapacity() > combination.getMaxCapacity()) {
+                combination.setMinCapacity(Math.max(1, combination.getMaxCapacity()));
+            }
+            combinationRepository.save(combination);
+            log.info("Clamped combination {} capacities to seats sum {}", combination.getId(), totalSeats);
+        }
     }
 
     @Transactional

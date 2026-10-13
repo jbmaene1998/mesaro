@@ -197,6 +197,7 @@ export interface RestaurantContextItem {
   name: string;
   timezone?: string;
   locale?: string;
+  defaultDurationMinutes?: number;
   role: UserRole;
 }
 

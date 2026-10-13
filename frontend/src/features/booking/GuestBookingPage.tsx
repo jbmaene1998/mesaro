@@ -10,6 +10,7 @@ import type { AppError } from "@/api/types";
 import {
   checkClosed,
   createHold,
+  utcOffsetMinutesForSlot,
   getAvailability,
   getRestaurantBySlug,
   type AvailabilitySlot
@@ -102,7 +103,13 @@ export function GuestBookingPage() {
 
   const holdMutation = useMutation({
     mutationFn: (slot: AvailabilitySlot) =>
-      createHold(restaurantSlug, date, slot.time, numericPartySize),
+      createHold(
+        restaurantSlug,
+        date,
+        slot.time,
+        numericPartySize,
+        utcOffsetMinutesForSlot(date, slot.time, slot.timeUtc)
+      ),
     onError: async (error) => {
       const message = getHoldErrorMessage(error, copy);
       setSlotError(message);

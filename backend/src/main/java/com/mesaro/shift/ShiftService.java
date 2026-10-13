@@ -364,8 +364,10 @@ public class ShiftService {
     }
 
     private void validateNoOverlap(Long restaurantId, int dayOfWeek, LocalTime startTime, LocalTime endTime, Long excludeId) {
+        // Only ACTIVE shifts block the calendar; DRAFT/INACTIVE can share windows for replacements.
         List<Shift> existing = shiftRepository.findByRestaurantIdWithRestaurant(restaurantId).stream()
                 .filter(item -> excludeId == null || !item.getId().equals(excludeId))
+                .filter(item -> item.getStatus() == ShiftStatus.ACTIVE)
                 .toList();
 
         ShiftWindow candidate = buildWindow(dayOfWeek, startTime, endTime);

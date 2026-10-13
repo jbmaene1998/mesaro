@@ -80,18 +80,22 @@ public class TimeService {
         }
 
         if (offsets.size() > 1) {
+            // Match AvailabilityService: default to earlier offset when client omits disambiguation.
+            ZoneOffset requested;
             if (utcOffsetMinutes == null) {
-                throw new UnprocessableEntityException(
-                        "Ambiguous local time during daylight saving transition. Provide utcOffsetMinutes to disambiguate.",
-                        "utcOffsetMinutes"
-                );
-            }
-            ZoneOffset requested = ZoneOffset.ofTotalSeconds(utcOffsetMinutes * 60);
-            if (!offsets.contains(requested)) {
-                throw new UnprocessableEntityException(
-                        "Provided utcOffsetMinutes does not match the requested local time in this timezone.",
-                        "utcOffsetMinutes"
-                );
+                requested = offsets.stream()
+                        .min(ZoneOffset::compareTo)
+                        .orElse(offsets.get(0));
+                log.debug("DST overlap at {} {} in {}: defaulting to earlier offset {}",
+                        date, time, timezone, requested);
+            } else {
+                requested = ZoneOffset.ofTotalSeconds(utcOffsetMinutes * 60);
+                if (!offsets.contains(requested)) {
+                    throw new UnprocessableEntityException(
+                            "Provided utcOffsetMinutes does not match the requested local time in this timezone.",
+                            "utcOffsetMinutes"
+                    );
+                }
             }
             return ZonedDateTime.ofStrict(localDateTime, requested, timezone).toInstant();
         }

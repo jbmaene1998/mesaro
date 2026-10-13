@@ -33,6 +33,15 @@ function parseTimeToMinutes(timeValue: string) {
   return Math.max(0, Math.min(MINUTES_IN_DAY, hours * 60 + minutes));
 }
 
+/** Duration in minutes; overnight ranges (end <= start) wrap past midnight. */
+function spanMinutes(startMinutes: number, endMinutes: number) {
+  let duration = endMinutes - startMinutes;
+  if (duration <= 0) {
+    duration += MINUTES_IN_DAY;
+  }
+  return duration;
+}
+
 export function TimelineGrid({
   date,
   tables,
@@ -143,7 +152,9 @@ export function TimelineGrid({
               const start = parseTimeToMinutes(shift.startTime);
               const end = parseTimeToMinutes(shift.endTime);
               const left = LEFT_COLUMN_WIDTH + (start / safeSlotMinutes) * CELL_WIDTH;
-              const width = Math.max(((end - start) / safeSlotMinutes) * CELL_WIDTH, 0);
+              const rawWidth = (spanMinutes(start, end) / safeSlotMinutes) * CELL_WIDTH;
+              const maxWidth = Math.max(dayGridWidth - (start / safeSlotMinutes) * CELL_WIDTH, 0);
+              const width = Math.min(rawWidth, maxWidth);
               const bgClass = index % 2 === 0 ? "bg-emerald-100/25" : "bg-orange-100/25";
 
               return (
@@ -235,7 +246,9 @@ export function TimelineGrid({
               const bottomRow = rows[rows.length - 1];
 
               const left = LEFT_COLUMN_WIDTH + (startMinutes / safeSlotMinutes) * CELL_WIDTH + 2;
-              const width = Math.max(((endMinutes - startMinutes) / safeSlotMinutes) * CELL_WIDTH - 4, CELL_WIDTH - 8);
+              const rawWidth = (spanMinutes(startMinutes, endMinutes) / safeSlotMinutes) * CELL_WIDTH - 4;
+              const maxWidth = Math.max(dayGridWidth - (startMinutes / safeSlotMinutes) * CELL_WIDTH - 4, CELL_WIDTH - 8);
+              const width = Math.max(Math.min(rawWidth, maxWidth), CELL_WIDTH - 8);
               const top = topRow * ROW_HEIGHT + 6;
               const height = (bottomRow - topRow + 1) * ROW_HEIGHT - 12;
 

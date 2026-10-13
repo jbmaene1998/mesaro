@@ -52,3 +52,24 @@ export function isTimeWithinRange(time: string, start: string, end: string): boo
   }
   return t >= s && t < e;
 }
+
+/** True when end is at/before start (crosses midnight). */
+export function isOvernightRange(start: string, end: string): boolean {
+  const s = timeToMinutes(start);
+  const e = timeToMinutes(end);
+  if (s === null || e === null) {
+    return false;
+  }
+  return e <= s;
+}
+
+/** Staff duration picker options, always including the restaurant default. */
+export function durationOptionsMinutes(defaultMinutes?: number | null): number[] {
+  const base = [60, 90, 120];
+  const fallback = 90;
+  const normalized =
+    typeof defaultMinutes === "number" && Number.isFinite(defaultMinutes) && defaultMinutes >= 30 && defaultMinutes <= 240
+      ? Math.round(defaultMinutes)
+      : fallback;
+  return [...new Set([...base, normalized])].sort((a, b) => a - b);
+}

@@ -119,6 +119,18 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
             "AND r.endAtUtc > :startUtc")
     boolean existsActiveReservationForTables(List<Long> tableIds, Instant startUtc, Instant endUtc);
 
+    @Query("SELECT CASE WHEN COUNT(r) > 0 THEN true ELSE false END " +
+            "FROM Reservation r JOIN r.tables t " +
+            "WHERE t.id IN :tableIds " +
+            "AND r.id <> :excludeReservationId " +
+            "AND r.status IN ('CONFIRMED', 'SEATED') " +
+            "AND r.startAtUtc < :endUtc " +
+            "AND r.endAtUtc > :startUtc")
+    boolean existsActiveReservationForTablesExcluding(List<Long> tableIds,
+                                                      Instant startUtc,
+                                                      Instant endUtc,
+                                                      Long excludeReservationId);
+
     /**
      * Count covers for a shift on a date.
      */
