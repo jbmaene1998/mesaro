@@ -128,11 +128,12 @@ const COPY: Record<WalkthroughLocale, LocaleCopy> = {
         id: "mgr-tables-config",
         category: "tables",
         title: "Configure every table",
-        body: "Tables → Configuration is where you define the room: labels, seat counts, and whether a table can take bookings.",
+        body: "Tables → Configuration is the source of truth for the room. Labels should match what staff say on the floor; seats drive auto-assignment.",
         bullets: [
-          "Add tables with label and seats",
-          "Edit or remove tables when the layout changes",
-          "Toggle grid or list view to match how you work"
+          "Add or edit tables: label + seat count",
+          "Remove tables only when that physical spot is gone",
+          "Use grid for a floor overview, list for quick edits",
+          "Wrong seats = wrong party fits and overbooked kitchens"
         ],
         href: "/tables",
         openLabel: "Open Tables"
@@ -141,11 +142,12 @@ const COPY: Record<WalkthroughLocale, LocaleCopy> = {
         id: "mgr-tables-live",
         category: "tables",
         title: "Live status during service",
-        body: "Switch to Live status on Tables to see availability and current reservations without editing the layout.",
+        body: "Switch to Live status to run the room without risking layout edits. This mirrors what the dashboard strip shows, with more detail.",
         bullets: [
-          "Available vs occupied at a glance",
-          "Read-only during service so seat counts stay safe",
-          "Refresh automatically while the room turns"
+          "See available vs occupied and linked reservations",
+          "Read-only mode protects seat counts mid-service",
+          "Refresh automatically as parties turn",
+          "Jump back to Configuration only between services"
         ],
         href: "/tables",
         openLabel: "Open live Tables"
@@ -154,11 +156,12 @@ const COPY: Record<WalkthroughLocale, LocaleCopy> = {
         id: "mgr-tables-combinations",
         category: "tables",
         title: "Combine tables for larger parties",
-        body: "Use the Combinations tab when two or more tables should book as one larger unit.",
+        body: "Combinations let two or more tables book as one larger unit when a party won’t fit a single top.",
         bullets: [
-          "Create combinations with a shared capacity",
-          "Keep singles bookable when they’re not combined",
-          "Revisit combinations when you rearrange the room"
+          "Create a combination with shared min/max capacity",
+          "Singles stay bookable when they’re not part of an active combo",
+          "Rebuild combinations after you move furniture",
+          "Use this instead of inventing fake oversized tables"
         ],
         href: "/tables",
         openLabel: "Open Combinations"
@@ -167,11 +170,12 @@ const COPY: Record<WalkthroughLocale, LocaleCopy> = {
         id: "mgr-shifts-week",
         category: "shifts",
         title: "Build the weekly shift grid",
-        body: "Shifts define when guests can book: lunch, dinner, brunch — each with start/end and max covers.",
+        body: "Shifts are the only bookable windows. No separate opening-hours calendar — if there is no active shift, guests cannot book that day/time.",
         bullets: [
-          "Add a shift per day and service window",
-          "Set max covers so the kitchen isn’t overbooked",
-          "Scan Mon–Sun to spot empty or double-booked days"
+          "One shift = one day + start/end + last booking time",
+          "Set max covers for kitchen + room capacity",
+          "Scan Mon–Sun for closed days or missing services",
+          "Lunch and dinner can share a day with different cover caps"
         ],
         href: "/shifts",
         openLabel: "Open Shifts"
@@ -180,11 +184,12 @@ const COPY: Record<WalkthroughLocale, LocaleCopy> = {
         id: "mgr-shifts-publish",
         category: "shifts",
         title: "Draft first, then publish",
-        body: "New shifts can stay as drafts. Only published (active) shifts accept online bookings and fill the dashboard.",
+        body: "Drafts are safe to prepare offline. Only published (active) shifts accept online bookings and show on the dashboard capacity.",
         bullets: [
-          "Publish one shift or all drafts at once",
-          "Deactivate a shift to pause bookings without deleting it",
-          "Re-publish when seasonal hours change"
+          "Publish one shift or all drafts in one click",
+          "Deactivate to pause bookings without deleting history",
+          "Re-publish when seasonal hours change",
+          "After go-live, revisit Shifts before busy weekends"
         ],
         href: "/shifts",
         openLabel: "Manage publish"
@@ -193,8 +198,12 @@ const COPY: Record<WalkthroughLocale, LocaleCopy> = {
         id: "mgr-planning",
         category: "shifts",
         title: "Plan who works each shift",
-        body: "Planning links people to shifts so the floor knows who’s on lunch vs dinner.",
-        bullets: ["Assign staff to upcoming shifts", "Adjust hours when someone covers late"],
+        body: "Planning assigns people to the shifts you just defined so the floor knows who’s on lunch vs dinner.",
+        bullets: [
+          "Assign staff to upcoming shifts",
+          "Adjust hours when someone covers late",
+          "Tables/shifts setup stays on Tables & Shifts — Planning is who’s working"
+        ],
         href: "/planning"
       },
       {
@@ -318,11 +327,12 @@ const COPY: Record<WalkthroughLocale, LocaleCopy> = {
         id: "mgr-tables-config",
         category: "tables",
         title: "Configureer elke tafel",
-        body: "Tafels → Configuratie: labels, zitplaatsen en of een tafel boekbaar is.",
+        body: "Tafels → Configuratie is de bron voor de zaal. Labels moeten matchen met de floor; seats sturen auto-toewijzing.",
         bullets: [
-          "Voeg tafels toe met label en seats",
-          "Bewerk of verwijder bij layoutwijzigingen",
-          "Kies grid- of lijstweergave"
+          "Voeg of bewerk tafels: label + stoelen",
+          "Verwijder alleen als de fysieke plek weg is",
+          "Grid voor overzicht, lijst voor snelle edits",
+          "Verkeerde seats = verkeerde party-fit en overboeking"
         ],
         href: "/tables",
         openLabel: "Open Tafels"
@@ -331,11 +341,12 @@ const COPY: Record<WalkthroughLocale, LocaleCopy> = {
         id: "mgr-tables-live",
         category: "tables",
         title: "Live status tijdens service",
-        body: "Schakel naar Live status om beschikbaarheid te zien zonder de layout te wijzigen.",
+        body: "Live status om de zaal te draaien zonder layout te riskeren — zelfde info als het dashboard, met meer detail.",
         bullets: [
-          "Vrij vs bezet in één oogopslag",
-          "Alleen-lezen tijdens service",
-          "Vernieuwt automatisch tijdens turns"
+          "Vrij vs bezet en gekoppelde reserveringen",
+          "Alleen-lezen beschermt stoelen tijdens service",
+          "Vernieuwt automatisch bij turns",
+          "Terug naar Configuratie alleen tussen services"
         ],
         href: "/tables",
         openLabel: "Open live Tafels"
@@ -344,11 +355,12 @@ const COPY: Record<WalkthroughLocale, LocaleCopy> = {
         id: "mgr-tables-combinations",
         category: "tables",
         title: "Combineer tafels voor grotere groepen",
-        body: "Gebruik Combinaties wanneer twee of meer tafels als één grotere eenheid boeken.",
+        body: "Combinaties laten twee of meer tafels als één grotere eenheid boeken.",
         bullets: [
-          "Maak combinaties met gedeelde capaciteit",
-          "Houd singles boekbaar als ze niet gecombineerd zijn",
-          "Pas combinaties aan bij een nieuwe opstelling"
+          "Maak een combinatie met gedeelde min/max capaciteit",
+          "Singles blijven boekbaar buiten een combo",
+          "Bouw opnieuw na een herinrichting",
+          "Beter dan nep-grote tafels verzinnen"
         ],
         href: "/tables",
         openLabel: "Open Combinaties"
@@ -357,11 +369,12 @@ const COPY: Record<WalkthroughLocale, LocaleCopy> = {
         id: "mgr-shifts-week",
         category: "shifts",
         title: "Bouw het weekrooster van shifts",
-        body: "Shifts bepalen wanneer gasten kunnen boeken: lunch, dinner — met start/eind en max covers.",
+        body: "Shifts zijn de enige boekbare vensters. Geen aparte openingsuren — zonder actieve shift geen boeking.",
         bullets: [
-          "Voeg een shift toe per dag en servicevenster",
-          "Zet max covers zodat de keuken niet overboekt",
-          "Scan ma–zo op lege of dubbele dagen"
+          "Eén shift = één dag + start/eind + laatste boeking",
+          "Max covers voor keuken + zaal",
+          "Scan ma–zo op gesloten of ontbrekende services",
+          "Lunch en diner mogen dezelfde dag met andere caps"
         ],
         href: "/shifts",
         openLabel: "Open Shifts"
@@ -370,11 +383,12 @@ const COPY: Record<WalkthroughLocale, LocaleCopy> = {
         id: "mgr-shifts-publish",
         category: "shifts",
         title: "Eerst draft, dan publiceren",
-        body: "Nieuwe shifts kunnen draft blijven. Alleen gepubliceerde (actieve) shifts nemen online boekingen aan.",
+        body: "Drafts zijn veilig om voor te bereiden. Alleen actieve shifts nemen online boekingen aan.",
         bullets: [
           "Publiceer één shift of alle drafts",
-          "Deactiveer om boekingen te pauzeren zonder te verwijderen",
-          "Publiceer opnieuw bij seizoensuren"
+          "Deactiveer om te pauzeren zonder te verwijderen",
+          "Publiceer opnieuw bij seizoensuren",
+          "Na go-live: check Shifts voor drukke weekenden"
         ],
         href: "/shifts",
         openLabel: "Beheer publiceren"
@@ -383,8 +397,12 @@ const COPY: Record<WalkthroughLocale, LocaleCopy> = {
         id: "mgr-planning",
         category: "shifts",
         title: "Plan wie welke shift werkt",
-        body: "Planning koppelt mensen aan shifts zodat duidelijk is wie op lunch of dinner staat.",
-        bullets: ["Wijs staff toe aan shifts", "Pas uren aan bij late cover"],
+        body: "Planning wijst mensen toe aan de shifts die je net definieerde.",
+        bullets: [
+          "Wijs staff toe aan shifts",
+          "Pas uren aan bij late cover",
+          "Setup blijft onder Tafels & Shifts — Planning is wie werkt"
+        ],
         href: "/planning"
       },
       {
