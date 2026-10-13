@@ -7,8 +7,8 @@ on:
     branches: [dev, main]
 
 jobs:
-  test:
-    name: test
+  backend-unit:
+    name: Backend unit tests
     runs-on: ubuntu-latest
     defaults:
       run:

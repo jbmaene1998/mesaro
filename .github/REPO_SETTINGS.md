@@ -7,9 +7,9 @@ CI workflows are active on every PR to `dev`/`main`. Require these status checks
 
 | Check name | Workflow |
 |------------|----------|
-| `Backend CI / test` | `backend-ci.yml` |
-| `Frontend CI / test` | `frontend-ci.yml` |
-| `E2E Tests / playwright` | `e2e.yml` |
+| `Backend CI / Backend unit tests` | `backend-ci.yml` |
+| `Frontend CI / Frontend unit tests` | `frontend-ci.yml` |
+| `E2E Tests / Playwright E2E` | `e2e.yml` |
 
 Staging also runs `E2E smoke (staging)` after `deploy-staging` (not a PR gate).
 
@@ -44,7 +44,7 @@ Staging also runs `E2E smoke (staging)` after `deploy-staging` (not a PR gate).
 | Dismiss stale pull request approvals when new commits are pushed | ✅ |
 | Require review from Code Owners | ❌ while solo → ✅ with team |
 | Require conversation resolution before merging | ✅ |
-| Require status checks to pass | ✅ when plan allows — require `Backend CI / test`, `Frontend CI / test`, `E2E Tests / playwright` |
+| Require status checks to pass | ✅ when plan allows — require `Backend CI / Backend unit tests`, `Frontend CI / Frontend unit tests`, `E2E Tests / Playwright E2E` |
 | Require branches to be up to date before merging | Optional; turn on with checks |
 | Admin bypass | `pull_request` mode only (merge own PRs; still no direct push) |
 | Allow force pushes | ❌ |

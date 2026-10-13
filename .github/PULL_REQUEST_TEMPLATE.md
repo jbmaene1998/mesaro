@@ -24,7 +24,7 @@
 
 ## How tested
 
-CI on every PR to `dev`/`main`: **Backend CI / test**, **Frontend CI / test**, **E2E Tests / playwright**.
+CI on every PR to `dev`/`main`: **Backend CI / Backend unit tests**, **Frontend CI / Frontend unit tests**, **E2E Tests / Playwright E2E**.
 
 - [ ] Backend tests (`.\run-be-test.ps1` or scoped Maven)
 - [ ] Frontend unit tests (`.\run-fe-test.ps1` / vitest)
