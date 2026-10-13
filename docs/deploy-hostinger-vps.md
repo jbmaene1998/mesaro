@@ -44,6 +44,9 @@ curl -fsSI https://app.yourdomain.com
 | `REDIS_HOST=redis-prod` | Port `6379` inside network |
 | `JWT_SECRET`, `HOLD_TOKEN_SECRET`, `RESERVATION_TOKEN_SECRET`, `STAFF_TOKEN_SECRET` | ≥32 chars each |
 | `EMAIL_PROVIDER` | `resend` or `smtp` — **not** `log` |
+| `EMAIL_FROM` / `EMAIL_FROM_NAME` | Transactional sender (`noreply@…`) |
+| `EMAIL_SUPPORT_ADDRESS` | Contact-form inbox (`support@…`) |
+| `RESEND_API_KEY` | Required when `EMAIL_PROVIDER=resend`; domain must be verified in Resend |
 | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_ID` | Live or test |
 | `APP_BASE_URL`, `API_BASE_URL`, `FRONTEND_URL`, `API_CORS_ORIGINS` | `https://…` |
 
