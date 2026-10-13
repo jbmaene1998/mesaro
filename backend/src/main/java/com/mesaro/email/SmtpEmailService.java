@@ -2,6 +2,7 @@ package com.mesaro.email;
 
 import com.mesaro.config.AppProperties;
 import com.mesaro.email.layout.EmailBlocks;
+import com.mesaro.email.layout.EmailBrandAssets;
 import com.mesaro.email.layout.EmailDocument;
 import com.mesaro.email.layout.EmailLayout;
 import com.mesaro.email.layout.EmailTone;
@@ -35,13 +36,18 @@ public class SmtpEmailService implements EmailService {
 
     private final JavaMailSender mailSender;
     private final EmailLayout emailLayout;
+    private final EmailBrandAssets emailBrandAssets;
     private final String fromAddress;
     private final String supportAddress;
     private final String fromName;
 
-    public SmtpEmailService(JavaMailSender mailSender, AppProperties appProperties, EmailLayout emailLayout) {
+    public SmtpEmailService(JavaMailSender mailSender,
+                            AppProperties appProperties,
+                            EmailLayout emailLayout,
+                            EmailBrandAssets emailBrandAssets) {
         this.mailSender = mailSender;
         this.emailLayout = emailLayout;
+        this.emailBrandAssets = emailBrandAssets;
         this.fromAddress = appProperties.getEmail().getFromAddress();
         this.fromName = appProperties.getEmail().getFromName();
         String configuredSupport = appProperties.getEmail().getSupportAddress();
@@ -397,8 +403,8 @@ public class SmtpEmailService implements EmailService {
                            String replyTo) {
         try {
             var message = mailSender.createMimeMessage();
-            boolean multipart = attachmentBytes != null && attachmentBytes.length > 0;
-            var helper = new MimeMessageHelper(message, multipart, StandardCharsets.UTF_8.name());
+            // Always multipart so the logo can be embedded as an inline CID part.
+            var helper = new MimeMessageHelper(message, true, StandardCharsets.UTF_8.name());
             helper.setTo(to);
             helper.setSubject(subject);
             helper.setText(textBody, htmlBody);
@@ -406,7 +412,17 @@ public class SmtpEmailService implements EmailService {
             if (replyTo != null && !replyTo.isBlank()) {
                 helper.setReplyTo(replyTo);
             }
-            if (multipart) {
+            helper.addInline(
+                    EmailBrandAssets.LOGO_CONTENT_ID,
+                    new ByteArrayResource(emailBrandAssets.logoPngBytes()) {
+                        @Override
+                        public String getFilename() {
+                            return EmailBrandAssets.LOGO_FILENAME;
+                        }
+                    },
+                    EmailBrandAssets.LOGO_CONTENT_TYPE
+            );
+            if (attachmentBytes != null && attachmentBytes.length > 0) {
                 helper.addAttachment(
                         "reservation.ics",
                         new ByteArrayResource(attachmentBytes),
