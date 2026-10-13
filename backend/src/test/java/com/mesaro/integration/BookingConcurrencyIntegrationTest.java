@@ -72,9 +72,9 @@ class BookingConcurrencyIntegrationTest extends IntegrationTestBase {
 
     @RepeatedTest(50)
     void concurrentHoldRequests_sameSlot_onlyOneSucceeds() throws Exception {
-        Restaurant restaurant = new Restaurant("Race Hold", "race-hold", "UTC");
-        restaurant.setBookingEnabled(true);
-        restaurant = restaurantRepository.save(restaurant);
+        Restaurant restaurantDraft = new Restaurant("Race Hold", "race-hold", "UTC");
+        restaurantDraft.setBookingEnabled(true);
+        Restaurant restaurant = restaurantRepository.save(restaurantDraft);
         diningTableRepository.save(new DiningTable(restaurant, "T1", 2));
 
         LocalDate date = LocalDate.now(ZoneId.of("UTC")).plusDays(1);
@@ -104,9 +104,9 @@ class BookingConcurrencyIntegrationTest extends IntegrationTestBase {
 
     @RepeatedTest(3)
     void concurrentWalkInAtCapacityBoundary_onlyOneSucceeds() throws Exception {
-        Restaurant restaurant = new Restaurant("Race Capacity", "race-capacity", "UTC");
-        restaurant.setBookingEnabled(true);
-        restaurant = restaurantRepository.save(restaurant);
+        Restaurant restaurantDraft = new Restaurant("Race Capacity", "race-capacity", "UTC");
+        restaurantDraft.setBookingEnabled(true);
+        Restaurant restaurant = restaurantRepository.save(restaurantDraft);
         diningTableRepository.save(new DiningTable(restaurant, "T1", 2));
         diningTableRepository.save(new DiningTable(restaurant, "T2", 2));
 
