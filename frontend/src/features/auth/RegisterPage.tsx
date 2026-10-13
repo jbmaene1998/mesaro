@@ -21,7 +21,7 @@ export function RegisterPage() {
   const [error, setError] = useState<string | null>(null);
 
   if (isAuthenticated) {
-    return <Navigate to={restaurants.length === 0 ? "/onboarding/setup" : "/dashboard"} replace />;
+    return <Navigate to={restaurants.length === 0 ? "/onboarding" : "/dashboard"} replace />;
   }
 
   const handleSubmit = async () => {
@@ -47,7 +47,7 @@ export function RegisterPage() {
         ownerName: ownerName.trim(),
         ownerPhone: ownerPhone.trim() || undefined
       });
-      navigate("/onboarding/setup", { replace: true });
+      navigate("/onboarding", { replace: true });
     } catch (submitError) {
       setError(getSignupErrorMessage(submitError));
       showApiError(submitError);

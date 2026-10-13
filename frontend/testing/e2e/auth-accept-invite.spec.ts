@@ -2,81 +2,88 @@ import { expect, test } from '@playwright/test';
 
 const MOCK_TOKEN = 'mock-invite-token';
 
+function mockPreview(
+  page: import('@playwright/test').Page,
+  overrides: Partial<{
+    restaurantName: string;
+    role: string;
+    email: string;
+    passwordRequired: boolean;
+    expired: boolean;
+    alreadyAccepted: boolean;
+  }> = {}
+) {
+  return page.route('**/api/staff/invites/preview**', (route) =>
+    route.fulfill({
+      status: 200,
+      json: {
+        success: true,
+        data: {
+          restaurantName: 'Northside Bistro',
+          role: 'STAFF',
+          email: 'staff@example.com',
+          passwordRequired: true,
+          expired: false,
+          alreadyAccepted: false,
+          ...overrides
+        }
+      }
+    })
+  );
+}
+
 test.describe('Accept Invite Page', () => {
-  test('shows accepting state and redirects on valid token', async ({ page }) => {
-    await page.route('**/api/staff/accept-invite**', route =>
+  test('shows invite preview and accepts with password', async ({ page }) => {
+    await mockPreview(page);
+    await page.route('**/api/staff/accept-invite**', (route) =>
       route.fulfill({
         status: 200,
         json: {
           success: true,
           data: {
-            token: 'mock-jwt',
+            accessToken: 'mock-jwt',
             refreshToken: 'mock-refresh',
-            user: { id: '2', name: 'Staff Member', email: 'staff@example.com' }
+            expiresInSeconds: 3600
           }
         }
       })
     );
     await page.goto(`/accept-invite?token=${MOCK_TOKEN}`);
-    await expect(page.getByText(/accepting|accepted|welcome|redirecting/i)).toBeVisible();
+    await expect(page.getByText(/northside bistro/i)).toBeVisible();
+    await page.getByLabel(/^password$/i).fill('password123');
+    await page.getByLabel(/confirm password/i).fill('password123');
+    await page.getByRole('button', { name: /accept invite/i }).click();
+    await expect(page.getByText(/welcome to mesaro/i)).toBeVisible();
   });
 
-  test('shows error for expired token', async ({ page }) => {
-    await page.route('**/api/staff/accept-invite**', route =>
-      route.fulfill({
-        status: 400,
-        json: { success: false, error: { message: 'Invite token expired' } }
-      })
-    );
+  test('shows error for expired token from preview', async ({ page }) => {
+    await mockPreview(page, { expired: true });
     await page.goto(`/accept-invite?token=${MOCK_TOKEN}`);
-    await expect(page.getByText(/expired|invalid|request a new/i)).toBeVisible();
+    await expect(page.getByText(/expired|ask your manager/i)).toBeVisible();
   });
 
   test('shows error when no token is provided', async ({ page }) => {
     await page.goto('/accept-invite');
-    await expect(page.getByText(/invalid|missing|no token/i)).toBeVisible();
+    await expect(page.getByText(/invalid invite link/i)).toBeVisible();
   });
 
-  test('shows "invitation already accepted" when API returns 409', async ({ page }) => {
-    await page.route('**/api/staff/accept-invite**', route =>
-      route.fulfill({
-        status: 409,
-        json: { success: false, error: 'INVITE_ALREADY_USED' }
-      })
-    );
-    await page.goto('/accept-invite?token=mock-invite-token');
-    await expect(page.getByText(/already accepted|used.*link|sign in instead/i)).toBeVisible();
+  test('shows already accepted from preview', async ({ page }) => {
+    await mockPreview(page, { alreadyAccepted: true });
+    await page.goto(`/accept-invite?token=${MOCK_TOKEN}`);
+    await expect(page.getByText(/already been used/i)).toBeVisible();
+    await expect(page.getByRole('link', { name: /go to login/i })).toBeVisible();
   });
 
-  test('shows "invitation expired" when API returns 410', async ({ page }) => {
-    await page.route('**/api/staff/accept-invite**', route =>
-      route.fulfill({
-        status: 410,
-        json: { success: false, error: 'INVITE_EXPIRED' }
-      })
-    );
-    await page.goto('/accept-invite?token=mock-invite-token');
-    await expect(page.getByText(/expired|ask.*manager.*new.*invite/i)).toBeVisible();
+  test('legacy /invite/accept redirects with token', async ({ page }) => {
+    await mockPreview(page);
+    await page.goto(`/invite/accept?token=${MOCK_TOKEN}`);
+    await expect(page).toHaveURL(new RegExp(`/accept-invite\\?token=${MOCK_TOKEN}`));
   });
 
-  test('already-used invite with login link navigates to /login', async ({ page }) => {
-    await page.route('**/api/staff/accept-invite**', route =>
-      route.fulfill({ status: 409, json: { success: false, error: 'INVITE_ALREADY_USED' } })
-    );
-    await page.goto('/accept-invite?token=mock-invite-token');
-    const loginLink = page.getByRole('link', { name: /sign in|log in|go to login/i });
-    if (await loginLink.isVisible()) {
-      await loginLink.click();
-      await expect(page).toHaveURL(/\/login/);
-    }
-  });
-
-  test('responsive: status message visible at 375 x 812', async ({ page }) => {
-    await page.route('**/api/staff/accept-invite**', route =>
-      route.fulfill({ status: 200, json: { success: true, data: {} } })
-    );
+  test('responsive: form visible at 375 x 812', async ({ page }) => {
+    await mockPreview(page);
     await page.setViewportSize({ width: 375, height: 812 });
     await page.goto(`/accept-invite?token=${MOCK_TOKEN}`);
-    await expect(page.getByRole('main')).toBeVisible();
+    await expect(page.getByRole('button', { name: /accept invite/i })).toBeVisible();
   });
 });

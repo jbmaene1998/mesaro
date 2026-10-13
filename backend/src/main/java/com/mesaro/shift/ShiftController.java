@@ -55,6 +55,19 @@ public class ShiftController {
         return ApiResponse.success(ShiftResponse.from(shift), "Shift created");
     }
 
+    @PostMapping("/restaurants/{id}/shifts/bulk")
+    @Operation(summary = "Bulk create shifts", description = "Create multiple shifts (optionally activate) for onboarding templates")
+    @PreAuthorize("@restaurantAccessGuard.hasAtLeastRole(#id, 'MANAGER')")
+    @ResponseStatus(HttpStatus.CREATED)
+    public ApiResponse<List<ShiftResponse>> createShiftsBulk(
+            @Parameter(description = "Restaurant ID") @PathVariable Long id,
+            @Valid @RequestBody BulkCreateShiftsRequest request) {
+        List<ShiftResponse> shifts = shiftService.createBulk(id, request).stream()
+                .map(ShiftResponse::from)
+                .toList();
+        return ApiResponse.success(shifts, "Shifts created");
+    }
+
     @GetMapping("/shifts/{id}")
     @Operation(summary = "Get shift", description = "Get shift details by ID")
     @PreAuthorize("@restaurantAccessGuard.hasAtLeastRole(#restaurantId, 'STAFF')")

@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.Instant;
@@ -24,6 +25,9 @@ public interface StaffInviteRepository extends JpaRepository<StaffInvite, Long> 
             "AND i.acceptedAtUtc IS NULL AND i.revokedAtUtc IS NULL AND i.expiresAtUtc > :now " +
             "ORDER BY i.createdAtUtc DESC")
     Optional<StaffInvite> findLatestActiveByRestaurantAndEmail(Long restaurantId, String email, Instant now);
+
+    @Query("SELECT i FROM StaffInvite i JOIN FETCH i.restaurant WHERE i.tokenHash = :tokenHash")
+    Optional<StaffInvite> findByTokenHash(@Param("tokenHash") String tokenHash);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT i FROM StaffInvite i WHERE i.tokenHash = :tokenHash")

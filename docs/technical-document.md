@@ -292,7 +292,7 @@ Categories (EN ids):
 ```text
 Marketing pages
     → /register (trial)
-    → /onboarding/setup (restaurant)
+    → /onboarding (go-live wizard)
     → /tables + /shifts + /settings (hours + embed)
     → Guests: /r/:slug or /embed/:slug
     → Floor: /dashboard
@@ -347,7 +347,7 @@ Same booking components under `/embed/:slug/...` (compact chrome + locale).
 | `/settings` | OWNER | Restaurant settings |
 | `/settings/billing` | OWNER | Billing |
 | `/account` | any | Profile |
-| `/onboarding/setup` | owner setup | First restaurant |
+| `/onboarding` | owner setup | Go-live wizard (tables, shifts, booking, share, staff) |
 | `/billing/success`, `/billing/cancel` | public return | Stripe redirects |
 
 ### 5.2 Feature modules
@@ -402,7 +402,9 @@ Base API prefix: **`/api`**. Envelope: `ApiResponse<T>`. Docs: `/swagger-ui.html
 | POST | `/api/analytics/events` |
 | POST | `/api/contact` |
 | POST | `/api/auth/login\|register\|refresh\|logout\|forgot-password\|reset-password` |
+| GET | `/api/staff/invites/preview` |
 | POST | `/api/staff/accept-invite` |
+| POST | `/api/restaurants/{id}/shifts/bulk` |
 | POST | `/api/webhooks/stripe` |
 | GET | `/actuator/health/**` |
 
@@ -522,7 +524,7 @@ Primary floor surface: **Dashboard** (doctrine). Timeline and list are secondary
 ### Settings / onboarding
 
 Owner: restaurant profile, booking flags, embed snippet, billing.  
-Onboarding: `/onboarding/setup` → create first restaurant → tables → shifts/hours → share link/embed.
+Onboarding: `/onboarding` wizard → restaurant → tables → shifts → rules → enable booking → share link/embed → optional staff.
 
 ---
 

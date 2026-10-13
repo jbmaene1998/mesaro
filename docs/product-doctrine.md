@@ -122,7 +122,7 @@ These are competitor suite features. Shipping them as first-class *marketing* **
 | **Default nav** | Dashboard · timeline/reservations · tables · shifts · **planning** · staff · **vacations** · **reports** · settings/billing |
 | **Floor** | Dashboard primary; STAFF can cancel/switch |
 | **Marketing site** | Sell daily guest+floor outcomes + €50 flat + embed; mention planning/vacations/reports lightly or not at all |
-| **Onboarding** | Restaurant → tables → hours/shifts → embed → live. Planning optional after first booking |
+| **Onboarding** | Interactive `/onboarding` wizard: restaurant → tables → shifts → rules → enable booking → share link → optional staff. Planning optional after first booking |
 
 Technical audits document bugs; **roadmap priority** is money/trust P0s, then STAFF floor, then finishing weekly modules — not competitor feature parity.
 

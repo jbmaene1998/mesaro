@@ -48,6 +48,10 @@ interface ProtectedRouteProps extends PropsWithChildren {
   minimumRole?: AppRole;
 }
 
+function isOnboardingPath(pathname: string) {
+  return pathname === "/onboarding" || pathname.startsWith("/onboarding/");
+}
+
 export function ProtectedRoute({ children, minimumRole }: ProtectedRouteProps) {
   const location = useLocation();
   const { isAuthenticated, isLoading, restaurants } = useAuth();
@@ -63,12 +67,10 @@ export function ProtectedRoute({ children, minimumRole }: ProtectedRouteProps) {
   }
 
   const noRestaurants = restaurants.length === 0;
-  const onSetupPage = location.pathname === "/onboarding/setup";
-  if (noRestaurants && !onSetupPage) {
-    return <Navigate to="/onboarding/setup" replace />;
-  }
-  if (!noRestaurants && onSetupPage) {
-    return <Navigate to="/dashboard" replace />;
+  const onOnboarding = isOnboardingPath(location.pathname);
+
+  if (noRestaurants && !onOnboarding) {
+    return <Navigate to="/onboarding" replace />;
   }
 
   if (minimumRole && !hasRequiredRole(currentRole, minimumRole)) {

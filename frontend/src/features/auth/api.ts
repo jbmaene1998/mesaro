@@ -21,6 +21,22 @@ export async function resetPassword(token: string, newPassword: string) {
   await resetPasswordRequest(token, newPassword);
 }
 
+export interface StaffInvitePreview {
+  restaurantName: string;
+  role: "OWNER" | "MANAGER" | "STAFF";
+  email: string;
+  passwordRequired: boolean;
+  expired: boolean;
+  alreadyAccepted: boolean;
+}
+
+export async function previewInvite(inviteToken: string) {
+  const { data } = await apiClient.get<ApiResponse<StaffInvitePreview>>("/staff/invites/preview", {
+    params: { token: inviteToken }
+  });
+  return unwrapResponse(data);
+}
+
 export async function acceptInvite(inviteToken: string, password?: string) {
   const payload: { inviteToken: string; password?: string } = { inviteToken };
   if (password && password.trim().length > 0) {

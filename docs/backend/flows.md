@@ -75,13 +75,14 @@
 | **Reset** | `POST /api/auth/reset-password` → validate → update password → revoke all refresh |
 | **Change** | `POST /api/auth/change-password` (auth) → verify current → revoke refresh → notice email |
 
-### 6. Accept invite — Partial
+### 6. Accept invite — Complete
 
 | | |
 |--|--|
+| **Preview** | `GET /api/staff/invites/preview?token=` (public) → restaurant name, role, whether password required |
 | **Entry** | `POST /api/staff/accept-invite` → `StaffService.acceptInvite` |
-| **Steps** | Lock invite → validate → find-or-create user (**random password** if new) → membership → mark accepted → tokens → audit |
-| **Gaps** | New staff logged in once but **cannot re-login** without forgot-password |
+| **Steps** | Lock invite → validate → find-or-create user (**password required** for new) → membership → mark accepted → tokens → audit |
+| **Email** | Invite CTA uses `/accept-invite?token=` |
 
 ### 7. Create restaurant / settings / hours — Complete
 
@@ -92,7 +93,7 @@
 | `PUT /api/restaurants/{id}`, `DELETE` (archive) | OWNER |
 | `POST /api/restaurants/{id}/select`, `GET /api/context` | Auth |
 
-**Notes:** No dedicated onboarding API. Closing hours **warn** only (no auto-cancel). Closures (vacation module) **do** cancel bookings. Select re-issues JWT; FE currently ignores it.
+**Notes:** Go-live wizard uses existing restaurant/tables APIs plus `POST /api/restaurants/{id}/shifts/bulk`. Closures (vacation module) **do** cancel bookings. Select re-issues JWT.
 
 ### 8. Tables + combinations — Complete
 

@@ -67,6 +67,18 @@ export async function createShift(payload: ShiftFormPayload): Promise<Shift> {
   return unwrapResponse(data);
 }
 
+export async function createShiftsBulk(
+  shifts: ShiftFormPayload[],
+  activate = true
+): Promise<Shift[]> {
+  const restaurantId = requireRestaurantId();
+  const { data } = await apiClient.post<ApiResponse<Shift[]> | Shift[]>(
+    `/restaurants/${restaurantId}/shifts/bulk`,
+    { shifts, activate }
+  );
+  return unwrapResponse(data);
+}
+
 export async function updateShift(id: string, payload: ShiftFormPayload): Promise<Shift> {
   const restaurantId = requireRestaurantId();
   const { data } = await apiClient.put<ApiResponse<Shift> | Shift>(

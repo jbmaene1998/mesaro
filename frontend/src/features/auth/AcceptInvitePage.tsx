@@ -1,5 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -8,59 +8,66 @@ import type { AuthResponse } from "@/api/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { acceptInvite } from "@/features/auth/api";
+import { InlineLoader } from "@/components/ui/loading";
+import { acceptInvite, previewInvite, type StaffInvitePreview } from "@/features/auth/api";
 import { useAuth } from "@/hooks/use-auth";
 import { useI18n } from "@/i18n";
 import { showApiError } from "@/lib/toast";
+import { markStaffFirstRunPending } from "@/features/onboarding/staffFirstRun";
 
 type InviteErrorKind = "expired" | "invalid" | "already-accepted";
 
-const acceptInviteSchema = z
-  .object({
-    password: z.string(),
-    confirmPassword: z.string()
-  })
-  .superRefine((values, ctx) => {
-    const password = values.password.trim();
-    const confirmPassword = values.confirmPassword.trim();
+function buildAcceptInviteSchema(passwordRequired: boolean) {
+  return z
+    .object({
+      password: z.string(),
+      confirmPassword: z.string()
+    })
+    .superRefine((values, ctx) => {
+      const password = values.password.trim();
+      const confirmPassword = values.confirmPassword.trim();
 
-    if (password.length === 0 && confirmPassword.length === 0) {
-      return;
-    }
+      if (passwordRequired) {
+        if (password.length < 8) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["password"],
+            message: "Password must be at least 8 characters"
+          });
+        }
+        if (password !== confirmPassword) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["confirmPassword"],
+            message: "Passwords do not match"
+          });
+        }
+        return;
+      }
 
-    if (password.length > 0 && password.length < 8) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["password"],
-        message: "Password must be at least 8 characters"
-      });
-    }
+      if (password.length === 0 && confirmPassword.length === 0) {
+        return;
+      }
 
-    if (password !== confirmPassword) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["confirmPassword"],
-        message: "Passwords do not match"
-      });
-    }
-  });
+      if (password.length > 0 && password.length < 8) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["password"],
+          message: "Password must be at least 8 characters"
+        });
+      }
 
-type AcceptInviteFormValues = z.infer<typeof acceptInviteSchema>;
-
-function decodeRestaurantLabel(accessToken: string) {
-  try {
-    const rawPayload = accessToken.split(".")[1] ?? "";
-    const normalized = rawPayload.replace(/-/g, "+").replace(/_/g, "/");
-    const padded = normalized + "=".repeat((4 - (normalized.length % 4)) % 4);
-    const payload = JSON.parse(atob(padded)) as {
-      restaurants?: Array<{ name?: string; restaurantName?: string; slug?: string; restaurantId?: string }>;
-    };
-    const firstRestaurant = payload.restaurants?.[0];
-    return firstRestaurant?.name ?? firstRestaurant?.restaurantName ?? firstRestaurant?.slug ?? firstRestaurant?.restaurantId ?? "your restaurant";
-  } catch {
-    return "your restaurant";
-  }
+      if (password !== confirmPassword) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["confirmPassword"],
+          message: "Passwords do not match"
+        });
+      }
+    });
 }
+
+type AcceptInviteFormValues = z.infer<ReturnType<typeof buildAcceptInviteSchema>>;
 
 function normalizeInviteError(error: unknown): InviteErrorKind {
   if (typeof error === "object" && error !== null) {
@@ -93,7 +100,7 @@ function getErrorContent(errorKind: InviteErrorKind) {
 
 export function AcceptInvitePage() {
   const { locale } = useI18n();
-  const copy = COPY[locale as keyof typeof COPY];
+  const copy = COPY[locale as keyof typeof COPY] ?? COPY.en;
   const navigate = useNavigate();
   const { setAuthTokens } = useAuth();
   const [searchParams] = useSearchParams();
@@ -101,16 +108,64 @@ export function AcceptInvitePage() {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
-  const [restaurantLabel, setRestaurantLabel] = useState("your restaurant");
+  const [preview, setPreview] = useState<StaffInvitePreview | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(Boolean(inviteToken));
   const [errorKind, setErrorKind] = useState<InviteErrorKind | null>(null);
 
+  const passwordRequired = preview?.passwordRequired ?? true;
+  const schema = useMemo(() => buildAcceptInviteSchema(passwordRequired), [passwordRequired]);
+
   const form = useForm<AcceptInviteFormValues>({
-    resolver: zodResolver(acceptInviteSchema),
+    resolver: zodResolver(schema),
     defaultValues: {
       password: "",
       confirmPassword: ""
     }
   });
+
+  useEffect(() => {
+    form.clearErrors();
+  }, [form, schema]);
+
+  useEffect(() => {
+    if (!inviteToken) {
+      setPreviewLoading(false);
+      setErrorKind("invalid");
+      return;
+    }
+
+    let cancelled = false;
+    setPreviewLoading(true);
+    void previewInvite(inviteToken)
+      .then((data) => {
+        if (cancelled) {
+          return;
+        }
+        setPreview(data);
+        if (data.alreadyAccepted) {
+          setErrorKind("already-accepted");
+        } else if (data.expired) {
+          setErrorKind("expired");
+        } else {
+          setErrorKind(null);
+        }
+      })
+      .catch((error) => {
+        if (cancelled) {
+          return;
+        }
+        setErrorKind(normalizeInviteError(error));
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setPreviewLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [inviteToken]);
 
   const onSubmit = form.handleSubmit(async (values) => {
     if (!inviteToken) {
@@ -128,11 +183,11 @@ export function AcceptInvitePage() {
         trimmedPassword.length > 0 ? trimmedPassword : undefined
       );
       setAuthTokens(tokens);
-      setRestaurantLabel(decodeRestaurantLabel(tokens.accessToken));
+      markStaffFirstRunPending();
       setIsSuccess(true);
       window.setTimeout(() => {
-        navigate("/dashboard", { replace: true });
-      }, 2000);
+        navigate("/dashboard?tour=1", { replace: true });
+      }, 1500);
     } catch (error) {
       setErrorKind(normalizeInviteError(error));
       showApiError(error);
@@ -141,15 +196,16 @@ export function AcceptInvitePage() {
     }
   });
 
+  const restaurantLabel = preview?.restaurantName ?? copy.yourRestaurant;
+  const roleLabel = preview?.role ? preview.role.toLowerCase() : "staff";
+
   const title = useMemo(() => {
     if (isSuccess) {
       return copy.welcomeToMesaro;
     }
-
     if (errorKind && !inviteToken) {
       return copy.inviteError;
     }
-
     return copy.acceptingInvite;
   }, [copy.acceptingInvite, copy.inviteError, copy.welcomeToMesaro, errorKind, inviteToken, isSuccess]);
 
@@ -170,9 +226,22 @@ export function AcceptInvitePage() {
     <Card className="w-full">
       <CardHeader>
         <CardTitle>{title}</CardTitle>
-        {!isSuccess ? <CardDescription>{copy.validatingInvite}</CardDescription> : null}
+        {!isSuccess && !previewLoading ? (
+          <CardDescription>
+            {preview && !errorKind
+              ? copy.joinAs.replace("{restaurant}", restaurantLabel).replace("{role}", roleLabel)
+              : copy.validatingInvite}
+          </CardDescription>
+        ) : null}
       </CardHeader>
       <CardContent>
+        {previewLoading ? (
+          <div className="space-y-2">
+            <InlineLoader />
+            <p className="text-sm text-muted-foreground">{copy.loadingPreview}</p>
+          </div>
+        ) : null}
+
         {isSuccess ? (
           <div className="space-y-2">
             <p className="text-sm">
@@ -182,7 +251,7 @@ export function AcceptInvitePage() {
           </div>
         ) : null}
 
-        {!isSuccess && errorKind ? (
+        {!isSuccess && !previewLoading && errorKind ? (
           <div className="mb-4 space-y-3">
             <p className="text-sm text-destructive">{getErrorContent(errorKind)}</p>
             {errorKind === "already-accepted" ? (
@@ -193,12 +262,15 @@ export function AcceptInvitePage() {
           </div>
         ) : null}
 
-        {!isSuccess && errorKind !== "already-accepted" ? (
+        {!isSuccess && !previewLoading && preview && !preview.alreadyAccepted && !preview.expired ? (
           <form className="space-y-4" onSubmit={(event) => void onSubmit(event)}>
-            <p className="text-sm text-muted-foreground">{copy.passwordHint}</p>
+            <p className="text-sm text-muted-foreground">
+              {passwordRequired ? copy.passwordRequiredHint : copy.passwordOptionalHint}
+            </p>
             <div className="space-y-2">
               <label className="text-sm font-medium" htmlFor="invite-password">
                 {copy.passwordLabel}
+                {!passwordRequired ? ` (${copy.optional})` : ""}
               </label>
               <Input
                 id="invite-password"
@@ -238,59 +310,79 @@ export function AcceptInvitePage() {
 
 const COPY = {
   en: {
-    acceptingInvite: "Accepting Invite",
+    acceptingInvite: "Join your team",
     welcomeToMesaro: "Welcome to Mesaro",
     inviteError: "Invite Error",
-    validatingInvite: "Set a password for new accounts, or leave blank if you already have one.",
+    validatingInvite: "Checking your invitation...",
+    loadingPreview: "Loading invitation...",
+    joinAs: "You've been invited to {restaurant} as {role}.",
     welcomeAddedTo: "Welcome to Mesaro! You've been added to",
-    redirectingDashboard: "Redirecting to dashboard...",
+    redirectingDashboard: "Taking you to a short floor tour...",
     invalidInviteLink: "Invalid invite link",
     goToLogin: "Go to Login",
-    passwordHint: "New team members must choose a password (at least 8 characters). Existing users can leave both fields blank.",
+    passwordRequiredHint: "Choose a password (at least 8 characters) to create your account.",
+    passwordOptionalHint: "You already have a Mesaro account — leave the password blank, or set a new one only if you intend to change it later via account settings (leave blank to keep yours).",
     passwordLabel: "Password",
     confirmPasswordLabel: "Confirm password",
-    acceptInvite: "Accept invite"
+    optional: "optional",
+    acceptInvite: "Accept invite",
+    yourRestaurant: "your restaurant"
   },
   nl: {
-    acceptingInvite: "Uitnodiging verwerken",
+    acceptingInvite: "Word lid van je team",
     welcomeToMesaro: "Welkom bij Mesaro",
     inviteError: "Uitnodigingsfout",
-    validatingInvite: "Stel een wachtwoord in voor nieuwe accounts, of laat leeg als je er al een hebt.",
+    validatingInvite: "Uitnodiging controleren...",
+    loadingPreview: "Uitnodiging laden...",
+    joinAs: "Je bent uitgenodigd voor {restaurant} als {role}.",
     welcomeAddedTo: "Welkom bij Mesaro! Je bent toegevoegd aan",
-    redirectingDashboard: "Doorsturen naar dashboard...",
+    redirectingDashboard: "Doorsturen naar een korte floor-tour...",
     invalidInviteLink: "Ongeldige uitnodigingslink",
     goToLogin: "Ga naar login",
-    passwordHint: "Nieuwe teamleden moeten een wachtwoord kiezen (minimaal 8 tekens). Bestaande gebruikers kunnen beide velden leeg laten.",
+    passwordRequiredHint: "Kies een wachtwoord (minimaal 8 tekens) om je account aan te maken.",
+    passwordOptionalHint: "Je hebt al een Mesaro-account — laat het wachtwoord leeg.",
     passwordLabel: "Wachtwoord",
     confirmPasswordLabel: "Bevestig wachtwoord",
-    acceptInvite: "Uitnodiging accepteren"
+    optional: "optioneel",
+    acceptInvite: "Uitnodiging accepteren",
+    yourRestaurant: "je restaurant"
   },
   fr: {
-    acceptingInvite: "Acceptation de l'invitation",
+    acceptingInvite: "Rejoindre votre equipe",
     welcomeToMesaro: "Bienvenue sur Mesaro",
     inviteError: "Erreur d'invitation",
-    validatingInvite: "Definissez un mot de passe pour les nouveaux comptes, ou laissez vide si vous en avez deja un.",
+    validatingInvite: "Verification de l'invitation...",
+    loadingPreview: "Chargement de l'invitation...",
+    joinAs: "Vous etes invite a {restaurant} en tant que {role}.",
     welcomeAddedTo: "Bienvenue sur Mesaro ! Vous avez ete ajoute a",
-    redirectingDashboard: "Redirection vers le tableau de bord...",
+    redirectingDashboard: "Redirection vers une courte visite du floor...",
     invalidInviteLink: "Lien d'invitation invalide",
     goToLogin: "Aller a la connexion",
-    passwordHint: "Les nouveaux membres doivent choisir un mot de passe (8 caracteres minimum). Les utilisateurs existants peuvent laisser les champs vides.",
+    passwordRequiredHint: "Choisissez un mot de passe (8 caracteres minimum) pour creer votre compte.",
+    passwordOptionalHint: "Vous avez deja un compte Mesaro — laissez le mot de passe vide.",
     passwordLabel: "Mot de passe",
     confirmPasswordLabel: "Confirmer le mot de passe",
-    acceptInvite: "Accepter l'invitation"
+    optional: "optionnel",
+    acceptInvite: "Accepter l'invitation",
+    yourRestaurant: "votre restaurant"
   },
   es: {
-    acceptingInvite: "Aceptando invitacion",
+    acceptingInvite: "Unete a tu equipo",
     welcomeToMesaro: "Bienvenido a Mesaro",
     inviteError: "Error de invitacion",
-    validatingInvite: "Establece una contrasena para cuentas nuevas, o dejala en blanco si ya tienes una.",
+    validatingInvite: "Comprobando tu invitacion...",
+    loadingPreview: "Cargando invitacion...",
+    joinAs: "Te han invitado a {restaurant} como {role}.",
     welcomeAddedTo: "Bienvenido a Mesaro! Has sido agregado a",
-    redirectingDashboard: "Redirigiendo al panel...",
+    redirectingDashboard: "Te llevamos a un recorrido corto del floor...",
     invalidInviteLink: "Enlace de invitacion invalido",
     goToLogin: "Ir al login",
-    passwordHint: "Los nuevos miembros deben elegir una contrasena (minimo 8 caracteres). Los usuarios existentes pueden dejar los campos en blanco.",
+    passwordRequiredHint: "Elige una contrasena (minimo 8 caracteres) para crear tu cuenta.",
+    passwordOptionalHint: "Ya tienes una cuenta Mesaro — deja la contrasena en blanco.",
     passwordLabel: "Contrasena",
     confirmPasswordLabel: "Confirmar contrasena",
-    acceptInvite: "Aceptar invitacion"
+    optional: "opcional",
+    acceptInvite: "Aceptar invitacion",
+    yourRestaurant: "tu restaurante"
   }
 } as const;

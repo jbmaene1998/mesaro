@@ -22,6 +22,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.ArrayList;
@@ -76,6 +77,12 @@ public class StaffController {
                 principal.getUserId());
 
         return ApiResponse.success(StaffInviteResponse.from(inviteWithToken.invite()), "Invite sent");
+    }
+
+    @GetMapping("/invites/preview")
+    @Operation(summary = "Preview invite", description = "Preview a staff invite before accepting (public)")
+    public ApiResponse<StaffInvitePreviewResponse> previewInvite(@RequestParam("token") String token) {
+        return ApiResponse.success(staffService.previewInvite(token));
     }
 
     @PostMapping("/accept-invite")

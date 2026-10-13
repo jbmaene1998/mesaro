@@ -124,6 +124,21 @@ public class ShiftService {
     }
 
     @Transactional
+    public List<Shift> createBulk(Long restaurantId, BulkCreateShiftsRequest request) {
+        restaurantService.findOperationalById(restaurantId);
+        List<Shift> created = request.shifts().stream()
+                .map(shiftRequest -> create(restaurantId, shiftRequest))
+                .toList();
+
+        if (Boolean.TRUE.equals(request.activate())) {
+            return created.stream()
+                    .map(shift -> activate(restaurantId, shift.getId()))
+                    .toList();
+        }
+        return created;
+    }
+
+    @Transactional
     public Shift update(Long restaurantId, Long shiftId, UpdateShiftRequest request) {
         Shift shift = findByIdAndRestaurant(shiftId, restaurantId);
 
