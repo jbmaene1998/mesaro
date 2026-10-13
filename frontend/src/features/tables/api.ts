@@ -59,11 +59,13 @@ export interface TableFormPayload {
   label: string;
   seats: number;
   status: TableConfigStatus;
+  area?: string;
+  allowCrossAreaCombine?: boolean;
 }
 
 export interface CombinationFormPayload {
   name: string;
-  tableIds: string[];
+  tableIds: Array<string | number>;
   minCapacity: number;
   maxCapacity: number;
 }

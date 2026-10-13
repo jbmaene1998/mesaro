@@ -2,10 +2,19 @@ import { useMemo, useState } from "react";
 
 import type { Shift } from "@/api/types";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { createShiftsBulk } from "@/features/shifts/api";
-import { expandShiftTemplate, SHIFT_TEMPLATES } from "@/features/onboarding/templates";
+import {
+  createBlankShiftDraft,
+  defaultShiftDrafts,
+  draftsFromPack,
+  expandDraftWindows,
+  SHIFT_TEMPLATES,
+  type ShiftDraftWindow
+} from "@/features/onboarding/templates";
 import { buildSampleSlotsFromShifts, tomorrowInTimezone } from "@/features/onboarding/sampleSlots";
 import type { WizardCopy } from "@/features/onboarding/wizardCopy";
+import { normalizeLocalTime } from "@/lib/date";
 import { showApiError, showSuccess } from "@/lib/toast";
 
 interface ShiftsStepProps {
@@ -33,6 +42,21 @@ function interpolate(template: string, values: Record<string, string | number>) 
   );
 }
 
+function updateDraft(
+  drafts: ShiftDraftWindow[],
+  index: number,
+  patch: Partial<ShiftDraftWindow>
+): ShiftDraftWindow[] {
+  return drafts.map((item, itemIndex) => (itemIndex === index ? { ...item, ...patch } : item));
+}
+
+function toggleDay(daysOfWeek: number[], day: number): number[] {
+  if (daysOfWeek.includes(day)) {
+    return daysOfWeek.filter((value) => value !== day);
+  }
+  return [...daysOfWeek, day].sort((a, b) => a - b);
+}
+
 export function ShiftsStep({
   copy,
   existingShifts,
@@ -40,31 +64,13 @@ export function ShiftsStep({
   onSaved,
   onContinue
 }: ShiftsStepProps) {
-  const [selectedPackIds, setSelectedPackIds] = useState<Array<"weekday-lunch-dinner" | "weekend-dinner">>([
-    "weekday-lunch-dinner"
-  ]);
-  const [maxCovers, setMaxCovers] = useState(40);
+  const [drafts, setDrafts] = useState<ShiftDraftWindow[]>(() => defaultShiftDrafts());
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const activeCount = existingShifts.filter((shift) => shift.status === "ACTIVE").length;
+  const alreadySaved = activeCount >= 1;
 
-  const sampleSlots = useMemo(() => {
-    if (activeCount < 1) {
-      return [];
-    }
-    const { dayOfWeek } = tomorrowInTimezone(restaurantTimezone);
-    return buildSampleSlotsFromShifts(existingShifts, dayOfWeek);
-  }, [activeCount, existingShifts, restaurantTimezone]);
-
-  const previewPayload = useMemo(() => {
-    const packs = SHIFT_TEMPLATES.filter((pack) => selectedPackIds.includes(pack.id));
-    return packs.flatMap((pack) =>
-      expandShiftTemplate(pack).map((shift) => ({
-        ...shift,
-        maxCovers
-      }))
-    );
-  }, [maxCovers, selectedPackIds]);
+  const previewPayload = useMemo(() => expandDraftWindows(drafts), [drafts]);
 
   const shiftsByDay = useMemo(() => {
     const grouped = new Map<number, Array<{ name: string; startTime: string; endTime: string }>>();
@@ -79,14 +85,24 @@ export function ShiftsStep({
     return grouped;
   }, [previewPayload]);
 
-  const togglePack = (id: "weekday-lunch-dinner" | "weekend-dinner") => {
-    setSelectedPackIds((current) =>
-      current.includes(id) ? current.filter((item) => item !== id) : [...current, id]
-    );
+  const sampleSlots = useMemo(() => {
+    const { dayOfWeek } = tomorrowInTimezone(restaurantTimezone);
+    if (alreadySaved) {
+      return buildSampleSlotsFromShifts(existingShifts, dayOfWeek);
+    }
+    return buildSampleSlotsFromShifts(previewPayload, dayOfWeek);
+  }, [alreadySaved, existingShifts, previewPayload, restaurantTimezone]);
+
+  const applyPack = (id: "weekday-lunch-dinner" | "weekend-dinner") => {
+    const pack = SHIFT_TEMPLATES.find((template) => template.id === id);
+    if (!pack) {
+      return;
+    }
+    setDrafts(draftsFromPack(pack, `${id}-${Date.now()}`));
   };
 
   const handleSave = async () => {
-    if (activeCount >= 1) {
+    if (alreadySaved) {
       onContinue();
       return;
     }
@@ -117,52 +133,164 @@ export function ShiftsStep({
         <li>{copy.shiftsTip3}</li>
       </ul>
 
-      {activeCount === 0 ? (
+      {alreadySaved ? (
+        <p className="rounded-md border border-primary/20 bg-primary/5 px-3 py-2 text-sm">
+          {interpolate(copy.shiftsAlreadyDone, { count: activeCount })}
+        </p>
+      ) : (
         <>
           <div className="space-y-2">
             <p className="text-sm font-medium">{copy.shiftsPickPacks}</p>
-            <div className="grid gap-2 sm:grid-cols-2">
-              <button
+            <div className="flex flex-wrap gap-2">
+              <Button type="button" variant="outline" size="sm" onClick={() => applyPack("weekday-lunch-dinner")}>
+                {copy.applyWeekday}
+              </Button>
+              <Button type="button" variant="outline" size="sm" onClick={() => applyPack("weekend-dinner")}>
+                {copy.applyWeekend}
+              </Button>
+              <Button
                 type="button"
-                onClick={() => togglePack("weekday-lunch-dinner")}
-                className={`rounded-md border px-3 py-3 text-left transition-colors ${
-                  selectedPackIds.includes("weekday-lunch-dinner")
-                    ? "border-primary bg-primary/5"
-                    : "hover:bg-muted/40"
-                }`}
+                variant="ghost"
+                size="sm"
+                onClick={() =>
+                  setDrafts((current) => [...current, createBlankShiftDraft(`new-${Date.now()}`)])
+                }
               >
-                <p className="text-sm font-medium">{copy.applyWeekday}</p>
-                <p className="mt-1 text-xs text-muted-foreground">{copy.shiftsPackWeekdayDesc}</p>
-              </button>
-              <button
-                type="button"
-                onClick={() => togglePack("weekend-dinner")}
-                className={`rounded-md border px-3 py-3 text-left transition-colors ${
-                  selectedPackIds.includes("weekend-dinner")
-                    ? "border-primary bg-primary/5"
-                    : "hover:bg-muted/40"
-                }`}
-              >
-                <p className="text-sm font-medium">{copy.applyWeekend}</p>
-                <p className="mt-1 text-xs text-muted-foreground">{copy.shiftsPackWeekendDesc}</p>
-              </button>
+                {copy.addService}
+              </Button>
             </div>
           </div>
 
-          <div className="space-y-1">
-            <label className="text-sm font-medium" htmlFor="wiz-covers">
-              {copy.maxCoversHint}
-            </label>
-            <input
-              id="wiz-covers"
-              type="number"
-              min={1}
-              max={500}
-              className="flex h-10 w-full max-w-[160px] rounded-md border border-input bg-background px-3 text-sm"
-              value={maxCovers}
-              onChange={(event) => setMaxCovers(Number(event.target.value) || 1)}
-            />
-            <p className="text-xs text-muted-foreground">{copy.maxCoversWhy}</p>
+          <div className="space-y-3">
+            {drafts.map((draft, index) => (
+              <div key={draft.key} className="space-y-3 rounded-md border p-3">
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <div className="min-w-[140px] flex-1 space-y-1">
+                    <label className="text-xs font-medium text-muted-foreground" htmlFor={`shift-name-${draft.key}`}>
+                      {copy.serviceName}
+                    </label>
+                    <Input
+                      id={`shift-name-${draft.key}`}
+                      value={draft.name}
+                      onChange={(event) =>
+                        setDrafts((current) => updateDraft(current, index, { name: event.target.value }))
+                      }
+                    />
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="mt-5"
+                    onClick={() => setDrafts((current) => current.filter((_, i) => i !== index))}
+                  >
+                    {copy.remove}
+                  </Button>
+                </div>
+
+                <div className="space-y-1">
+                  <p className="text-xs font-medium text-muted-foreground">{copy.serviceDays}</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {WEEK_DAY_KEYS.map((dayKey, dayIndex) => {
+                      const dayOfWeek = dayIndex + 1;
+                      const selected = draft.daysOfWeek.includes(dayOfWeek);
+                      return (
+                        <button
+                          key={dayKey}
+                          type="button"
+                          aria-pressed={selected}
+                          onClick={() =>
+                            setDrafts((current) =>
+                              updateDraft(current, index, {
+                                daysOfWeek: toggleDay(draft.daysOfWeek, dayOfWeek)
+                              })
+                            )
+                          }
+                          className={`rounded-md border px-2.5 py-1 text-xs transition-colors ${
+                            selected
+                              ? "border-primary bg-primary/10 font-medium"
+                              : "text-muted-foreground hover:bg-muted/40"
+                          }`}
+                        >
+                          {copy[dayKey]}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium text-muted-foreground" htmlFor={`shift-start-${draft.key}`}>
+                      {copy.serviceStart}
+                    </label>
+                    <Input
+                      id={`shift-start-${draft.key}`}
+                      type="time"
+                      value={normalizeLocalTime(draft.startTime)}
+                      onChange={(event) =>
+                        setDrafts((current) =>
+                          updateDraft(current, index, { startTime: event.target.value })
+                        )
+                      }
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium text-muted-foreground" htmlFor={`shift-end-${draft.key}`}>
+                      {copy.serviceEnd}
+                    </label>
+                    <Input
+                      id={`shift-end-${draft.key}`}
+                      type="time"
+                      value={normalizeLocalTime(draft.endTime)}
+                      onChange={(event) =>
+                        setDrafts((current) => updateDraft(current, index, { endTime: event.target.value }))
+                      }
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label
+                      className="text-xs font-medium text-muted-foreground"
+                      htmlFor={`shift-last-${draft.key}`}
+                    >
+                      {copy.serviceLastBooking}
+                    </label>
+                    <Input
+                      id={`shift-last-${draft.key}`}
+                      type="time"
+                      value={normalizeLocalTime(draft.lastReservationTime)}
+                      onChange={(event) =>
+                        setDrafts((current) =>
+                          updateDraft(current, index, { lastReservationTime: event.target.value })
+                        )
+                      }
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label
+                      className="text-xs font-medium text-muted-foreground"
+                      htmlFor={`shift-covers-${draft.key}`}
+                    >
+                      {copy.serviceMaxCovers}
+                    </label>
+                    <Input
+                      id={`shift-covers-${draft.key}`}
+                      type="number"
+                      min={1}
+                      max={500}
+                      value={draft.maxCovers}
+                      onChange={(event) =>
+                        setDrafts((current) =>
+                          updateDraft(current, index, {
+                            maxCovers: Number(event.target.value) || 1
+                          })
+                        )
+                      }
+                    />
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
 
           <div className="space-y-2 rounded-md border p-3">
@@ -198,35 +326,29 @@ export function ShiftsStep({
             </div>
           </div>
         </>
-      ) : (
-        <p className="rounded-md border border-primary/20 bg-primary/5 px-3 py-2 text-sm">
-          {interpolate(copy.shiftsAlreadyDone, { count: activeCount })}
-        </p>
       )}
 
-      {activeCount >= 1 ? (
-        <div className="rounded-md border p-3">
-          <p className="mb-2 text-sm font-medium">{copy.slotsPreview}</p>
-          {sampleSlots.length > 0 ? (
-            <div className="flex flex-wrap gap-2">
-              {sampleSlots.map((time) => (
-                <span key={time} className="rounded-md border px-2 py-1 text-xs">
-                  {time}
-                </span>
-              ))}
-            </div>
-          ) : (
-            <p className="text-xs text-muted-foreground">{copy.noSlotsYet}</p>
-          )}
-        </div>
-      ) : null}
+      <div className="rounded-md border p-3">
+        <p className="mb-2 text-sm font-medium">{copy.slotsPreview}</p>
+        {sampleSlots.length > 0 ? (
+          <div className="flex flex-wrap gap-2">
+            {sampleSlots.map((time) => (
+              <span key={time} className="rounded-md border px-2 py-1 text-xs">
+                {time}
+              </span>
+            ))}
+          </div>
+        ) : (
+          <p className="text-xs text-muted-foreground">{copy.noSlotsYet}</p>
+        )}
+      </div>
 
       <Button
         type="button"
         onClick={() => void handleSave()}
-        disabled={isSubmitting || (activeCount === 0 && previewPayload.length === 0)}
+        disabled={isSubmitting || (!alreadySaved && previewPayload.length === 0)}
       >
-        {isSubmitting ? copy.saving : activeCount > 0 ? copy.continue : copy.saveShifts}
+        {isSubmitting ? copy.saving : alreadySaved ? copy.continue : copy.saveShifts}
       </Button>
     </div>
   );

@@ -12,6 +12,11 @@ public record CreateTableRequest(
 
         @Min(value = 1, message = "Seats must be at least 1")
         @Max(value = 50, message = "Seats must not exceed 50")
-        int seats
+        int seats,
+
+        @Size(max = 80, message = "Area must not exceed 80 characters")
+        String area,
+
+        Boolean allowCrossAreaCombine
 ) {
 }

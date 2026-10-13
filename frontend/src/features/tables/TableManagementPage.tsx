@@ -208,6 +208,7 @@ export function TableManagementPage() {
                     <TableRow>
                       <TableHead>{copy.label}</TableHead>
                       <TableHead className="text-right">{copy.seats}</TableHead>
+                      <TableHead>{copy.area}</TableHead>
                       <TableHead>{copy.status}</TableHead>
                       <TableHead>{mode === "live" ? copy.currentReservation : copy.actions}</TableHead>
                     </TableRow>
@@ -221,6 +222,7 @@ export function TableManagementPage() {
                         <TableRow key={table.id}>
                           <TableCell className="font-medium">{table.label}</TableCell>
                           <TableCell className="text-right">{table.seats}</TableCell>
+                          <TableCell className="text-muted-foreground">{table.area?.trim() || "Main hall"}</TableCell>
                           <TableCell>
                             <span className={statusBadgeClass(effectiveStatus as Parameters<typeof statusBadgeClass>[0])}>
                               {tableStatusLabel(effectiveStatus as Parameters<typeof tableStatusLabel>[0])}
@@ -303,6 +305,7 @@ const COPY = {
       emptyAction: "Add your first table",
       label: "Label",
       seats: "Seats",
+      area: "Area",
       status: "Status",
       currentReservation: "Current Reservation",
       actions: "Actions",
@@ -332,6 +335,7 @@ const COPY = {
       emptyAction: "Voeg je eerste tafel toe",
       label: "Label",
       seats: "Stoelen",
+      area: "Zone",
       status: "Status",
       currentReservation: "Huidige reservering",
       actions: "Acties",
@@ -361,6 +365,7 @@ const COPY = {
       emptyAction: "Ajouter votre premiere table",
       label: "Libelle",
       seats: "Places",
+      area: "Zone",
       status: "Statut",
       currentReservation: "Reservation en cours",
       actions: "Actions",
@@ -390,6 +395,7 @@ const COPY = {
       emptyAction: "Agregar tu primera mesa",
       label: "Etiqueta",
       seats: "Asientos",
+      area: "Zona",
       status: "Estado",
       currentReservation: "Reserva actual",
       actions: "Acciones",

@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { useSelectedRestaurantId } from "@/hooks/use-auth";
 import { useI18n } from "@/i18n";
 import { createTable, deleteTable, updateTable, type UnresolvableReservation } from "@/features/tables/api";
+import { DEFAULT_TABLE_AREA, SUGGESTED_TABLE_AREAS } from "@/features/tables/tableArea";
 import { showApiError, showSuccess } from "@/lib/toast";
 
 interface TableFormDialogProps {
@@ -45,6 +46,8 @@ export function TableFormDialog({
   const isEditMode = Boolean(table);
   const [label, setLabel] = useState("");
   const [seats, setSeats] = useState(2);
+  const [area, setArea] = useState(DEFAULT_TABLE_AREA);
+  const [allowCrossAreaCombine, setAllowCrossAreaCombine] = useState(false);
   const [isActive, setIsActive] = useState(true);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -57,6 +60,8 @@ export function TableFormDialog({
     }
     setLabel(table?.label ?? "");
     setSeats(table?.seats ?? 2);
+    setArea(table?.area?.trim() || DEFAULT_TABLE_AREA);
+    setAllowCrossAreaCombine(table?.allowCrossAreaCombine === true);
     setIsActive(table ? isTableAvailableStatus(table.status) : true);
     setError(null);
     setShowDeleteConfirm(startInDeleteConfirm && Boolean(table));
@@ -80,7 +85,9 @@ export function TableFormDialog({
       const payload = {
         label: label.trim(),
         seats,
-        status: isActive ? ("AVAILABLE" as const) : ("UNAVAILABLE" as const)
+        status: isActive ? ("AVAILABLE" as const) : ("UNAVAILABLE" as const),
+        area: area.trim() || DEFAULT_TABLE_AREA,
+        allowCrossAreaCombine
       };
       if (table) {
         const result = await updateTable(table.id, payload);
@@ -183,6 +190,32 @@ export function TableFormDialog({
                 />
               </div>
             </div>
+            <div className="space-y-1">
+              <label className="text-sm font-medium" htmlFor="table-area">{copy.area}</label>
+              <Input
+                id="table-area"
+                list="table-area-suggestions"
+                value={area}
+                onChange={(event) => setArea(event.target.value)}
+                placeholder={DEFAULT_TABLE_AREA}
+              />
+              <datalist id="table-area-suggestions">
+                {SUGGESTED_TABLE_AREAS.map((suggestion) => (
+                  <option key={suggestion} value={suggestion} />
+                ))}
+              </datalist>
+              <p className="text-xs text-muted-foreground">{copy.areaHint}</p>
+            </div>
+            <label className="inline-flex items-center gap-2 text-sm" htmlFor="table-cross-area">
+              <input
+                id="table-cross-area"
+                type="checkbox"
+                checked={allowCrossAreaCombine}
+                onChange={(event) => setAllowCrossAreaCombine(event.target.checked)}
+              />
+              {copy.allowCrossArea}
+            </label>
+            <p className="text-xs text-muted-foreground">{copy.allowCrossAreaHint}</p>
             <label className="inline-flex items-center gap-2 text-sm" htmlFor="table-active">
               <input id="table-active" type="checkbox" checked={isActive} onChange={(event) => setIsActive(event.target.checked)} />
               {copy.available}
@@ -276,6 +309,10 @@ const COPY = {
     createNew: "Create a new dining table.",
     label: "Label",
     seats: "Seats",
+    area: "Area",
+    areaHint: "e.g. Main hall, Terrace — combinations stay inside one area by default.",
+    allowCrossArea: "Allow combining with other areas",
+    allowCrossAreaHint: "Turn on if this table can join combinations outside its area (e.g. terrace + hall).",
     available: "Available",
     deleteTable: "Delete Table",
     cancel: "Cancel",
@@ -304,6 +341,10 @@ const COPY = {
     createNew: "Maak een nieuwe restauranttafel aan.",
     label: "Label",
     seats: "Stoelen",
+    area: "Zone",
+    areaHint: "bijv. Zaal, Terras — combinaties blijven standaard in één zone.",
+    allowCrossArea: "Mag combineren met andere zones",
+    allowCrossAreaHint: "Zet aan als deze tafel met tafels buiten de zone mag combineren.",
     available: "Beschikbaar",
     deleteTable: "Tafel verwijderen",
     cancel: "Annuleren",
@@ -332,6 +373,10 @@ const COPY = {
     createNew: "Creer une nouvelle table.",
     label: "Libelle",
     seats: "Places",
+    area: "Zone",
+    areaHint: "ex. Salle, Terrasse — les combinaisons restent dans une zone par defaut.",
+    allowCrossArea: "Autoriser les combinaisons hors zone",
+    allowCrossAreaHint: "Activez si cette table peut rejoindre des combinaisons hors de sa zone.",
     available: "Disponible",
     deleteTable: "Supprimer la table",
     cancel: "Annuler",
@@ -360,6 +405,10 @@ const COPY = {
     createNew: "Crear una nueva mesa.",
     label: "Etiqueta",
     seats: "Asientos",
+    area: "Zona",
+    areaHint: "ej. Salon, Terraza — las combinaciones se quedan en una zona por defecto.",
+    allowCrossArea: "Permitir combinar con otras zonas",
+    allowCrossAreaHint: "Activalo si esta mesa puede unirse a combinaciones fuera de su zona.",
     available: "Disponible",
     deleteTable: "Eliminar mesa",
     cancel: "Cancelar",
