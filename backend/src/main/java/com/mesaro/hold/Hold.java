@@ -99,6 +99,14 @@ public class Hold {
         this.confirmed = true;
     }
 
+    /**
+     * Drop table claims so a converting hold does not collide with the
+     * reservation_table overlap trigger when the reservation is inserted.
+     */
+    public void releaseTables() {
+        this.tables.clear();
+    }
+
     public void addTable(DiningTable table) {
         this.tables.add(table);
     }

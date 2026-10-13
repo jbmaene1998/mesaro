@@ -14,8 +14,8 @@ describe("permissions", () => {
     expect(hasPermission("MANAGER", "inviteManager")).toBe(false);
   });
 
-  it("STAFF cannot cancel reservations or manage tables", () => {
-    expect(hasPermission("STAFF", "cancelReservation")).toBe(false);
+  it("STAFF can cancel reservations but cannot manage tables", () => {
+    expect(hasPermission("STAFF", "cancelReservation")).toBe(true);
     expect(hasPermission("STAFF", "manageTables")).toBe(false);
   });
 });

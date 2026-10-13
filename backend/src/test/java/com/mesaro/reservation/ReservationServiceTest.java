@@ -13,6 +13,7 @@ import com.mesaro.infra.TokenService;
 import com.mesaro.restaurant.Restaurant;
 import com.mesaro.restaurant.RestaurantService;
 import com.mesaro.shift.Shift;
+import com.mesaro.shift.ShiftCapacityService;
 import com.mesaro.shift.ShiftRepository;
 import com.mesaro.table.DiningTable;
 import com.mesaro.table.DiningTableLockRepository;
@@ -23,6 +24,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.Instant;
@@ -69,6 +71,8 @@ class ReservationServiceTest {
     private MeterRegistry meterRegistry;
     @Mock
     private Counter counter;
+    @Mock
+    private ShiftCapacityService shiftCapacityService;
 
     private ReservationService reservationService;
 
@@ -87,13 +91,20 @@ class ReservationServiceTest {
                 shiftRepository,
                 restaurantService,
                 billingService,
-                meterRegistry
+                meterRegistry,
+                shiftCapacityService
         );
         org.mockito.Mockito.lenient().when(meterRegistry.counter(org.mockito.ArgumentMatchers.anyString())).thenReturn(counter);
         org.mockito.Mockito.lenient().when(meterRegistry.counter(
                 org.mockito.ArgumentMatchers.anyString(),
                 org.mockito.ArgumentMatchers.anyString(),
                 org.mockito.ArgumentMatchers.anyString())).thenReturn(counter);
+        org.mockito.Mockito.lenient().when(shiftCapacityService.occurrenceWindow(any(), any(), any(), any()))
+                .thenReturn(new ShiftCapacityService.OccurrenceWindow(
+                        Instant.parse("2025-01-01T00:00:00Z"),
+                        Instant.parse("2025-01-02T00:00:00Z"),
+                        java.time.LocalDate.of(2025, 1, 1)));
+        org.mockito.Mockito.lenient().when(shiftCapacityService.totalCovers(any(), any(), any())).thenReturn(0);
     }
 
     @Test
@@ -188,6 +199,61 @@ class ReservationServiceTest {
                 .hasMessageContaining("no longer available");
 
         verify(reservationRepository, never()).save(any(Reservation.class));
+        verify(reservationRepository, never()).saveAndFlush(any(Reservation.class));
+    }
+
+    @Test
+    void confirm_otherActiveHold_throwsConflict() {
+        Restaurant restaurant = new Restaurant("Test", "test", "UTC");
+        ReflectionTestUtils.setField(restaurant, "id", 1L);
+        DiningTable table = new DiningTable(restaurant, "T1", 2);
+        ReflectionTestUtils.setField(table, "id", 10L);
+        Shift shift = new Shift(restaurant, "Lunch", java.time.DayOfWeek.WEDNESDAY,
+                java.time.LocalTime.of(12, 0), java.time.LocalTime.of(14, 0), 20);
+        ReflectionTestUtils.setField(shift, "id", 30L);
+
+        Hold hold = new Hold(
+                restaurant,
+                "hold-hash",
+                2,
+                Instant.parse("2025-01-01T12:00:00Z"),
+                Instant.parse("2025-01-01T14:00:00Z"),
+                shift,
+                Instant.parse("2025-01-01T11:10:00Z")
+        );
+        ReflectionTestUtils.setField(hold, "id", 77L);
+        hold.addTable(table);
+
+        when(tokenService.hashToken("hold-token")).thenReturn("hold-hash");
+        when(holdRepository.findByTokenHashForUpdate("hold-hash")).thenReturn(Optional.of(hold));
+        when(timeService.now()).thenReturn(Instant.parse("2025-01-01T11:00:00Z"));
+        when(restaurantService.findById(1L)).thenReturn(restaurant);
+        when(shiftRepository.findByIdForUpdate(30L)).thenReturn(Optional.of(shift));
+        when(tableLockRepository.findByIdsForUpdate(List.of(10L))).thenReturn(List.of(table));
+        when(reservationRepository.existsActiveReservationForTables(any(), any(), any())).thenReturn(false);
+        when(holdRepository.existsActiveHoldForTablesExcluding(
+                eq(List.of(10L)), any(), any(), any(), eq(77L))).thenReturn(true);
+
+        assertThatThrownBy(() -> reservationService.confirm(
+                "hold-token", new ConfirmHoldRequest("Guest", "guest@example.com", null, null)))
+                .isInstanceOf(ConflictException.class)
+                .hasMessageContaining("no longer available");
+
+        verify(holdService, never()).markConfirmed(any());
+        verify(reservationRepository, never()).saveAndFlush(any(Reservation.class));
+    }
+
+    @Test
+    void isTableOverlapViolation_detectsHoldAndReservationMessages() {
+        assertThat(ReservationService.isTableOverlapViolation(
+                new DataIntegrityViolationException("Table 1 is already reserved for an overlapping time slot")))
+                .isTrue();
+        assertThat(ReservationService.isTableOverlapViolation(
+                new DataIntegrityViolationException("Table 1 is already held for an overlapping time slot")))
+                .isTrue();
+        assertThat(ReservationService.isTableOverlapViolation(
+                new DataIntegrityViolationException("duplicate key value violates unique constraint")))
+                .isFalse();
     }
 
     @Test
@@ -273,6 +339,7 @@ class ReservationServiceTest {
                 shift,
                 Instant.parse("2025-01-01T12:30:00Z")
         );
+        ReflectionTestUtils.setField(hold, "id", 55L);
         hold.setStartLocalText("2025-01-01T12:00");
         hold.addTable(table);
 
@@ -284,9 +351,10 @@ class ReservationServiceTest {
         when(shiftRepository.findByIdForUpdate(99L)).thenReturn(Optional.of(shift));
         when(tableLockRepository.findByIdsForUpdate(List.of(10L))).thenReturn(List.of(table));
         when(reservationRepository.existsActiveReservationForTables(any(), any(), any())).thenReturn(false);
-        when(reservationRepository.countCoversForShift(eq(99L), any(), any())).thenReturn(8);
-        when(holdRepository.countActiveHoldCoversForShift(eq(99L), any(), any(), any())).thenReturn(2);
-        when(reservationRepository.save(any(Reservation.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(holdRepository.existsActiveHoldForTablesExcluding(any(), any(), any(), any(), eq(55L)))
+                .thenReturn(false);
+        when(shiftCapacityService.totalCovers(eq(99L), any(), any())).thenReturn(10);
+        when(reservationRepository.saveAndFlush(any(Reservation.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         ConfirmationResult result = reservationService.confirm(
                 "hold-token",
@@ -294,6 +362,7 @@ class ReservationServiceTest {
         );
 
         assertThat(result).isNotNull();
+        verify(holdService).markConfirmed(hold);
     }
 
     private Reservation buildReservation(ReservationStatus status) {

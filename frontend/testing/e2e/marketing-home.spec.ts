@@ -5,7 +5,7 @@ test.describe('Home Page', () => {
     await page.goto('/');
   });
 
-  test('renders primary heading', async ({ page }) => {
+  test('renders primary heading', { tag: '@smoke' }, async ({ page }) => {
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
   });
 

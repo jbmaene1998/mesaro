@@ -92,6 +92,30 @@ class TableSelectionServiceTest {
     }
 
     @Test
+    void findBestMatch_skipsCombinationWhenPhysicalSeatsBelowPartySize() {
+        Restaurant restaurant = restaurantWithId(11L);
+        DiningTable t1 = tableWithId(1L, restaurant, "T1", 2);
+        DiningTable t2 = tableWithId(2L, restaurant, "T2", 2);
+        // maxCapacity inflated above physical seats (stale config)
+        TableCombination combo = combinationWithId(9L, restaurant, "Stale", 4, 6, List.of(t1, t2));
+        Instant start = Instant.parse("2025-01-01T12:00:00Z");
+        Instant end = Instant.parse("2025-01-01T13:00:00Z");
+
+        when(tableRepository.findByRestaurantIdAndStatus(11L, TableStatus.AVAILABLE))
+                .thenReturn(List.of(t1, t2));
+        when(combinationRepository.findByRestaurantIdAndCapacityFitting(11L, 5))
+                .thenReturn(List.of(combo));
+        when(overlapCheckRepository.findTablesWithOverlappingReservations(anyList(), eq(start), eq(end)))
+                .thenReturn(Set.of());
+        when(overlapCheckRepository.findTablesWithActiveHolds(anyList(), eq(start), eq(end)))
+                .thenReturn(Set.of());
+
+        TableSelectionResult result = service.findBestMatch(restaurant, 5, start, end);
+
+        assertThat(result).isInstanceOf(TableSelectionResult.NoMatch.class);
+    }
+
+    @Test
     void findBestMatch_noSingleAndNoCombination_returnsNoMatch() {
         Restaurant restaurant = restaurantWithId(7L);
         DiningTable small = tableWithId(1L, restaurant, "T1", 2);

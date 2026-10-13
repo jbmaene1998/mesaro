@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { addDays, addMinutes, format, getDay, parse } from "date-fns";
-import { useEffect, useMemo, useState } from "react";
+import { useContext, useEffect, useMemo, useState } from "react";
 
 import type { AppError } from "@/api/types";
 import { Badge } from "@/components/ui/badge";
@@ -27,7 +27,8 @@ import { createWalkIn } from "@/features/reservations/api";
 import { useAvailableTables } from "@/features/reservations/hooks/useAvailableTables";
 import { getShifts } from "@/features/shifts/api";
 import { getCombinations } from "@/features/tables/api";
-import { isTimeWithinRange, normalizeLocalTime } from "@/lib/date";
+import { durationOptionsMinutes, isOvernightRange, isTimeWithinRange, normalizeLocalTime } from "@/lib/date";
+import { RestaurantContext } from "@/stores/restaurant-context";
 import { showApiError, showSuccess } from "@/lib/toast";
 
 interface ManualReservationDialogProps {
@@ -59,11 +60,14 @@ export function ManualReservationDialog({ open, onOpenChange, onCreated }: Manua
   const copy = COPY[locale];
   const queryClient = useQueryClient();
   const selectedRestaurantId = useSelectedRestaurantId();
+  const restaurantContext = useContext(RestaurantContext);
+  const defaultDurationMinutes = restaurantContext?.currentRestaurant?.defaultDurationMinutes ?? 90;
+  const durationChoices = useMemo(() => durationOptionsMinutes(defaultDurationMinutes), [defaultDurationMinutes]);
   const [partySize, setPartySize] = useState(2);
   const [guestName, setGuestName] = useState("");
   const [guestEmail, setGuestEmail] = useState("");
   const [guestPhone, setGuestPhone] = useState("");
-  const [durationMinutes, setDurationMinutes] = useState<60 | 90 | 120>(90);
+  const [durationMinutes, setDurationMinutes] = useState(defaultDurationMinutes);
   const [notes, setNotes] = useState("");
   const [selectedTableIds, setSelectedTableIds] = useState<string[]>([]);
   const [selectedCombinationId, setSelectedCombinationId] = useState<string>("");
@@ -85,11 +89,23 @@ export function ManualReservationDialog({ open, onOpenChange, onCreated }: Manua
     return jsDay === 0 ? 7 : jsDay;
   }, [reservationDate]);
 
-  const activeShifts = useMemo(
-    () =>
-      (shiftsQuery.data ?? []).filter((shift) => shift.status === "ACTIVE" && shift.dayOfWeek === dayOfWeek),
-    [dayOfWeek, shiftsQuery.data]
-  );
+  const previousDayOfWeek = dayOfWeek === 1 ? 7 : dayOfWeek - 1;
+
+  const activeShifts = useMemo(() => {
+    const all = shiftsQuery.data ?? [];
+    const sameDay = all.filter((shift) => shift.status === "ACTIVE" && shift.dayOfWeek === dayOfWeek);
+    const overnightCarryIn = all.filter(
+      (shift) =>
+        shift.status === "ACTIVE" &&
+        shift.dayOfWeek === previousDayOfWeek &&
+        isOvernightRange(shift.startTime, shift.endTime)
+    );
+    const byId = new Map<string, (typeof all)[number]>();
+    for (const shift of [...sameDay, ...overnightCarryIn]) {
+      byId.set(shift.id, shift);
+    }
+    return [...byId.values()];
+  }, [dayOfWeek, previousDayOfWeek, shiftsQuery.data]);
 
   const selectedShift = useMemo(
     () => activeShifts.find((shift) => shift.id === selectedShiftId) ?? null,
@@ -124,14 +140,27 @@ export function ManualReservationDialog({ open, onOpenChange, onCreated }: Manua
     enabled: open && Boolean(selectedRestaurantId)
   });
 
+  const availableTableIds = useMemo(
+    () => new Set(tables.available.map((table) => String(table.id))),
+    [tables.available]
+  );
+
   const eligibleCombinations = useMemo(
     () => (combinationsQuery.data ?? []).filter((combination) => combination.totalSeats >= partySize),
     [combinationsQuery.data, partySize]
   );
 
+  const availableCombinations = useMemo(
+    () =>
+      eligibleCombinations.filter((combination) =>
+        combination.tables.every((table) => availableTableIds.has(String(table.id)))
+      ),
+    [availableTableIds, eligibleCombinations]
+  );
+
   const selectedCombination = useMemo(
-    () => eligibleCombinations.find((combination) => combination.id === selectedCombinationId),
-    [eligibleCombinations, selectedCombinationId]
+    () => availableCombinations.find((combination) => combination.id === selectedCombinationId),
+    [availableCombinations, selectedCombinationId]
   );
 
   useEffect(() => {
@@ -153,8 +182,12 @@ export function ManualReservationDialog({ open, onOpenChange, onCreated }: Manua
         const candidateKey = format(candidate, "yyyy-MM-dd");
         const jsDay = getDay(candidate);
         const isoDow = jsDay === 0 ? 7 : jsDay;
+        const prevDow = isoDow === 1 ? 7 : isoDow - 1;
         const hasShift = shiftsQuery.data.some(
-          (shift) => shift.status === "ACTIVE" && shift.dayOfWeek === isoDow
+          (shift) =>
+            shift.status === "ACTIVE" &&
+            (shift.dayOfWeek === isoDow ||
+              (shift.dayOfWeek === prevDow && isOvernightRange(shift.startTime, shift.endTime)))
         );
         if (hasShift) {
           setReservationDate(candidateKey);
@@ -224,7 +257,7 @@ export function ManualReservationDialog({ open, onOpenChange, onCreated }: Manua
     setGuestName("");
     setGuestEmail("");
     setGuestPhone("");
-    setDurationMinutes(90);
+    setDurationMinutes(defaultDurationMinutes);
     setNotes("");
     setSelectedTableIds([]);
     setSelectedCombinationId("");
@@ -355,7 +388,7 @@ export function ManualReservationDialog({ open, onOpenChange, onCreated }: Manua
               value={String(durationMinutes)}
               onValueChange={(value) => {
                 const nextDuration = Number(value);
-                if (nextDuration === 60 || nextDuration === 90 || nextDuration === 120) {
+                if (Number.isFinite(nextDuration) && nextDuration > 0) {
                   setDurationMinutes(nextDuration);
                 }
               }}
@@ -364,9 +397,11 @@ export function ManualReservationDialog({ open, onOpenChange, onCreated }: Manua
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="60">60 min</SelectItem>
-                <SelectItem value="90">90 min</SelectItem>
-                <SelectItem value="120">120 min</SelectItem>
+                {durationChoices.map((minutes) => (
+                  <SelectItem key={minutes} value={String(minutes)}>
+                    {minutes} min
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
@@ -426,7 +461,7 @@ export function ManualReservationDialog({ open, onOpenChange, onCreated }: Manua
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="__none__">{copy.none}</SelectItem>
-                {eligibleCombinations.map((combination) => (
+                {availableCombinations.map((combination) => (
                   <SelectItem key={combination.id} value={combination.id}>
                     {combination.name} ({combination.totalSeats} {copy.seats})
                   </SelectItem>

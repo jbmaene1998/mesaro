@@ -16,6 +16,7 @@ import com.mesaro.restaurant.Restaurant;
 import com.mesaro.restaurant.RestaurantService;
 import com.mesaro.security.RestaurantAccessGuard;
 import com.mesaro.shift.Shift;
+import com.mesaro.shift.ShiftCapacityService;
 import com.mesaro.shift.ShiftRepository;
 import com.mesaro.table.DiningTable;
 import com.mesaro.table.DiningTableLockRepository;
@@ -33,9 +34,11 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.DayOfWeek;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.security.SecureRandom;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -66,6 +69,7 @@ public class ReservationAdminService {
     private final AuditService auditService;
     private final TimeService timeService;
     private final EmailService emailService;
+    private final ShiftCapacityService shiftCapacityService;
 
     public ReservationAdminService(
             ReservationRepository reservationRepository,
@@ -80,7 +84,8 @@ public class ReservationAdminService {
             RestaurantAccessGuard restaurantAccessGuard,
             AuditService auditService,
             TimeService timeService,
-            EmailService emailService) {
+            EmailService emailService,
+            ShiftCapacityService shiftCapacityService) {
         this.reservationRepository = reservationRepository;
         this.reservationService = reservationService;
         this.restaurantService = restaurantService;
@@ -94,6 +99,7 @@ public class ReservationAdminService {
         this.auditService = auditService;
         this.timeService = timeService;
         this.emailService = emailService;
+        this.shiftCapacityService = shiftCapacityService;
     }
 
     /**
@@ -156,10 +162,8 @@ public class ReservationAdminService {
         ZoneId timezone = ZoneId.of(restaurant.getTimezone());
 
         Instant now = timeService.now();
-        Instant startUtc = timeService.toUtcStrict(request.date(), request.time(), timezone, request.utcOffsetMinutes());
-        if (startUtc == null) {
-            startUtc = timeService.toUtc(request.date(), request.time(), timezone);
-        }
+        Instant startUtc = timeService.toUtcStrict(
+                request.date(), request.time(), timezone, request.utcOffsetMinutes());
         int durationMinutes = request.durationMinutes() != null
                 ? request.durationMinutes()
                 : restaurant.getDefaultDurationMinutes();
@@ -176,6 +180,7 @@ public class ReservationAdminService {
                         restaurantId, dayValue, previousDay, request.time())
                 .stream()
                 .filter(shift -> shift.isReservableAt(dayValue, request.time()))
+                .sorted(Comparator.comparing(Shift::getStartTime).thenComparing(Shift::getId))
                 .toList();
 
         if (activeShifts.isEmpty()) {
@@ -183,7 +188,10 @@ public class ReservationAdminService {
         }
 
         Shift shift = activeShifts.get(0);
-        shift = enforceShiftCapacity(shift, request.date(), timezone, request.partySize());
+        if (!shiftCapacityService.durationFitsService(shift, request.date(), request.time(), durationMinutes)) {
+            throw new ValidationException("Reservation duration does not fit within the shift", "time");
+        }
+        shift = enforceShiftCapacity(shift, request.date(), request.time(), timezone, request.partySize());
 
         TableAssignment assignment = resolveTablesForCreate(restaurant, request, startUtc, endUtc, now);
 
@@ -464,14 +472,13 @@ public class ReservationAdminService {
         }
     }
 
-    private Shift enforceShiftCapacity(Shift shift, LocalDate date, ZoneId timezone, int partySize) {
+    private Shift enforceShiftCapacity(Shift shift, LocalDate date, LocalTime time, ZoneId timezone, int partySize) {
         Shift lockedShift = shiftRepository.findByIdForUpdate(shift.getId())
                 .orElseThrow(() -> new NotFoundException("Shift", shift.getId()));
-        Instant startUtc = date.atStartOfDay(timezone).toInstant();
-        Instant endUtc = date.plusDays(1).atStartOfDay(timezone).toInstant();
-        int currentCovers = reservationRepository.countCoversForShift(lockedShift.getId(), startUtc, endUtc);
-
-        if (currentCovers + partySize > lockedShift.getMaxCovers()) {
+        ShiftCapacityService.OccurrenceWindow window =
+                shiftCapacityService.occurrenceWindow(lockedShift, date, time, timezone);
+        int totalCovers = shiftCapacityService.totalCovers(lockedShift.getId(), window, timeService.now());
+        if (totalCovers + partySize > lockedShift.getMaxCovers()) {
             throw new ConflictException("Shift capacity exceeded");
         }
         return lockedShift;
@@ -591,16 +598,9 @@ public class ReservationAdminService {
             throw new ConflictException("One or more tables no longer available");
         }
 
-        boolean hasConflict = reservationRepository.existsActiveReservationForTables(
-                newTableIds, reservation.getStartAtUtc(), reservation.getEndAtUtc());
-
-        if (hasConflict) {
-            Set<Long> conflictingTableIds = reservationRepository.findTableIdsWithOverlappingReservations(
-                    newTableIds, reservation.getStartAtUtc(), reservation.getEndAtUtc());
-            conflictingTableIds.removeAll(currentTableIds);
-            if (!conflictingTableIds.isEmpty()) {
-                throw new ConflictException("One or more tables are already reserved for this time");
-            }
+        if (reservationRepository.existsActiveReservationForTablesExcluding(
+                newTableIds, reservation.getStartAtUtc(), reservation.getEndAtUtc(), reservation.getId())) {
+            throw new ConflictException("One or more tables are already reserved for this time");
         }
 
         Instant now = timeService.now();
@@ -611,8 +611,15 @@ public class ReservationAdminService {
         reservation.getTables().clear();
         reservation.addTables(new HashSet<>(lockedTables));
 
-        Reservation saved = reservationRepository.save(reservation);
-        return new TableSwitchOutcome(saved, currentTableIds, newTableIds);
+        try {
+            Reservation saved = reservationRepository.saveAndFlush(reservation);
+            return new TableSwitchOutcome(saved, currentTableIds, newTableIds);
+        } catch (DataIntegrityViolationException ex) {
+            if (ReservationService.isTableOverlapViolation(ex)) {
+                throw new ConflictException("One or more tables are already reserved for this time");
+            }
+            throw ex;
+        }
     }
 
     private List<Long> resolveManualTableIds(Long restaurantId, List<Long> tableIds, Long combinationId) {
@@ -674,8 +681,11 @@ public class ReservationAdminService {
     private Reservation saveWithConfirmationCodeRetry(Reservation reservation) {
         for (int attempt = 0; attempt < 5; attempt++) {
             try {
-                return reservationRepository.save(reservation);
+                return reservationRepository.saveAndFlush(reservation);
             } catch (DataIntegrityViolationException ex) {
+                if (ReservationService.isTableOverlapViolation(ex)) {
+                    throw new ConflictException("One or more tables are already reserved for this time");
+                }
                 if (ex.getMessage() != null && ex.getMessage().contains("confirmation_code")) {
                     reservation.setConfirmationCode(generateConfirmationCode());
                 } else {

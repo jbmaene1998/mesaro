@@ -14,9 +14,11 @@ import com.mesaro.reservation.ReservationRepository;
 import com.mesaro.restaurant.Restaurant;
 import com.mesaro.restaurant.RestaurantService;
 import com.mesaro.shift.Shift;
+import com.mesaro.shift.ShiftCapacityService;
 import com.mesaro.shift.ShiftRepository;
 import com.mesaro.table.DiningTable;
 import com.mesaro.table.DiningTableLockRepository;
+import com.mesaro.table.TableCombination;
 import com.mesaro.vacation.VacationService;
 import io.micrometer.core.instrument.MeterRegistry;
 import org.slf4j.Logger;
@@ -31,6 +33,7 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -58,6 +61,7 @@ public class HoldService {
     private final TimeService timeService;
     private final AuditService auditService;
     private final MeterRegistry meterRegistry;
+    private final ShiftCapacityService shiftCapacityService;
     @Value("${app.hold.duration-minutes:3}")
     private int holdDurationMinutes;
 
@@ -73,7 +77,8 @@ public class HoldService {
             TokenService tokenService,
             TimeService timeService,
             AuditService auditService,
-            MeterRegistry meterRegistry) {
+            MeterRegistry meterRegistry,
+            ShiftCapacityService shiftCapacityService) {
         this.holdRepository = holdRepository;
         this.tableLockRepository = tableLockRepository;
         this.shiftRepository = shiftRepository;
@@ -86,6 +91,7 @@ public class HoldService {
         this.timeService = timeService;
         this.auditService = auditService;
         this.meterRegistry = meterRegistry;
+        this.shiftCapacityService = shiftCapacityService;
     }
 
     /**
@@ -123,16 +129,13 @@ public class HoldService {
             );
         }
 
-        // Calculate times
         Instant now = timeService.now();
-        Instant startUtc = timeService.toUtcStrict(request.date(), request.time(), timezone, request.utcOffsetMinutes());
-        if (startUtc == null) {
-            startUtc = timeService.toUtc(request.date(), request.time(), timezone);
-        }
-        Instant endUtc = startUtc.plus(restaurant.getDefaultDurationMinutes(), ChronoUnit.MINUTES);
+        Instant startUtc = timeService.toUtcStrict(
+                request.date(), request.time(), timezone, request.utcOffsetMinutes());
+        int durationMinutes = restaurant.getDefaultDurationMinutes();
+        Instant endUtc = startUtc.plus(durationMinutes, ChronoUnit.MINUTES);
         Instant expiresAt = now.plus(holdDurationMinutes, ChronoUnit.MINUTES);
 
-        // Validate not in the past
         if (startUtc.isBefore(now)) {
             throw new ValidationException("Cannot create hold for past time", "time");
         }
@@ -145,7 +148,6 @@ public class HoldService {
             );
         }
 
-        // Find the shift for this time
         DayOfWeek dayOfWeek = request.date().getDayOfWeek();
         int dayValue = dayOfWeek.getValue();
         int previousDay = dayValue == 1 ? 7 : dayValue - 1;
@@ -153,15 +155,18 @@ public class HoldService {
                         restaurant.getId(), dayValue, previousDay, request.time())
                 .stream()
                 .filter(shift -> shift.isReservableAt(dayValue, request.time()))
+                .sorted(Comparator.comparing(Shift::getStartTime).thenComparing(Shift::getId))
                 .toList();
 
         if (activeShifts.isEmpty()) {
             throw new ValidationException("No active shift at this time", "time");
         }
         Shift shift = activeShifts.get(0);
-        enforceShiftCapacity(shift, request.date(), timezone, request.partySize());
+        if (!shiftCapacityService.durationFitsService(shift, request.date(), request.time(), durationMinutes)) {
+            throw new ValidationException("Reservation duration does not fit within the shift", "time");
+        }
+        enforceShiftCapacity(shift, request.date(), request.time(), timezone, request.partySize());
 
-        // Find best table match (this does NOT lock yet)
         TableSelectionResult selection = tableSelectionService.findBestMatch(
                 restaurant, request.partySize(), startUtc, endUtc);
 
@@ -172,6 +177,7 @@ public class HoldService {
             };
             throw new ConflictException(reason);
         }
+        assertSelectionHasPhysicalSeats(selection, request.partySize());
 
         // Get table IDs and sort for lock ordering
         List<Long> tableIds = getTableIds(selection).stream().sorted().toList();
@@ -252,11 +258,14 @@ public class HoldService {
 
     /**
      * Mark a hold as confirmed (called during reservation creation).
+     * Releases table claims first so the reservation_table overlap trigger
+     * can treat active holds as hard blockers without rejecting confirm.
      */
     @Transactional
     public void markConfirmed(Hold hold) {
+        hold.releaseTables();
         hold.markConfirmed();
-        holdRepository.save(hold);
+        holdRepository.saveAndFlush(hold);
         log.info("Marked hold {} as confirmed", hold.getId());
 
         auditService.record(
@@ -308,16 +317,28 @@ public class HoldService {
         };
     }
 
-    private void enforceShiftCapacity(Shift shift, LocalDate date, ZoneId timezone, int partySize) {
+    private void enforceShiftCapacity(Shift shift, LocalDate date, LocalTime time, ZoneId timezone, int partySize) {
         Shift lockedShift = shiftRepository.findByIdForUpdate(shift.getId())
                 .orElseThrow(() -> new NotFoundException("Shift", shift.getId()));
-        Instant startUtc = date.atStartOfDay(timezone).toInstant();
-        Instant endUtc = date.plusDays(1).atStartOfDay(timezone).toInstant();
-        int currentCovers = reservationRepository.countCoversForShift(lockedShift.getId(), startUtc, endUtc);
-        int holdCovers = holdRepository.countActiveHoldCoversForShift(
-                lockedShift.getId(), startUtc, endUtc, timeService.now());
-        if (currentCovers + holdCovers + partySize > lockedShift.getMaxCovers()) {
+        ShiftCapacityService.OccurrenceWindow window =
+                shiftCapacityService.occurrenceWindow(lockedShift, date, time, timezone);
+        int totalCovers = shiftCapacityService.totalCovers(lockedShift.getId(), window, timeService.now());
+        if (totalCovers + partySize > lockedShift.getMaxCovers()) {
             throw new ConflictException("Shift capacity exceeded");
+        }
+    }
+
+    private void assertSelectionHasPhysicalSeats(TableSelectionResult selection, int partySize) {
+        int seats = switch (selection) {
+            case TableSelectionResult.SingleTable s -> s.table().getSeats();
+            case TableSelectionResult.Combination c -> {
+                TableCombination combination = c.combination();
+                yield combination.getTotalSeats() > 0 ? combination.getTotalSeats() : combination.getMaxCapacity();
+            }
+            case TableSelectionResult.NoMatch n -> 0;
+        };
+        if (seats < partySize) {
+            throw new ConflictException("Selected tables have insufficient seats for party size " + partySize);
         }
     }
 

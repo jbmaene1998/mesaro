@@ -3,7 +3,15 @@
 This file is the source of truth for how the remote repo should be configured.
 Apply once after `gh repo create` (or re-apply after org policy changes).
 
-CI/Actions are intentionally **not** required yet; enable status-check protection when workflows are ready.
+CI workflows are active on every PR to `dev`/`main`. Require these status checks when the plan allows (GitHub Pro / public / org rulesets):
+
+| Check name | Workflow |
+|------------|----------|
+| `Backend CI / test` | `backend-ci.yml` |
+| `Frontend CI / test` | `frontend-ci.yml` |
+| `E2E Tests / playwright` | `e2e.yml` |
+
+Staging also runs `E2E smoke (staging)` after `deploy-staging` (not a PR gate).
 
 ## Visibility & basics
 
@@ -36,7 +44,7 @@ CI/Actions are intentionally **not** required yet; enable status-check protectio
 | Dismiss stale pull request approvals when new commits are pushed | ✅ |
 | Require review from Code Owners | ❌ while solo → ✅ with team |
 | Require conversation resolution before merging | ✅ |
-| Require status checks to pass | ❌ until CI is required (deploy workflows exist; do not block on prod stub) |
+| Require status checks to pass | ✅ when plan allows — require `Backend CI / test`, `Frontend CI / test`, `E2E Tests / playwright` |
 | Require branches to be up to date before merging | Optional; turn on with checks |
 | Admin bypass | `pull_request` mode only (merge own PRs; still no direct push) |
 | Allow force pushes | ❌ |
@@ -59,7 +67,10 @@ Prefer **Rulesets** (modern) over legacy branch protection if the account suppor
 
 | Workflow | Branch | Runner | GitHub Environment |
 |----------|--------|--------|--------------------|
-| `deploy-staging.yml` | `dev` | Self-hosted `mesaro-staging` (Omen) | `staging` |
+| `backend-ci.yml` | PR/push `dev`/`main` | `ubuntu-latest` | — |
+| `frontend-ci.yml` | PR/push `dev`/`main` | `ubuntu-latest` | — |
+| `e2e.yml` | PR/push `dev`/`main` | `ubuntu-latest` (ephemeral API + Playwright) | optional `E2E_*` repo secrets |
+| `deploy-staging.yml` | `dev` | Self-hosted `mesaro-staging` + post-deploy smoke on `ubuntu-latest` | `staging` |
 | `deploy-prod.yml` | `main` | GitHub-hosted stub until Hostinger VPS | `production` |
 | `require-pull-request.yml` | `dev`, `main` | Fails the push check if the commit is not from a PR | — |
 

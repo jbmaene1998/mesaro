@@ -8,6 +8,8 @@ export interface AvailabilitySlot {
   time: string;
   /** Guest-facing label (HH:mm). */
   displayTime: string;
+  /** UTC instant from API when present (ISO-8601). */
+  timeUtc?: string;
   shift: string;
   available: boolean;
   unavailableReason?: string;
@@ -70,6 +72,7 @@ interface AvailabilityPayload {
   maxPartySize?: number;
   slots?: Array<{
     time: string;
+    timeUtc?: string;
     shift?: string;
     shiftName?: string;
     available: boolean;
@@ -162,23 +165,47 @@ export async function getAvailability(slug: string, date: string, partySize: num
   return (payload.slots ?? []).map((slot) => ({
     time: slot.time,
     displayTime: formatSlotTimeForDisplay(slot.time),
+    timeUtc: slot.timeUtc,
     shift: slot.shift ?? slot.shiftName ?? "General",
     available: slot.available,
     unavailableReason: slot.unavailableReason
   }));
 }
 
+/**
+ * Offset minutes for hold/create so DST ambiguous local times resolve the same way
+ * as availability (local wall clock minus the slot's UTC Instant).
+ */
+export function utcOffsetMinutesForSlot(date: string, time: string, timeUtc?: string): number | undefined {
+  if (!timeUtc) {
+    return undefined;
+  }
+  const utcMs = Date.parse(timeUtc);
+  if (Number.isNaN(utcMs)) {
+    return undefined;
+  }
+  const [y, m, d] = date.split("-").map(Number);
+  const [hh, mm] = formatSlotTimeForDisplay(time).split(":").map(Number);
+  if (![y, m, d, hh, mm].every(Number.isFinite)) {
+    return undefined;
+  }
+  const asUtc = Date.UTC(y, m - 1, d, hh, mm, 0);
+  return Math.round((asUtc - utcMs) / 60_000);
+}
+
 export async function createHold(
   slug: string,
   date: string,
   time: string,
-  partySize: number
+  partySize: number,
+  utcOffsetMinutes?: number
 ): Promise<HoldResponse> {
   const { data } = await apiClient.post<ApiResponse<HoldResponse> | HoldResponse>("/holds", {
     restaurantSlug: slug,
     date,
     time,
-    partySize
+    partySize,
+    ...(utcOffsetMinutes !== undefined ? { utcOffsetMinutes } : {})
   });
 
   return unwrapResponse(data);

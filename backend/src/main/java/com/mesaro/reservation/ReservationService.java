@@ -18,6 +18,7 @@ import com.mesaro.outbox.OutboxService;
 import com.mesaro.restaurant.Restaurant;
 import com.mesaro.restaurant.RestaurantService;
 import com.mesaro.shift.Shift;
+import com.mesaro.shift.ShiftCapacityService;
 import com.mesaro.shift.ShiftRepository;
 import com.mesaro.table.DiningTable;
 import com.mesaro.table.DiningTableLockRepository;
@@ -63,6 +64,7 @@ public class ReservationService {
     private final RestaurantService restaurantService;
     private final BillingService billingService;
     private final MeterRegistry meterRegistry;
+    private final ShiftCapacityService shiftCapacityService;
     @Autowired(required = false)
     private OutboxService outboxService;
 
@@ -82,7 +84,8 @@ public class ReservationService {
             ShiftRepository shiftRepository,
             RestaurantService restaurantService,
             BillingService billingService,
-            MeterRegistry meterRegistry) {
+            MeterRegistry meterRegistry,
+            ShiftCapacityService shiftCapacityService) {
         this.reservationRepository = reservationRepository;
         this.holdRepository = holdRepository;
         this.tableLockRepository = tableLockRepository;
@@ -96,6 +99,7 @@ public class ReservationService {
         this.restaurantService = restaurantService;
         this.billingService = billingService;
         this.meterRegistry = meterRegistry;
+        this.shiftCapacityService = shiftCapacityService;
     }
 
     /**
@@ -151,19 +155,22 @@ public class ReservationService {
             throw new ConflictException("One or more tables no longer available");
         }
 
-        // Re-verify no overlapping reservations (double-check within lock)
+        // Re-verify no overlapping reservations or other holds (double-check within lock)
         if (reservationRepository.existsActiveReservationForTables(
                 tableIds, hold.getStartAtUtc(), hold.getEndAtUtc())) {
             throw new ConflictException("Table is no longer available");
         }
+        if (holdRepository.existsActiveHoldForTablesExcluding(
+                tableIds, hold.getStartAtUtc(), hold.getEndAtUtc(), now, hold.getId())) {
+            throw new ConflictException("Table is no longer available");
+        }
         ZoneId timezone = ZoneId.of(restaurant.getTimezone());
         var localDate = hold.getStartAtUtc().atZone(timezone).toLocalDate();
-        Instant dayStart = localDate.atStartOfDay(timezone).toInstant();
-        Instant dayEnd = localDate.plusDays(1).atStartOfDay(timezone).toInstant();
-        int currentCovers = reservationRepository.countCoversForShift(lockedShift.getId(), dayStart, dayEnd);
-        int holdCovers = holdRepository.countActiveHoldCoversForShift(
-                lockedShift.getId(), dayStart, dayEnd, timeService.now());
-        if (currentCovers + holdCovers > lockedShift.getMaxCovers()) {
+        var localTime = hold.getStartAtUtc().atZone(timezone).toLocalTime();
+        ShiftCapacityService.OccurrenceWindow window =
+                shiftCapacityService.occurrenceWindow(lockedShift, localDate, localTime, timezone);
+        int totalCovers = shiftCapacityService.totalCovers(lockedShift.getId(), window, timeService.now());
+        if (totalCovers > lockedShift.getMaxCovers()) {
             throw new ConflictException("Shift capacity exceeded");
         }
 
@@ -172,6 +179,10 @@ public class ReservationService {
         String cancelToken = tokenService.generateToken();
         String cancelTokenHash = tokenService.hashToken(cancelToken);
         Instant cancelTokenExpires = now.plus(cancelTokenTtlDays, ChronoUnit.DAYS);
+
+        // Release this hold's table claim before inserting reservation_table rows so the
+        // DB overlap trigger can treat other active holds as a hard blocker.
+        holdService.markConfirmed(hold);
 
         // Create reservation
         Reservation reservation = new Reservation(
@@ -193,9 +204,6 @@ public class ReservationService {
 
         Reservation saved = saveWithConfirmationCodeRetry(reservation);
         meterRegistry.counter("mesaro.reservations.created", "source", "ONLINE").increment();
-
-        // Mark hold as confirmed
-        holdService.markConfirmed(hold);
 
         auditService.recordReservationEvent(
                 AuditEventType.RESERVATION_CREATED,
@@ -499,8 +507,11 @@ public class ReservationService {
     private Reservation saveWithConfirmationCodeRetry(Reservation reservation) {
         for (int attempt = 0; attempt < 5; attempt++) {
             try {
-                return reservationRepository.save(reservation);
+                return reservationRepository.saveAndFlush(reservation);
             } catch (DataIntegrityViolationException ex) {
+                if (isTableOverlapViolation(ex)) {
+                    throw new ConflictException("Table is no longer available");
+                }
                 if (ex.getMessage() != null && ex.getMessage().contains("confirmation_code")) {
                     reservation.setConfirmationCode(generateConfirmationCode());
                 } else {
@@ -509,6 +520,20 @@ public class ReservationService {
             }
         }
         throw new ConflictException("Could not generate a unique confirmation code");
+    }
+
+    static boolean isTableOverlapViolation(Throwable error) {
+        Throwable cursor = error;
+        while (cursor != null) {
+            String message = cursor.getMessage();
+            if (message != null
+                    && (message.contains("already reserved for an overlapping time slot")
+                    || message.contains("already held for an overlapping time slot"))) {
+                return true;
+            }
+            cursor = cursor.getCause();
+        }
+        return false;
     }
 
     private void notifyReservationCancelled(Reservation reservation, String cancelledBy) {

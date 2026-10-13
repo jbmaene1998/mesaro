@@ -1,10 +1,13 @@
 import { expect, test } from "@playwright/test";
 
-test("Guest can book a reservation", async ({ page }) => {
-  await page.goto("/r/test-restaurant");
+import { e2eRestaurantSlug, localDatePlusDays } from "./helpers/auth";
 
-  const today = new Date().toISOString().slice(0, 10);
-  await page.getByLabel("Date").fill(today);
+test("Guest can book a reservation", { tag: "@smoke" }, async ({ page }) => {
+  const slug = e2eRestaurantSlug();
+  await page.goto(`/r/${slug}`);
+
+  // Prefer tomorrow so we are past min-notice and still inside advance window.
+  await page.getByLabel("Date").fill(localDatePlusDays(1));
 
   const partySizeTrigger = page.getByRole("combobox");
   await partySizeTrigger.click();
