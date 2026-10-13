@@ -63,7 +63,7 @@ This is the **100% used** surface. If it is not in this list, it is not the prod
 ### Setup (once, then rarely)
 
 8. Tables (+ simple combinations if needed)
-9. Opening hours / shifts (enough to drive availability)
+9. Shifts (enough to drive availability)
 10. Staff accounts with **simple roles** (OWNER / MANAGER / STAFF)
 
 ### Weekly ops (essential — keep in nav, finish fully)

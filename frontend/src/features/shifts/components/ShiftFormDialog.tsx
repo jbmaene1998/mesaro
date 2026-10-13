@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
-import type { Shift, ShiftStatus } from "@/api/types";
+import type { Shift } from "@/api/types";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -97,6 +97,7 @@ export function ShiftFormDialog({
   const queryClient = useQueryClient();
   const selectedRestaurantId = useSelectedRestaurantId();
   const isEditMode = Boolean(shift);
+  const isDraftEditable = !shift || shift.status === "DRAFT";
   const [name, setName] = useState("");
   const [selectedDays, setSelectedDays] = useState<number[]>([1]);
   const [startTime, setStartTime] = useState("11:30");
@@ -104,9 +105,7 @@ export function ShiftFormDialog({
   const [lastReservationTime, setLastReservationTime] = useState("14:30");
   const [maxCovers, setMaxCovers] = useState(50);
   const [slotDuration, setSlotDuration] = useState(30);
-  const [status, setStatus] = useState<ShiftStatus>("ACTIVE");
   const [error, setError] = useState<string | null>(null);
-  const [publishConfirmationOpen, setPublishConfirmationOpen] = useState(false);
 
   useEffect(() => {
     if (!open) {
@@ -119,9 +118,7 @@ export function ShiftFormDialog({
     setLastReservationTime(shift?.lastReservationTime ?? shift?.endTime ?? "14:30");
     setMaxCovers(shift?.maxCovers ?? 50);
     setSlotDuration(shift?.slotDurationMinutes ?? 30);
-    setStatus((shift?.status as ShiftStatus | undefined) ?? "ACTIVE");
     setError(null);
-    setPublishConfirmationOpen(false);
   }, [open, shift]);
 
   const overlapWarning = useMemo(() => {
@@ -143,14 +140,13 @@ export function ShiftFormDialog({
 
   const saveMutation = useMutation({
     mutationFn: async () => {
-      const payloadBase = {
+      const payloadBase: Omit<ShiftFormPayload, "dayOfWeek"> = {
         name: name.trim(),
         startTime,
         endTime,
         lastReservationTime,
         maxCovers,
-        slotDurationMinutes: slotDuration,
-        status
+        slotDurationMinutes: slotDuration
       };
 
       if (shift) {
@@ -171,7 +167,7 @@ export function ShiftFormDialog({
       return null;
     },
     onSuccess: () => {
-      showSuccess(shift ? copy.shiftUpdated : copy.shiftCreated);
+      showSuccess(shift ? copy.shiftUpdated : copy.shiftSavedAsDraft);
       onOpenChange(false);
       onSaved?.();
       void queryClient.invalidateQueries({ queryKey: ["shifts", selectedRestaurantId] });
@@ -179,12 +175,8 @@ export function ShiftFormDialog({
     onError: (error) => showApiError(error)
   });
 
-  const submitSave = () => {
-    setError(null);
-    saveMutation.mutate();
-  };
-
   const handleSave = () => {
+    setError(null);
     if (!name.trim()) {
       setError(copy.nameRequired);
       return;
@@ -206,21 +198,17 @@ export function ShiftFormDialog({
       return;
     }
 
-    if (status === "ACTIVE" && shift?.status !== "ACTIVE") {
-      setPublishConfirmationOpen(true);
-      return;
-    }
-
-    submitSave();
+    saveMutation.mutate();
   };
 
   return (
-    <>
-      <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-xl">
         <DialogHeader>
           <DialogTitle>{isEditMode ? copy.editShift : copy.addShift}</DialogTitle>
-          <DialogDescription>{copy.configureService}</DialogDescription>
+          <DialogDescription>
+            {isEditMode ? copy.configureService : copy.configureServiceDraft}
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-3">
@@ -230,7 +218,7 @@ export function ShiftFormDialog({
               id="shift-name"
               value={name}
               onChange={(event) => setName(event.target.value)}
-                placeholder={copy.lunch}
+              placeholder={copy.lunch}
               aria-invalid={Boolean(error)}
               aria-describedby={error ? "shift-form-error" : undefined}
             />
@@ -242,6 +230,7 @@ export function ShiftFormDialog({
               <Select
                 value={String(selectedDays[0] ?? 1)}
                 onValueChange={(value) => setSelectedDays([Number(value)])}
+                disabled={!isDraftEditable}
               >
                 <SelectTrigger id="shift-day">
                   <SelectValue />
@@ -280,13 +269,25 @@ export function ShiftFormDialog({
           )}
 
           <div className="grid gap-3 sm:grid-cols-2">
-              <div className="space-y-1">
+            <div className="space-y-1">
               <label className="text-sm font-medium" htmlFor="shift-start-time">{copy.startTime}</label>
-              <Input id="shift-start-time" type="time" value={startTime} onChange={(event) => setStartTime(event.target.value)} />
+              <Input
+                id="shift-start-time"
+                type="time"
+                value={startTime}
+                onChange={(event) => setStartTime(event.target.value)}
+                disabled={!isDraftEditable}
+              />
             </div>
             <div className="space-y-1">
               <label className="text-sm font-medium" htmlFor="shift-end-time">{copy.endTime}</label>
-              <Input id="shift-end-time" type="time" value={endTime} onChange={(event) => setEndTime(event.target.value)} />
+              <Input
+                id="shift-end-time"
+                type="time"
+                value={endTime}
+                onChange={(event) => setEndTime(event.target.value)}
+                disabled={!isDraftEditable}
+              />
             </div>
           </div>
 
@@ -297,11 +298,16 @@ export function ShiftFormDialog({
               type="time"
               value={lastReservationTime}
               onChange={(event) => setLastReservationTime(event.target.value)}
+              disabled={!isDraftEditable}
             />
           </div>
 
+          {!isDraftEditable ? (
+            <p className="text-xs text-muted-foreground">{copy.publishedScheduleLocked}</p>
+          ) : null}
+
           <div className="grid gap-3 sm:grid-cols-2">
-              <div className="space-y-1">
+            <div className="space-y-1">
               <label className="text-sm font-medium" htmlFor="shift-max-covers">{copy.maxCovers}</label>
               <Input
                 id="shift-max-covers"
@@ -328,22 +334,9 @@ export function ShiftFormDialog({
             </div>
           </div>
 
-          <div className="space-y-1">
-            <label className="text-sm font-medium" htmlFor="shift-status">{copy.status}</label>
-            <Select value={status} onValueChange={(value) => setStatus(value as ShiftStatus)}>
-              <SelectTrigger id="shift-status">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="DRAFT">{copy.draft}</SelectItem>
-                <SelectItem value="ACTIVE">{copy.active}</SelectItem>
-                <SelectItem value="INACTIVE">{copy.inactive}</SelectItem>
-              </SelectContent>
-            </Select>
-            {status === "ACTIVE" ? (
-              <p className="text-xs text-muted-foreground">{copy.activeImpactHint}</p>
-            ) : null}
-          </div>
+          {!isEditMode ? (
+            <p className="text-xs text-muted-foreground">{copy.draftHint}</p>
+          ) : null}
 
           {overlapWarning ? <p className="text-sm text-amber-600">{copy.warning}: {overlapWarning}</p> : null}
           {error ? <p id="shift-form-error" className="text-sm text-red-600">{error}</p> : null}
@@ -354,42 +347,18 @@ export function ShiftFormDialog({
             {copy.cancel}
           </Button>
           <Button onClick={handleSave} disabled={saveMutation.isPending}>
-            {isEditMode ? copy.saveChanges : copy.createShift}
+            {copy.saveShift}
           </Button>
         </DialogFooter>
       </DialogContent>
-      </Dialog>
-
-      <Dialog open={publishConfirmationOpen} onOpenChange={setPublishConfirmationOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>{copy.publishTitle}</DialogTitle>
-            <DialogDescription>{copy.publishDescription}</DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setPublishConfirmationOpen(false)}>
-              {copy.cancel}
-            </Button>
-            <Button
-              onClick={() => {
-                setPublishConfirmationOpen(false);
-                submitSave();
-              }}
-              disabled={saveMutation.isPending}
-            >
-              {copy.publishNow}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </>
+    </Dialog>
   );
 }
 
 const COPY = {
   en: {
     shiftUpdated: "Shift updated",
-    shiftCreated: "Shift created",
+    shiftSavedAsDraft: "Shift saved as draft",
     nameRequired: "Name is required",
     selectAtLeastOneDay: "Select at least one day",
     startEndDifferent: "Start time and end time cannot be the same",
@@ -397,7 +366,10 @@ const COPY = {
     maxCoversPositive: "Max covers must be positive",
     editShift: "Edit Shift",
     addShift: "Add Shift",
-    configureService: "Configure service period, capacity, and slot timing.",
+    configureService: "Update capacity and slot timing for this shift.",
+    configureServiceDraft: "Configure the service period. Shifts are saved as drafts until you publish them.",
+    draftHint: "Saving creates a draft. Use Publish shifts when you are ready to go live.",
+    publishedScheduleLocked: "Day and times are locked for published shifts. Deactivate first to change the schedule.",
     name: "Name",
     lunch: "Lunch",
     dayOfWeek: "Day of week",
@@ -407,22 +379,13 @@ const COPY = {
     lastReservationTime: "Last possible reservation time",
     maxCovers: "Max covers",
     slotDuration: "Slot duration",
-    status: "Status",
-    draft: "Draft",
-    active: "Active",
-    inactive: "Inactive",
-    activeImpactHint: "Active shifts are immediately bookable in reservation flows.",
-    publishTitle: "Publish Shift",
-    publishDescription: "Publishing makes this shift live and available for new reservations.",
-    publishNow: "Publish now",
     warning: "Warning",
     cancel: "Cancel",
-    saveChanges: "Save Changes",
-    createShift: "Create Shift"
+    saveShift: "Save shift"
   },
   nl: {
     shiftUpdated: "Shift bijgewerkt",
-    shiftCreated: "Shift aangemaakt",
+    shiftSavedAsDraft: "Shift opgeslagen als concept",
     nameRequired: "Naam is verplicht",
     selectAtLeastOneDay: "Selecteer minstens een dag",
     startEndDifferent: "Starttijd en eindtijd mogen niet gelijk zijn",
@@ -430,7 +393,10 @@ const COPY = {
     maxCoversPositive: "Max covers moet positief zijn",
     editShift: "Shift bewerken",
     addShift: "Shift toevoegen",
-    configureService: "Configureer serviceperiode, capaciteit en slot-timing.",
+    configureService: "Werk capaciteit en slot-timing voor deze shift bij.",
+    configureServiceDraft: "Configureer de serviceperiode. Shifts worden als concept opgeslagen tot je ze publiceert.",
+    draftHint: "Opslaan maakt een concept. Gebruik Shifts publiceren wanneer je live wilt gaan.",
+    publishedScheduleLocked: "Dag en tijden zijn vergrendeld voor gepubliceerde shifts. Deactiveer eerst om het schema te wijzigen.",
     name: "Naam",
     lunch: "Lunch",
     dayOfWeek: "Dag van de week",
@@ -440,22 +406,13 @@ const COPY = {
     lastReservationTime: "Laatste reservatietijd",
     maxCovers: "Max covers",
     slotDuration: "Slotduur",
-    status: "Status",
-    draft: "Concept",
-    active: "Actief",
-    inactive: "Inactief",
-    activeImpactHint: "Actieve shifts zijn direct boekbaar in reserveringsstromen.",
-    publishTitle: "Shift publiceren",
-    publishDescription: "Publiceren maakt deze shift direct beschikbaar voor nieuwe reserveringen.",
-    publishNow: "Nu publiceren",
     warning: "Waarschuwing",
     cancel: "Annuleren",
-    saveChanges: "Wijzigingen opslaan",
-    createShift: "Shift aanmaken"
+    saveShift: "Shift opslaan"
   },
   fr: {
     shiftUpdated: "Service mis a jour",
-    shiftCreated: "Service cree",
+    shiftSavedAsDraft: "Service enregistre en brouillon",
     nameRequired: "Le nom est requis",
     selectAtLeastOneDay: "Selectionnez au moins un jour",
     startEndDifferent: "L'heure de debut et l'heure de fin ne peuvent pas etre identiques",
@@ -463,7 +420,10 @@ const COPY = {
     maxCoversPositive: "Le max couverts doit etre positif",
     editShift: "Modifier le service",
     addShift: "Ajouter un service",
-    configureService: "Configurez la periode de service, la capacite et la duree des slots.",
+    configureService: "Mettez a jour la capacite et la duree des slots pour ce service.",
+    configureServiceDraft: "Configurez la periode de service. Les services sont enregistres en brouillon jusqu'a publication.",
+    draftHint: "L'enregistrement cree un brouillon. Utilisez Publier les services quand vous etes pret.",
+    publishedScheduleLocked: "Le jour et les horaires sont verrouilles pour les services publies. Desactivez d'abord pour modifier le planning.",
     name: "Nom",
     lunch: "Dejeuner",
     dayOfWeek: "Jour de la semaine",
@@ -473,22 +433,13 @@ const COPY = {
     lastReservationTime: "Derniere heure de reservation",
     maxCovers: "Max couverts",
     slotDuration: "Duree du slot",
-    status: "Statut",
-    draft: "Brouillon",
-    active: "Actif",
-    inactive: "Inactif",
-    activeImpactHint: "Les services actifs sont immediatement reservables.",
-    publishTitle: "Publier le service",
-    publishDescription: "La publication rend ce service disponible pour de nouvelles reservations.",
-    publishNow: "Publier maintenant",
     warning: "Attention",
     cancel: "Annuler",
-    saveChanges: "Enregistrer les modifications",
-    createShift: "Creer le service"
+    saveShift: "Enregistrer le service"
   },
   es: {
     shiftUpdated: "Turno actualizado",
-    shiftCreated: "Turno creado",
+    shiftSavedAsDraft: "Turno guardado como borrador",
     nameRequired: "El nombre es obligatorio",
     selectAtLeastOneDay: "Selecciona al menos un dia",
     startEndDifferent: "La hora de inicio y fin no pueden ser iguales",
@@ -496,7 +447,10 @@ const COPY = {
     maxCoversPositive: "Maximo de comensales debe ser positivo",
     editShift: "Editar turno",
     addShift: "Agregar turno",
-    configureService: "Configura periodo de servicio, capacidad y duracion de slots.",
+    configureService: "Actualiza la capacidad y la duracion de slots de este turno.",
+    configureServiceDraft: "Configura el periodo de servicio. Los turnos se guardan como borrador hasta publicarlos.",
+    draftHint: "Guardar crea un borrador. Usa Publicar turnos cuando estes listo para activarlos.",
+    publishedScheduleLocked: "El dia y los horarios estan bloqueados en turnos publicados. Desactivalo primero para cambiar el horario.",
     name: "Nombre",
     lunch: "Almuerzo",
     dayOfWeek: "Dia de la semana",
@@ -506,17 +460,8 @@ const COPY = {
     lastReservationTime: "Ultima hora posible de reserva",
     maxCovers: "Maximo comensales",
     slotDuration: "Duracion del slot",
-    status: "Estado",
-    draft: "Borrador",
-    active: "Activo",
-    inactive: "Inactivo",
-    activeImpactHint: "Los turnos activos quedan disponibles de inmediato para nuevas reservas.",
-    publishTitle: "Publicar turno",
-    publishDescription: "Publicar hace que este turno quede activo para nuevas reservas.",
-    publishNow: "Publicar ahora",
     warning: "Advertencia",
     cancel: "Cancelar",
-    saveChanges: "Guardar cambios",
-    createShift: "Crear turno"
+    saveShift: "Guardar turno"
   }
 } as const;

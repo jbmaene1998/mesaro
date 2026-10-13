@@ -2,11 +2,14 @@ package com.mesaro.auth;
 
 import com.mesaro.audit.AuditEventType;
 import com.mesaro.audit.AuditService;
+import com.mesaro.billing.BillingService;
 import com.mesaro.common.exception.ConflictException;
 import com.mesaro.common.exception.NotFoundException;
 import com.mesaro.common.exception.ValidationException;
 import com.mesaro.infra.TokenService;
 import com.mesaro.infra.EmailService;
+import com.mesaro.planning.StaffShiftAssignmentRepository;
+import com.mesaro.planning.StaffWeeklyWorkHoursRepository;
 import com.mesaro.restaurant.RestaurantService;
 import com.mesaro.security.RestaurantRole;
 import com.mesaro.security.TokenDenylistService;
@@ -15,6 +18,7 @@ import com.mesaro.user.UserAccountRepository;
 import com.mesaro.user.UserAccountStatus;
 import com.mesaro.user.UserRestaurant;
 import com.mesaro.user.UserRestaurantRepository;
+import com.mesaro.vacation.VacationRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -32,33 +36,46 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
 public class AuthService {
 
     private static final Logger log = LoggerFactory.getLogger(AuthService.class);
+    private static final String ACCOUNT_DELETE_CONFIRM_PHRASE = "DELETE";
 
     private final UserAccountRepository userAccountRepository;
     private final UserRestaurantRepository userRestaurantRepository;
     private final RefreshTokenRepository refreshTokenRepository;
+    private final PasswordResetTokenRepository passwordResetTokenRepository;
+    private final StaffShiftAssignmentRepository staffShiftAssignmentRepository;
+    private final StaffWeeklyWorkHoursRepository staffWeeklyWorkHoursRepository;
+    private final VacationRepository vacationRepository;
     private final PasswordEncoder passwordEncoder;
     private final TokenService tokenService;
     private final JwtService jwtService;
     private final PasswordResetService passwordResetService;
     private final RestaurantService restaurantService;
+    private final BillingService billingService;
     private final EmailService emailService;
     private final AuditService auditService;
     private final TokenDenylistService tokenDenylistService;
     private final long refreshTokenTtlDays;
+
     public AuthService(UserAccountRepository userAccountRepository,
                        UserRestaurantRepository userRestaurantRepository,
                        RefreshTokenRepository refreshTokenRepository,
+                       PasswordResetTokenRepository passwordResetTokenRepository,
+                       StaffShiftAssignmentRepository staffShiftAssignmentRepository,
+                       StaffWeeklyWorkHoursRepository staffWeeklyWorkHoursRepository,
+                       VacationRepository vacationRepository,
                        PasswordEncoder passwordEncoder,
                        TokenService tokenService,
                        JwtService jwtService,
                        PasswordResetService passwordResetService,
                        RestaurantService restaurantService,
+                       BillingService billingService,
                        EmailService emailService,
                        AuditService auditService,
                        TokenDenylistService tokenDenylistService,
@@ -66,11 +83,16 @@ public class AuthService {
         this.userAccountRepository = userAccountRepository;
         this.userRestaurantRepository = userRestaurantRepository;
         this.refreshTokenRepository = refreshTokenRepository;
+        this.passwordResetTokenRepository = passwordResetTokenRepository;
+        this.staffShiftAssignmentRepository = staffShiftAssignmentRepository;
+        this.staffWeeklyWorkHoursRepository = staffWeeklyWorkHoursRepository;
+        this.vacationRepository = vacationRepository;
         this.passwordEncoder = passwordEncoder;
         this.tokenService = tokenService;
         this.jwtService = jwtService;
         this.passwordResetService = passwordResetService;
         this.restaurantService = restaurantService;
+        this.billingService = billingService;
         this.emailService = emailService;
         this.auditService = auditService;
         this.tokenDenylistService = tokenDenylistService;
@@ -268,12 +290,22 @@ public class AuthService {
     }
 
     @Transactional
-    public void deleteCurrentUser(Long userId) {
+    public void deleteCurrentUser(Long userId, DeleteCurrentUserRequest request) {
         UserAccount user = userAccountRepository.findById(userId)
                 .orElseThrow(() -> new NotFoundException("User", userId));
 
         if (user.getStatus() == UserAccountStatus.DELETED) {
             return;
+        }
+
+        if (!passwordEncoder.matches(request.password(), user.getPasswordHash())) {
+            throw new ValidationException("Password is incorrect", "password");
+        }
+        if (!ACCOUNT_DELETE_CONFIRM_PHRASE.equals(request.confirmPhrase().trim())) {
+            throw new ValidationException(
+                    "Type DELETE to confirm account deletion",
+                    "confirmPhrase"
+            );
         }
 
         List<UserRestaurant> memberships = userRestaurantRepository.findByUserIdWithRestaurant(userId);
@@ -291,6 +323,12 @@ public class AuthService {
             restaurantService.markDeleted(ownedMembership.getRestaurant().getId());
         }
 
+        // Clear dependents that block or orphan around user_restaurant / user_account removal.
+        staffShiftAssignmentRepository.deleteByUser_Id(userId);
+        staffWeeklyWorkHoursRepository.deleteByUser_Id(userId);
+        vacationRepository.deleteByUserId(userId);
+        passwordResetTokenRepository.deleteByUser_Id(userId);
+
         userRestaurantRepository.deleteByUser_Id(userId);
         refreshTokenRepository.revokeAllForUser(userId);
         refreshTokenRepository.deleteByUserIdAndRevokedOrExpired(userId, Instant.now());
@@ -298,11 +336,14 @@ public class AuthService {
         // Immediately block any active access tokens for this user.
         tokenDenylistService.denyUser(userId);
 
+        billingService.cancelBillingForAccountDeletion(user);
+
         user.setEnabled(false);
         user.setStatus(UserAccountStatus.DELETED);
         user.setDeletedAtUtc(Instant.now());
         user.setFullName(null);
         user.setPhone(null);
+        user.setPasswordHash(passwordEncoder.encode("deleted-" + UUID.randomUUID()));
         user.setEmail("deleted-user-" + userId + "@anonymized.invalid");
         userAccountRepository.save(user);
 

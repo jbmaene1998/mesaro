@@ -104,4 +104,8 @@ public interface VacationRepository extends JpaRepository<Vacation, Long> {
 
     @Modifying
     long deleteByRestaurant_Id(Long restaurantId);
+
+    @Modifying
+    @Query("DELETE FROM Vacation v WHERE v.userId = :userId")
+    int deleteByUserId(Long userId);
 }

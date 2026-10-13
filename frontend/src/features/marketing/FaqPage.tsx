@@ -72,7 +72,7 @@ const COPY: Record<SupportedLocale, Copy> = {
         id: "setup",
         title: "Setup & Migration",
         items: [
-          { question: "How long does it take to set up Mesaro?", answer: "Most restaurants are live within 30 minutes. The setup flow walks you through tables, shifts, and opening hours. Embedding the widget on your website takes under five minutes on any standard CMS." },
+          { question: "How long does it take to set up Mesaro?", answer: "Most restaurants are live within 30 minutes. The setup flow walks you through tables and shifts. Embedding the widget on your website takes under five minutes on any standard CMS." },
           { question: "Can I import reservations from another system?", answer: "There is no automated import tool at this time. We recommend going live with Mesaro for new reservations from your start date and manually entering any confirmed future bookings from your old system." },
           { question: "Can I migrate from Zenchef, Resengo, or Formitable?", answer: "Yes. Export your current reservation data from your existing tool before your migration date. Enter any upcoming confirmed reservations into Mesaro manually. Most restaurants switch during a quieter midweek period and go live before the following weekend service." },
           { question: "Do I need technical skills to set up Mesaro?", answer: "No. The admin interface is designed for restaurant operators. Embedding the booking widget requires pasting one line of HTML. If you need help at any step, our support team will walk you through it." }

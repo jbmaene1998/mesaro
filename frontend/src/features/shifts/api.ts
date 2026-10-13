@@ -1,5 +1,5 @@
 import { apiClient } from "@/api/client";
-import type { ApiResponse, AppError, Shift, ShiftStatus } from "@/api/types";
+import type { ApiResponse, AppError, Shift } from "@/api/types";
 import { getRestaurantId } from "@/stores/restaurant-session";
 
 export interface ShiftFormPayload {
@@ -10,7 +10,6 @@ export interface ShiftFormPayload {
   lastReservationTime: string;
   maxCovers: number;
   slotDurationMinutes: number;
-  status: ShiftStatus;
 }
 
 function unwrapResponse<T>(response: ApiResponse<T> | T): T {
@@ -73,6 +72,38 @@ export async function updateShift(id: string, payload: ShiftFormPayload): Promis
   const { data } = await apiClient.put<ApiResponse<Shift> | Shift>(
     `/shifts/${id}`,
     payload,
+    {
+      params: { restaurantId }
+    }
+  );
+  return unwrapResponse(data);
+}
+
+export async function activateShift(id: string): Promise<Shift> {
+  const restaurantId = requireRestaurantId();
+  const { data } = await apiClient.post<ApiResponse<Shift> | Shift>(
+    `/shifts/${id}/activate`,
+    null,
+    {
+      params: { restaurantId }
+    }
+  );
+  return unwrapResponse(data);
+}
+
+export async function publishDraftShifts(): Promise<Shift[]> {
+  const restaurantId = requireRestaurantId();
+  const { data } = await apiClient.post<ApiResponse<Shift[]> | Shift[]>(
+    `/restaurants/${restaurantId}/shifts/publish`
+  );
+  return unwrapResponse(data);
+}
+
+export async function deactivateShift(id: string): Promise<Shift> {
+  const restaurantId = requireRestaurantId();
+  const { data } = await apiClient.post<ApiResponse<Shift> | Shift>(
+    `/shifts/${id}/deactivate`,
+    null,
     {
       params: { restaurantId }
     }

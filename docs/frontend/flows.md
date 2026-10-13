@@ -126,7 +126,7 @@ Cancel needs token from session / nav / query — **Partial** if email link omit
 
 ### 8. Settings — Complete
 
-`/settings` OWNER: profile, booking rules, opening hours, embed snippet, extra restaurant, billing tab. Assignment mode UI locked to AUTO.
+`/settings` OWNER: profile, booking rules, embed snippet, extra restaurant, billing tab. Assignment mode UI locked to AUTO.
 
 ### 9. Billing — Partial (success Broken vs claim)
 
@@ -138,7 +138,7 @@ Cancel needs token from session / nav / query — **Partial** if email link omit
 
 ### 10. Account — Complete
 
-`/account`: profile, change password (logout), delete account.
+`/account`: profile, change password (logout), delete account (password + type `DELETE`; owned restaurants soft-deleted then GDPR-purged).
 
 ### 11. Contact / analytics consent — Complete
 

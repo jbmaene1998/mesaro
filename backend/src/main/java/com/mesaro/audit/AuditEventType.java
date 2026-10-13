@@ -50,7 +50,6 @@ public final class AuditEventType {
     public static final String STAFF_SHIFT_PLANNED = "STAFF_SHIFT_PLANNED";
     public static final String STAFF_SHIFT_UNPLANNED = "STAFF_SHIFT_UNPLANNED";
     public static final String STAFF_WEEKLY_HOURS_SET = "STAFF_WEEKLY_HOURS_SET";
-    public static final String OPENING_HOURS_UPDATED = "OPENING_HOURS_UPDATED";
 
     // Restaurant events
     public static final String RESTAURANT_CREATED = "RESTAURANT_CREATED";

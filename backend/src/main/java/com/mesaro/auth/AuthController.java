@@ -96,10 +96,13 @@ public class AuthController {
     }
 
     @DeleteMapping("/current-user")
-    @Operation(summary = "Delete current user", description = "Delete current authenticated account")
-    public ApiResponse<Void> deleteCurrentUser() {
+    @Operation(
+            summary = "Delete current user",
+            description = "Soft-delete the current account after password confirmation. Owned restaurants are marked deleted and purged later by GDPR retention."
+    )
+    public ApiResponse<Void> deleteCurrentUser(@Valid @RequestBody DeleteCurrentUserRequest request) {
         AuthPrincipal principal = getPrincipal();
-        authService.deleteCurrentUser(principal.getUserId());
+        authService.deleteCurrentUser(principal.getUserId(), request);
         return ApiResponse.success(null, "Account deleted");
     }
 

@@ -36,7 +36,7 @@ export function useOnboardingStatus(enabled = true) {
       optional: "Optional",
       staffLink: "Invite team members",
       bookingTitle: "Booking enabled",
-      bookingDescription: "Enable online bookings so guests can reserve directly.",
+      bookingDescription: "After tables and active shifts are set, enable online bookings so guests can reserve.",
       bookingLink: "Enable online booking"
     },
     nl: {
@@ -51,7 +51,7 @@ export function useOnboardingStatus(enabled = true) {
       optional: "Optioneel",
       staffLink: "Nodig teamleden uit",
       bookingTitle: "Boeking ingeschakeld",
-      bookingDescription: "Schakel online boeking in zodat gasten direct kunnen reserveren.",
+      bookingDescription: "Na tafels en actieve shifts kun je online boeking inschakelen zodat gasten kunnen reserveren.",
       bookingLink: "Schakel online boeking in"
     },
     fr: {
@@ -66,7 +66,7 @@ export function useOnboardingStatus(enabled = true) {
       optional: "Optionnel",
       staffLink: "Inviter des membres",
       bookingTitle: "Reservation activee",
-      bookingDescription: "Activez la reservation en ligne pour recevoir des reservations directes.",
+      bookingDescription: "Apres tables et services actifs, activez la reservation en ligne pour les clients.",
       bookingLink: "Activer la reservation en ligne"
     },
     es: {
@@ -81,7 +81,7 @@ export function useOnboardingStatus(enabled = true) {
       optional: "Opcional",
       staffLink: "Invitar equipo",
       bookingTitle: "Reservas habilitadas",
-      bookingDescription: "Activa reservas online para recibir reservas directas.",
+      bookingDescription: "Tras mesas y turnos activos, habilita reservas online para que los clientes reserven.",
       bookingLink: "Habilitar reservas online"
     }
   }[locale];

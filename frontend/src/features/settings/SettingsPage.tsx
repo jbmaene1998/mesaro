@@ -5,7 +5,6 @@ import { Link } from "react-router-dom";
 
 import { createRestaurant } from "@/api/restaurants";
 import { billingApi } from "@/api/billing";
-import type { OpeningHoursDay } from "@/api/types";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorBoundary } from "@/components/ui/error-boundary";
@@ -13,28 +12,20 @@ import { FormSkeleton, InlineLoader } from "@/components/ui/loading";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { sanitizeSlug } from "@/features/auth/register-utils";
 import {
-  getOpeningHours,
   getRestaurantDetails,
-  updateOpeningHours,
   updateRestaurant
 } from "@/features/settings/api";
+import { getShifts } from "@/features/shifts/api";
+import { getTables } from "@/features/tables/api";
 import { useAuth, useMaxRestaurants, useSelectedRestaurantId, useUserRole } from "@/hooks/use-auth";
 import { ApiErrorCode } from "@/api/types";
 import { useI18n } from "@/i18n";
 import { showApiError, showSuccess } from "@/lib/toast";
 import { SettingsSection } from "@/features/settings/components/SettingsSection";
 import BillingSettingsPage from "@/features/billing/BillingSettingsPage";
-import { getVacations } from "@/features/vacations/api";
-
-function interpolateTemplate(template: string, values: Record<string, string | number>) {
-  return Object.entries(values).reduce(
-    (result, [key, value]) => result.replace(new RegExp(`\\{${key}\\}`, "g"), String(value)),
-    template
-  );
-}
 
 export function SettingsPage() {
-  const { locale, t } = useI18n();
+  const { locale } = useI18n();
   const copy = COPY[locale as keyof typeof COPY];
   const auth = useAuth();
   const queryClient = useQueryClient();
@@ -45,7 +36,7 @@ export function SettingsPage() {
   const [nameDraft, setNameDraft] = useState("");
   const [timezoneDraft, setTimezoneDraft] = useState("UTC");
   const [localeDraft, setLocaleDraft] = useState("en");
-  const [bookingEnabledDraft, setBookingEnabledDraft] = useState(true);
+  const [bookingEnabledDraft, setBookingEnabledDraft] = useState(false);
   const [slotIntervalDraft, setSlotIntervalDraft] = useState("15");
   const [defaultDurationDraft, setDefaultDurationDraft] = useState("90");
   const [minNoticeDraft, setMinNoticeDraft] = useState("0");
@@ -53,7 +44,6 @@ export function SettingsPage() {
   const [maxPartySizeDraft, setMaxPartySizeDraft] = useState("20");
   const [assignmentModeDraft] = useState<"AUTO">("AUTO");
   const [canEditSettings, setCanEditSettings] = useState(true);
-  const [openingHoursDraft, setOpeningHoursDraft] = useState<OpeningHoursDay[]>([]);
   const [newRestaurantName, setNewRestaurantName] = useState("");
   const [newRestaurantSlug, setNewRestaurantSlug] = useState("");
   const [newRestaurantTimezone, setNewRestaurantTimezone] = useState(Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC");
@@ -66,24 +56,22 @@ export function SettingsPage() {
     enabled: Boolean(selectedRestaurantId)
   });
 
-  const openingHoursQuery = useQuery({
-    queryKey: ["opening-hours", selectedRestaurantId],
-    queryFn: getOpeningHours,
+  const tablesQuery = useQuery({
+    queryKey: ["tables", selectedRestaurantId],
+    queryFn: getTables,
     enabled: Boolean(selectedRestaurantId)
   });
 
-  const vacationsQuery = useQuery({
-    queryKey: ["vacations", selectedRestaurantId],
-    queryFn: getVacations,
+  const shiftsQuery = useQuery({
+    queryKey: ["shifts", selectedRestaurantId],
+    queryFn: getShifts,
     enabled: Boolean(selectedRestaurantId)
   });
 
-  const upcomingClosureCount = useMemo(() => {
-    const today = new Date().toISOString().slice(0, 10);
-    return (vacationsQuery.data ?? []).filter(
-      (item) => item.type === "RESTAURANT_CLOSURE" && item.endDate >= today
-    ).length;
-  }, [vacationsQuery.data]);
+  const hasTables = (tablesQuery.data?.length ?? 0) >= 1;
+  const hasActiveShifts = (shiftsQuery.data ?? []).some((shift) => shift.status === "ACTIVE");
+  const canEnableBooking = hasTables && hasActiveShifts;
+  const bookingToggleDisabled = !canEditSettings || (!canEnableBooking && !bookingEnabledDraft);
 
   useEffect(() => {
     if (!detailsQuery.data) {
@@ -99,14 +87,6 @@ export function SettingsPage() {
     setMaxAdvanceDaysDraft(String(detailsQuery.data.maxAdvanceDays ?? 90));
     setMaxPartySizeDraft(String(detailsQuery.data.maxPartySize ?? 20));
   }, [detailsQuery.data]);
-
-  useEffect(() => {
-    if (!openingHoursQuery.data) {
-      return;
-    }
-    const normalized = [...openingHoursQuery.data].sort((a, b) => a.dayOfWeek - b.dayOfWeek);
-    setOpeningHoursDraft(normalized);
-  }, [openingHoursQuery.data]);
 
   const bookingUrl = useMemo(() => {
     if (!detailsQuery.data) {
@@ -246,43 +226,6 @@ export function SettingsPage() {
     },
     onError: (error) => showApiError(error)
   });
-
-  const updateOpeningHoursMutation = useMutation({
-    mutationFn: () =>
-      updateOpeningHours(
-        openingHoursDraft.map((day) => ({
-          dayOfWeek: day.dayOfWeek,
-          open: day.open,
-          openLocalTime: day.open ? day.openLocalTime : null,
-          closeLocalTime: day.open ? day.closeLocalTime : null
-        }))
-      ),
-    onSuccess: () => {
-      showSuccess(copy.openingHoursUpdated);
-      void queryClient.invalidateQueries({ queryKey: ["opening-hours", selectedRestaurantId] });
-    },
-    onError: (error) => showApiError(error)
-  });
-
-  const updateOpeningHoursDay = (
-    dayOfWeek: number,
-    patch: Partial<Pick<OpeningHoursDay, "open" | "openLocalTime" | "closeLocalTime">>
-  ) => {
-    setOpeningHoursDraft((current) =>
-      current.map((day) => {
-        if (day.dayOfWeek !== dayOfWeek) {
-          return day;
-        }
-
-        const next = { ...day, ...patch };
-        if (!next.open) {
-          next.openLocalTime = null;
-          next.closeLocalTime = null;
-        }
-        return next;
-      })
-    );
-  };
 
   const copyToClipboard = async (value: string, successText: string) => {
     try {
@@ -424,11 +367,32 @@ export function SettingsPage() {
                     <input
                       type="checkbox"
                       checked={bookingEnabledDraft}
-                      onChange={(event) => setBookingEnabledDraft(event.target.checked)}
-                      disabled={!canEditSettings}
+                      onChange={(event) => {
+                        if (event.target.checked && !canEnableBooking) {
+                          return;
+                        }
+                        setBookingEnabledDraft(event.target.checked);
+                      }}
+                      disabled={bookingToggleDisabled}
                     />
                     {copy.bookingEnabled}
                   </label>
+                  {!canEnableBooking ? (
+                    <p className="mt-2 text-sm text-muted-foreground">
+                      {copy.bookingRequiresTablesAndShifts}{" "}
+                      {!hasTables ? (
+                        <Link to="/tables" className="underline underline-offset-2">
+                          {copy.addTablesLink}
+                        </Link>
+                      ) : null}
+                      {!hasTables && !hasActiveShifts ? " · " : null}
+                      {!hasActiveShifts ? (
+                        <Link to="/shifts" className="underline underline-offset-2">
+                          {copy.addShiftsLink}
+                        </Link>
+                      ) : null}
+                    </p>
+                  ) : null}
                   {!bookingEnabledDraft ? (
                     <p className="mt-2 text-sm text-amber-700">
                       {copy.bookingDisabledWarning}
@@ -562,85 +526,6 @@ export function SettingsPage() {
               </div>
             ) : null}
           </SettingsSection>
-
-          <SettingsSection
-            title={copy.openingHours}
-            description={copy.openingHoursDescription}
-          >
-            {openingHoursQuery.isLoading ? <FormSkeleton fields={7} /> : null}
-            {openingHoursQuery.isError ? (
-              <div className="space-y-2">
-                <p className="text-sm text-destructive">{copy.unableLoadOpeningHours}</p>
-                <Button variant="outline" size="sm" onClick={() => void openingHoursQuery.refetch()}>
-                  {copy.retry}
-                </Button>
-              </div>
-            ) : null}
-            {!openingHoursQuery.isLoading && !openingHoursQuery.isError ? (
-              <div className="space-y-3">
-                <div className="space-y-1 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
-                  <p>{t("settings.openingHours.reservationsWarning")}</p>
-                  <p>
-                    {t("settings.openingHours.closuresHintPrefix")}
-                    <Link to="/vacations" className="font-medium underline underline-offset-2 hover:text-amber-950">
-                      {t("settings.openingHours.closuresLink")}
-                    </Link>
-                    {t("settings.openingHours.closuresHintSuffix")}
-                  </p>
-                  {upcomingClosureCount > 0 ? (
-                    <p className="text-xs text-amber-800">
-                      {interpolateTemplate(t("settings.openingHours.upcomingClosures"), {
-                        count: upcomingClosureCount
-                      })}
-                    </p>
-                  ) : null}
-                </div>
-                {openingHoursDraft.map((day) => (
-                  <div key={day.dayOfWeek} className="grid gap-3 rounded-md border p-3 md:grid-cols-[180px,110px,1fr,1fr] md:items-center">
-                    <p className="text-sm font-medium">{day.dayName.charAt(0) + day.dayName.slice(1).toLowerCase()}</p>
-                    <label className="inline-flex items-center gap-2 text-sm">
-                      <input
-                        type="checkbox"
-                        checked={day.open}
-                        onChange={(event) => updateOpeningHoursDay(day.dayOfWeek, { open: event.target.checked })}
-                        disabled={!canEditSettings || updateOpeningHoursMutation.isPending}
-                      />
-                      {copy.open}
-                    </label>
-                    <div className="space-y-1">
-                      <label className="text-xs text-muted-foreground">{copy.openTime}</label>
-                      <input
-                        type="time"
-                        value={day.openLocalTime ?? ""}
-                        onChange={(event) => updateOpeningHoursDay(day.dayOfWeek, { openLocalTime: event.target.value || null })}
-                        disabled={!day.open || !canEditSettings || updateOpeningHoursMutation.isPending}
-                        className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-xs text-muted-foreground">{copy.closeTime}</label>
-                      <input
-                        type="time"
-                        value={day.closeLocalTime ?? ""}
-                        onChange={(event) => updateOpeningHoursDay(day.dayOfWeek, { closeLocalTime: event.target.value || null })}
-                        disabled={!day.open || !canEditSettings || updateOpeningHoursMutation.isPending}
-                        className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
-                      />
-                    </div>
-                  </div>
-                ))}
-                <div className="flex justify-end">
-                  <Button
-                    onClick={() => updateOpeningHoursMutation.mutate()}
-                    disabled={!canEditSettings || updateOpeningHoursMutation.isPending || openingHoursDraft.length !== 7}
-                  >
-                    {updateOpeningHoursMutation.isPending ? <InlineLoader /> : null}
-                    {copy.saveOpeningHours}
-                  </Button>
-                </div>
-              </div>
-            ) : null}
-          </SettingsSection>
           </div>
           </ErrorBoundary>
         </TabsContent>
@@ -761,7 +646,6 @@ const COPY = {
   en: {
     settingsUpdated: "Settings updated",
     restaurantCreated: "Restaurant created",
-    openingHoursUpdated: "Opening hours updated",
     settings: "Settings",
     settingsSubtitle: "Restaurant configuration and booking behavior.",
     general: "General",
@@ -791,6 +675,9 @@ const COPY = {
     bookingRules: "Booking Rules",
     bookingRulesDescription: "Control booking behavior, slot cadence, and default reservation duration.",
     bookingEnabled: "Booking enabled",
+    bookingRequiresTablesAndShifts: "Enable bookings only after you have at least one table and one active shift.",
+    addTablesLink: "Add tables",
+    addShiftsLink: "Add shifts",
     bookingDisabledWarning: "Booking is currently disabled. Guests cannot create new reservations.",
     assignmentMode: "Assignment mode",
     auto: "Auto",
@@ -805,13 +692,6 @@ const COPY = {
     maxPartySize: "Max party size",
     saveChanges: "Save Changes",
     changesApplyImmediately: "Changes apply to your selected restaurant immediately after save.",
-    openingHours: "Opening Hours",
-    openingHoursDescription: "Weekly opening schedule used by availability and guest booking.",
-    unableLoadOpeningHours: "Unable to load opening hours.",
-    open: "Open",
-    openTime: "Open time",
-    closeTime: "Close time",
-    saveOpeningHours: "Save Opening Hours",
     createAdditionalRestaurants: "Create Additional Restaurants",
     useWhenPlanIncludesMultiple: "Use this to create and manage multiple restaurant locations.",
     expand: "Expand",
@@ -827,7 +707,6 @@ const COPY = {
   nl: {
     settingsUpdated: "Instellingen bijgewerkt",
     restaurantCreated: "Restaurant aangemaakt",
-    openingHoursUpdated: "Openingstijden bijgewerkt",
     settings: "Instellingen",
     settingsSubtitle: "Restaurantconfiguratie en boekingsgedrag.",
     general: "Algemeen",
@@ -857,6 +736,9 @@ const COPY = {
     bookingRules: "Boekingsregels",
     bookingRulesDescription: "Beheer boekingsgedrag, slotfrequentie en standaard reserveringsduur.",
     bookingEnabled: "Boekingen ingeschakeld",
+    bookingRequiresTablesAndShifts: "Schakel boekingen alleen in als er minstens een tafel en een actieve shift zijn.",
+    addTablesLink: "Tafels toevoegen",
+    addShiftsLink: "Shifts toevoegen",
     bookingDisabledWarning: "Boeken is momenteel uitgeschakeld. Gasten kunnen geen nieuwe reserveringen maken.",
     assignmentMode: "Toewijzingsmodus",
     auto: "Automatisch",
@@ -871,13 +753,6 @@ const COPY = {
     maxPartySize: "Max groepsgrootte",
     saveChanges: "Wijzigingen opslaan",
     changesApplyImmediately: "Wijzigingen gelden direct voor het geselecteerde restaurant na opslaan.",
-    openingHours: "Openingstijden",
-    openingHoursDescription: "Wekelijks openingsschema gebruikt voor beschikbaarheid en gastboekingen.",
-    unableLoadOpeningHours: "Kan openingstijden niet laden.",
-    open: "Open",
-    openTime: "Openingstijd",
-    closeTime: "Sluitingstijd",
-    saveOpeningHours: "Openingstijden opslaan",
     createAdditionalRestaurants: "Extra restaurants aanmaken",
     useWhenPlanIncludesMultiple: "Gebruik dit om meerdere restaurantlocaties aan te maken en te beheren.",
     expand: "Uitklappen",
@@ -893,7 +768,6 @@ const COPY = {
   fr: {
     settingsUpdated: "Parametres mis a jour",
     restaurantCreated: "Restaurant cree",
-    openingHoursUpdated: "Horaires d'ouverture mis a jour",
     settings: "Parametres",
     settingsSubtitle: "Configuration du restaurant et comportement de reservation.",
     general: "General",
@@ -923,6 +797,9 @@ const COPY = {
     bookingRules: "Regles de reservation",
     bookingRulesDescription: "Controlez le comportement de reservation, la cadence des slots et la duree par defaut.",
     bookingEnabled: "Reservation activee",
+    bookingRequiresTablesAndShifts: "Activez les reservations uniquement s'il y a au moins une table et un service actif.",
+    addTablesLink: "Ajouter des tables",
+    addShiftsLink: "Ajouter des services",
     bookingDisabledWarning: "La reservation est desactivee. Les clients ne peuvent pas creer de nouvelles reservations.",
     assignmentMode: "Mode d'affectation",
     auto: "Auto",
@@ -937,13 +814,6 @@ const COPY = {
     maxPartySize: "Taille max du groupe",
     saveChanges: "Enregistrer les modifications",
     changesApplyImmediately: "Les changements s'appliquent immediatement apres sauvegarde.",
-    openingHours: "Horaires d'ouverture",
-    openingHoursDescription: "Planning hebdomadaire utilise pour disponibilite et reservation client.",
-    unableLoadOpeningHours: "Impossible de charger les horaires.",
-    open: "Ouvert",
-    openTime: "Heure d'ouverture",
-    closeTime: "Heure de fermeture",
-    saveOpeningHours: "Enregistrer les horaires",
     createAdditionalRestaurants: "Creer des restaurants supplementaires",
     useWhenPlanIncludesMultiple: "Utilisez ceci pour creer et gerer plusieurs sites de restaurant.",
     expand: "Developper",
@@ -959,7 +829,6 @@ const COPY = {
   es: {
     settingsUpdated: "Configuracion actualizada",
     restaurantCreated: "Restaurante creado",
-    openingHoursUpdated: "Horario de apertura actualizado",
     settings: "Configuracion",
     settingsSubtitle: "Configuracion del restaurante y comportamiento de reservas.",
     general: "General",
@@ -989,6 +858,9 @@ const COPY = {
     bookingRules: "Reglas de reserva",
     bookingRulesDescription: "Controla el comportamiento de reservas, cadencia de slots y duracion por defecto.",
     bookingEnabled: "Reservas habilitadas",
+    bookingRequiresTablesAndShifts: "Habilita las reservas solo cuando haya al menos una mesa y un turno activo.",
+    addTablesLink: "Agregar mesas",
+    addShiftsLink: "Agregar turnos",
     bookingDisabledWarning: "Las reservas estan deshabilitadas. Los clientes no pueden crear nuevas reservas.",
     assignmentMode: "Modo de asignacion",
     auto: "Automatico",
@@ -1003,13 +875,6 @@ const COPY = {
     maxPartySize: "Tamano maximo del grupo",
     saveChanges: "Guardar cambios",
     changesApplyImmediately: "Los cambios se aplican inmediatamente al restaurante seleccionado.",
-    openingHours: "Horario de apertura",
-    openingHoursDescription: "Horario semanal usado por disponibilidad y reservas de clientes.",
-    unableLoadOpeningHours: "No se puede cargar el horario de apertura.",
-    open: "Abierto",
-    openTime: "Hora de apertura",
-    closeTime: "Hora de cierre",
-    saveOpeningHours: "Guardar horario de apertura",
     createAdditionalRestaurants: "Crear restaurantes adicionales",
     useWhenPlanIncludesMultiple: "Usa esto para crear y gestionar varias ubicaciones de restaurante.",
     expand: "Expandir",

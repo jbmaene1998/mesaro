@@ -90,7 +90,6 @@
 | `POST /api/restaurants` | Authenticated |
 | `GET /api/restaurants`, `GET /{id}` | Member |
 | `PUT /api/restaurants/{id}`, `DELETE` (archive) | OWNER |
-| `GET\|PUT /api/restaurants/{id}/opening-hours` | STAFF read / OWNER write |
 | `POST /api/restaurants/{id}/select`, `GET /api/context` | Auth |
 
 **Notes:** No dedicated onboarding API. Closing hours **warn** only (no auto-cancel). Closures (vacation module) **do** cancel bookings. Select re-issues JWT; FE currently ignores it.
@@ -181,7 +180,7 @@ Guest booking still allowed if `bookingEnabled` when subscription dead.
 | Hold expiry | `HoldExpiryScheduler` → cleanup + audit; outbox `HoldExpired` log-only | Cleanup Complete; outbox Stub |
 | Outbox worker | `OutboxWorker` every ~5s | **Partial** — only `ReservationConfirmed` sends email |
 | Reservation reminders | cron ~120 min before | Complete |
-| GDPR retention / purge | crons; soft-delete `DELETE /api/auth/current-user` | Complete (if enabled) |
+| GDPR retention / purge | crons; soft-delete `DELETE /api/auth/current-user` (password + `DELETE` confirm; cancels Stripe; cleans SSA/vacations) | Complete (if enabled) |
 | Staff invite cleanup | hourly | Complete |
 | Analytics | `POST /api/analytics/events` | **Stub** (log only) |
 

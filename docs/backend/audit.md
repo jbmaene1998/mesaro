@@ -66,7 +66,7 @@ The backend is a **strong multi-tenant booking API**: holds, DST-aware availabil
 
 ### Packages under `com.mesaro`
 
-`auth`, `security`, `restaurant`, `table`, `shift`, `openinghours`, `availability`, `hold`, `reservation`, `vacation`, `staff`, `planning`, `dashboard`, `report`, `analytics`, `contact`, `billing`, `gdpr`, `audit`, `outbox`, `email`, `ratelimit`, `logging`, `health`, `infra`, `config`, `common` — plus empty `marketing/` package.
+`auth`, `security`, `restaurant`, `table`, `shift`, `availability`, `hold`, `reservation`, `vacation`, `staff`, `planning`, `dashboard`, `report`, `analytics`, `contact`, `billing`, `gdpr`, `audit`, `outbox`, `email`, `ratelimit`, `logging`, `health`, `infra`, `config`, `common` — plus empty `marketing/` package.
 
 ---
 
@@ -79,7 +79,6 @@ The backend is a **strong multi-tenant booking API**: holds, DST-aware availabil
 | **restaurant** | Done | `RestaurantService`, soft-delete, slug, timezone, booking rules | Quota via `maxRestaurants` |
 | **table / combinations** | Done | `DiningTable*`, `TableCombination*` | Capacity selection |
 | **shift** | Done | `ShiftService` | Overnight windows, capacity |
-| **openinghours** | Done (thin) | entity/repo; API via restaurant | |
 | **availability** | Done | `AvailabilityService` | DST gap/overlap via `TimeService` |
 | **hold** | Done | `HoldService`, expiry scheduler | Pessimistic table locks |
 | **reservation** | Done | guest + admin lifecycle | Confirm/cancel/no-show/seat; cancel-token public GET |

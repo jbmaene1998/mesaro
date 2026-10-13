@@ -5,11 +5,25 @@ import { useMemo, useState } from "react";
 import type { Shift } from "@/api/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle
+} from "@/components/ui/dialog";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorBoundary } from "@/components/ui/error-boundary";
 import { CardSkeleton } from "@/components/ui/loading";
 import { useSelectedRestaurantId } from "@/hooks/use-auth";
-import { deleteShift, getShifts } from "@/features/shifts/api";
+import {
+  activateShift,
+  deactivateShift,
+  deleteShift,
+  getShifts,
+  publishDraftShifts
+} from "@/features/shifts/api";
 import { ShiftCard } from "@/features/shifts/components/ShiftCard";
 import { ShiftFormDialog } from "@/features/shifts/components/ShiftFormDialog";
 import { useI18n } from "@/i18n";
@@ -40,6 +54,7 @@ export function ShiftManagementPage() {
   const selectedRestaurantId = useSelectedRestaurantId();
   const [openDialog, setOpenDialog] = useState(false);
   const [selectedShift, setSelectedShift] = useState<Shift | null>(null);
+  const [publishConfirmOpen, setPublishConfirmOpen] = useState(false);
 
   const shiftsQuery = useQuery({
     queryKey: ["shifts", selectedRestaurantId],
@@ -47,16 +62,60 @@ export function ShiftManagementPage() {
     enabled: Boolean(selectedRestaurantId)
   });
 
+  const invalidateShifts = () => {
+    void queryClient.invalidateQueries({ queryKey: ["shifts", selectedRestaurantId] });
+  };
+
   const deleteMutation = useMutation({
     mutationFn: (id: string) => deleteShift(id),
     onSuccess: () => {
       showSuccess(copy.deleted);
-      void queryClient.invalidateQueries({ queryKey: ["shifts", selectedRestaurantId] });
+      invalidateShifts();
+    },
+    onError: (error) => showApiError(error)
+  });
+
+  const publishOneMutation = useMutation({
+    mutationFn: (id: string) => activateShift(id),
+    onSuccess: () => {
+      showSuccess(copy.publishedOne);
+      invalidateShifts();
+    },
+    onError: (error) => showApiError(error)
+  });
+
+  const deactivateMutation = useMutation({
+    mutationFn: (id: string) => deactivateShift(id),
+    onSuccess: () => {
+      showSuccess(copy.deactivated);
+      invalidateShifts();
+    },
+    onError: (error) => showApiError(error)
+  });
+
+  const publishDraftsMutation = useMutation({
+    mutationFn: () => publishDraftShifts(),
+    onSuccess: (published) => {
+      showSuccess(
+        published.length === 1
+          ? copy.publishedOne
+          : copy.publishedMany.replace("{count}", String(published.length))
+      );
+      setPublishConfirmOpen(false);
+      invalidateShifts();
     },
     onError: (error) => showApiError(error)
   });
 
   const shifts = shiftsQuery.data ?? [];
+  const draftCount = useMemo(
+    () => shifts.filter((shift) => shift.status === "DRAFT").length,
+    [shifts]
+  );
+  const actionPending =
+    publishOneMutation.isPending ||
+    deactivateMutation.isPending ||
+    publishDraftsMutation.isPending;
 
   const shiftsByDay = useMemo(() => {
     const grouped = new Map<number, Shift[]>();
@@ -80,16 +139,24 @@ export function ShiftManagementPage() {
           <h1 className="text-2xl font-semibold tracking-tight">{copy.title}</h1>
           <p className="text-sm text-muted-foreground">{copy.subtitle}</p>
         </div>
-        <Button
-          className="gap-2"
-          onClick={() => {
-            setSelectedShift(null);
-            setOpenDialog(true);
-          }}
-        >
-          <PlusCircle className="h-4 w-4" />
-          {copy.add}
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          {draftCount > 0 ? (
+            <Button variant="secondary" onClick={() => setPublishConfirmOpen(true)} disabled={actionPending}>
+              {copy.publishShifts}
+              {draftCount > 1 ? ` (${draftCount})` : ""}
+            </Button>
+          ) : null}
+          <Button
+            className="gap-2"
+            onClick={() => {
+              setSelectedShift(null);
+              setOpenDialog(true);
+            }}
+          >
+            <PlusCircle className="h-4 w-4" />
+            {copy.add}
+          </Button>
+        </div>
       </div>
 
       <ErrorBoundary level="section">
@@ -131,11 +198,14 @@ export function ShiftManagementPage() {
                           key={shift.id}
                           shift={shift}
                           colorClass={shiftColorClass(shift.name)}
+                          actionPending={actionPending}
                           onEdit={(item) => {
                             setSelectedShift(item);
                             setOpenDialog(true);
                           }}
                           onDelete={(item) => deleteMutation.mutate(item.id)}
+                          onPublish={(item) => publishOneMutation.mutate(item.id)}
+                          onDeactivate={(item) => deactivateMutation.mutate(item.id)}
                         />
                       ))}
                       {(shiftsByDay.get(day.value) ?? []).length === 0 ? (
@@ -156,6 +226,30 @@ export function ShiftManagementPage() {
         shift={selectedShift}
         existingShifts={shifts}
       />
+
+      <Dialog open={publishConfirmOpen} onOpenChange={setPublishConfirmOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{copy.publishTitle}</DialogTitle>
+            <DialogDescription>
+              {draftCount === 1
+                ? copy.publishDescriptionOne
+                : copy.publishDescriptionMany.replace("{count}", String(draftCount))}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPublishConfirmOpen(false)}>
+              {copy.cancel}
+            </Button>
+            <Button
+              onClick={() => publishDraftsMutation.mutate()}
+              disabled={publishDraftsMutation.isPending}
+            >
+              {copy.publishNow}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -163,54 +257,90 @@ export function ShiftManagementPage() {
 const COPY = {
   en: {
     deleted: "Shift deleted",
+    publishedOne: "Shift published",
+    publishedMany: "{count} shifts published",
+    deactivated: "Shift deactivated",
     title: "Shifts",
-    subtitle: "Weekly shift schedule and capacity configuration.",
+    subtitle: "Save shifts as drafts, then publish when you are ready to accept bookings.",
     add: "Add Shift",
+    publishShifts: "Publish shifts",
+    publishTitle: "Publish shifts",
+    publishDescriptionOne: "Publishing makes this draft shift live and available for reservations.",
+    publishDescriptionMany: "Publishing makes all {count} draft shifts live and available for reservations.",
+    publishNow: "Publish now",
+    cancel: "Cancel",
     weekView: "Week View",
     loadError: "Unable to load shifts.",
     retry: "Retry",
     emptyTitle: "No shifts set up",
-    emptyDesc: "Create at least one active shift to accept reservations.",
-    emptyAction: "Create a shift",
+    emptyDesc: "Save your first shift as a draft, then publish it to accept reservations.",
+    emptyAction: "Add a shift",
     noShifts: "No shifts"
   },
   nl: {
     deleted: "Shift verwijderd",
+    publishedOne: "Shift gepubliceerd",
+    publishedMany: "{count} shifts gepubliceerd",
+    deactivated: "Shift gedeactiveerd",
     title: "Shifts",
-    subtitle: "Wekelijks shiftschema en capaciteitsinstellingen.",
+    subtitle: "Sla shifts op als concept en publiceer ze wanneer je klaar bent voor boekingen.",
     add: "Shift toevoegen",
+    publishShifts: "Shifts publiceren",
+    publishTitle: "Shifts publiceren",
+    publishDescriptionOne: "Publiceren maakt deze concept-shift live en beschikbaar voor reserveringen.",
+    publishDescriptionMany: "Publiceren maakt alle {count} concept-shifts live en beschikbaar voor reserveringen.",
+    publishNow: "Nu publiceren",
+    cancel: "Annuleren",
     weekView: "Weekoverzicht",
     loadError: "Kan shifts niet laden.",
     retry: "Opnieuw",
     emptyTitle: "Nog geen shifts ingesteld",
-    emptyDesc: "Maak minstens een actieve shift om reserveringen te accepteren.",
-    emptyAction: "Shift maken",
+    emptyDesc: "Sla je eerste shift op als concept en publiceer hem om reserveringen te accepteren.",
+    emptyAction: "Shift toevoegen",
     noShifts: "Geen shifts"
   },
   fr: {
     deleted: "Service supprime",
+    publishedOne: "Service publie",
+    publishedMany: "{count} services publies",
+    deactivated: "Service desactive",
     title: "Services",
-    subtitle: "Planning hebdomadaire des services et capacite.",
+    subtitle: "Enregistrez les services en brouillon, puis publiez-les quand vous etes pret.",
     add: "Ajouter un service",
+    publishShifts: "Publier les services",
+    publishTitle: "Publier les services",
+    publishDescriptionOne: "La publication rend ce brouillon disponible pour les reservations.",
+    publishDescriptionMany: "La publication rend les {count} brouillons disponibles pour les reservations.",
+    publishNow: "Publier maintenant",
+    cancel: "Annuler",
     weekView: "Vue hebdomadaire",
     loadError: "Impossible de charger les services.",
     retry: "Reessayer",
     emptyTitle: "Aucun service configure",
-    emptyDesc: "Creez au moins un service actif pour accepter des reservations.",
-    emptyAction: "Creer un service",
+    emptyDesc: "Enregistrez un premier service en brouillon, puis publiez-le pour accepter des reservations.",
+    emptyAction: "Ajouter un service",
     noShifts: "Aucun service"
   },
   es: {
     deleted: "Turno eliminado",
+    publishedOne: "Turno publicado",
+    publishedMany: "{count} turnos publicados",
+    deactivated: "Turno desactivado",
     title: "Turnos",
-    subtitle: "Horario semanal de turnos y configuracion de capacidad.",
+    subtitle: "Guarda los turnos como borrador y publicalos cuando estes listo para recibir reservas.",
     add: "Agregar turno",
+    publishShifts: "Publicar turnos",
+    publishTitle: "Publicar turnos",
+    publishDescriptionOne: "Publicar hace que este borrador quede activo para nuevas reservas.",
+    publishDescriptionMany: "Publicar hace que los {count} borradores queden activos para nuevas reservas.",
+    publishNow: "Publicar ahora",
+    cancel: "Cancelar",
     weekView: "Vista semanal",
     loadError: "No se pueden cargar los turnos.",
     retry: "Reintentar",
     emptyTitle: "No hay turnos configurados",
-    emptyDesc: "Crea al menos un turno activo para aceptar reservas.",
-    emptyAction: "Crear turno",
+    emptyDesc: "Guarda tu primer turno como borrador y publicalo para aceptar reservas.",
+    emptyAction: "Agregar turno",
     noShifts: "Sin turnos"
   }
 } as const;

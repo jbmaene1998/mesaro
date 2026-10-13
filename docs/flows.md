@@ -75,7 +75,6 @@ Marketing → Register → Onboard restaurant
 | 5 | Select restaurant context | SETUP | AppShell selector | `POST .../select` + `X-Restaurant-Id` | OK |
 | 6 | Tables + combinations | SETUP | `/tables` | `/api/restaurants/{id}/tables*` | OK |
 | 7 | Shifts | SETUP | `/shifts` | `/api/restaurants/{id}/shifts*` | OK |
-| 8 | Opening hours | SETUP | `/settings` hours tab | `PUT .../opening-hours` | PARTIAL — close vs closure UX polish open |
 | 9 | Staff invite | SETUP | `/staff` | `POST /api/staff/invite` | OK |
 | 10 | Accept invite | SETUP | `/accept-invite` | `POST /api/staff/accept-invite` | OK (set-password UX) |
 | 11 | Availability | CORE | Guest booking | `GET /api/availability?restaurantSlug=` | OK |

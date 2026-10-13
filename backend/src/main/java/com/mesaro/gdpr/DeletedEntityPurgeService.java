@@ -94,14 +94,16 @@ public class DeletedEntityPurgeService {
                 UserAccountStatus.DELETED, cutoff);
         for (UserAccount user : usersToPurge) {
             Long userId = user.getId();
-            List<Restaurant> ownedRestaurants = restaurantRepository.findActiveByOwnerUserId(userId);
-            for (Restaurant restaurant : ownedRestaurants) {
-                restaurantService.archive(restaurant.getId());
-                log.info("Archived restaurant {} owned by purged user {}", restaurant.getId(), userId);
-            }
+            // Soft-delete already marked owned restaurants DELETED and removed memberships.
+            // Clean any leftover dependents before hard-deleting the user row.
+            jdbcTemplate.update("DELETE FROM staff_shift_assignment WHERE user_id = ?", userId);
+            jdbcTemplate.update("DELETE FROM staff_weekly_work_hours WHERE user_id = ?", userId);
+            jdbcTemplate.update("DELETE FROM vacation WHERE user_id = ?", userId);
+            jdbcTemplate.update("DELETE FROM password_reset WHERE user_id = ?", userId);
             refreshTokenRepository.deleteByUser_Id(userId);
             userRestaurantRepository.deleteByUser_Id(userId);
             userAccountRepository.delete(user);
+            log.info("Hard-purged soft-deleted user {}", userId);
         }
         return usersToPurge.size();
     }

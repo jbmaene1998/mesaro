@@ -61,7 +61,7 @@ const COPY: Record<SupportedLocale, Copy> = {
       "14-day free trial, no card required",
       "Guests book at your own URL or website widget",
       "Real-time table holds — no double bookings",
-      "Shift and opening hours management",
+      "Shift and closures management",
       "Role-based access for your whole team"
     ],
     sideTitle: "What changes when you switch",
@@ -101,7 +101,7 @@ const COPY: Record<SupportedLocale, Copy> = {
     features: [
       { title: "Real-time availability", description: "Slots update the moment a booking lands or a hold expires. Guests always see what's actually open — not a cached version from an hour ago." },
       { title: "Embeddable booking widget", description: "One iframe on your website. Guests book without leaving your domain, without being redirected to a marketplace. Setup takes two minutes." },
-      { title: "Shift and opening hours management", description: "Define shifts by day and service. Block closures and holidays. Mesaro only shows bookable slots that match your actual operating hours — automatically." },
+      { title: "Shift and closures management", description: "Define shifts by day and service. Block closures and holidays. Mesaro only shows bookable slots that match your published shifts — automatically." },
       { title: "Role-based staff access", description: "Owners, managers, and front-of-house staff each see exactly what they need. No configuration required beyond assigning the role at invite." },
       { title: "Multi-location under one login", description: "Manage all your restaurants from one account. Each location is separate; you see the full picture from the top level." },
       { title: "Full audit log", description: "Every reservation change — creation, edit, cancellation — is recorded with a timestamp and the name of the staff member who made it." }

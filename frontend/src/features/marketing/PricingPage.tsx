@@ -60,7 +60,7 @@ const COPY: Record<SupportedLocale, {
       "Unlimited staff accounts with role-based access",
       "Embeddable booking widget for your website",
       "Real-time table holds (no double bookings)",
-      "Shift management, opening hours, and closures",
+      "Shift management and closures",
       "Timeline dashboard with weekly and monthly stats",
       "Full history of every reservation change",
       "Email confirmations with ICS calendar attachments",
@@ -77,7 +77,7 @@ const COPY: Record<SupportedLocale, {
     onboardingTitle: "Up and running in under 30 minutes.",
     onboardingItems: [
       { step: "1", title: "Create your account", description: "No credit card. Takes 2 minutes." },
-      { step: "2", title: "Add your restaurant", description: "Set up your tables, floor plan, shifts, and opening hours." },
+      { step: "2", title: "Add your restaurant", description: "Set up your tables, floor plan, and shifts." },
       { step: "3", title: "Embed the booking widget", description: "One line of HTML on your website. Five minutes on any CMS." },
       { step: "4", title: "Go live", description: "Your first online reservation can arrive the same day." }
     ],

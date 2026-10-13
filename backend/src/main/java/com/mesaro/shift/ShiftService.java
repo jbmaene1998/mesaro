@@ -222,6 +222,7 @@ public class ShiftService {
         if (shift.getStatus() == ShiftStatus.ACTIVE) {
             return shift;
         }
+        validateStatusTransition(shift, ShiftStatus.ACTIVE);
         ZoneId timezone = ZoneId.of(shift.getRestaurant().getTimezone());
         int daysToCheck = 14;
         int overCapacityDayCount = 0;
@@ -255,11 +256,26 @@ public class ShiftService {
     }
 
     @Transactional
+    public List<Shift> publishDrafts(Long restaurantId) {
+        restaurantService.findOperationalById(restaurantId);
+        List<Shift> drafts = shiftRepository.findByRestaurantIdWithRestaurant(restaurantId).stream()
+                .filter(shift -> shift.getStatus() == ShiftStatus.DRAFT)
+                .toList();
+        if (drafts.isEmpty()) {
+            throw new ValidationException("No draft shifts to publish");
+        }
+        return drafts.stream()
+                .map(shift -> activate(restaurantId, shift.getId()))
+                .toList();
+    }
+
+    @Transactional
     public Shift deactivate(Long restaurantId, Long shiftId) {
         Shift shift = findByIdAndRestaurant(shiftId, restaurantId);
         if (shift.getStatus() == ShiftStatus.INACTIVE) {
             return shift;
         }
+        validateStatusTransition(shift, ShiftStatus.INACTIVE);
         long upcomingReservations = reservationRepository.countUpcomingActiveByShift(shiftId, timeService.now());
         if (upcomingReservations > 0) {
             throw new ConflictException(

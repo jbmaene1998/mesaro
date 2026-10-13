@@ -2,16 +2,22 @@ package com.mesaro.auth;
 
 import com.mesaro.audit.AuditEventType;
 import com.mesaro.audit.AuditService;
+import com.mesaro.billing.BillingService;
+import com.mesaro.common.exception.ValidationException;
 import com.mesaro.infra.TokenService;
 import com.mesaro.infra.EmailService;
+import com.mesaro.planning.StaffShiftAssignmentRepository;
+import com.mesaro.planning.StaffWeeklyWorkHoursRepository;
 import com.mesaro.restaurant.Restaurant;
 import com.mesaro.restaurant.RestaurantService;
 import com.mesaro.security.RestaurantRole;
 import com.mesaro.security.TokenDenylistService;
 import com.mesaro.user.UserAccount;
 import com.mesaro.user.UserAccountRepository;
+import com.mesaro.user.UserAccountStatus;
 import com.mesaro.user.UserRestaurant;
 import com.mesaro.user.UserRestaurantRepository;
+import com.mesaro.vacation.VacationRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -29,6 +35,8 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.anyLong;
+import static org.mockito.Mockito.anyString;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -44,6 +52,14 @@ class AuthServiceTest {
     @Mock
     private RefreshTokenRepository refreshTokenRepository;
     @Mock
+    private PasswordResetTokenRepository passwordResetTokenRepository;
+    @Mock
+    private StaffShiftAssignmentRepository staffShiftAssignmentRepository;
+    @Mock
+    private StaffWeeklyWorkHoursRepository staffWeeklyWorkHoursRepository;
+    @Mock
+    private VacationRepository vacationRepository;
+    @Mock
     private PasswordEncoder passwordEncoder;
     @Mock
     private TokenService tokenService;
@@ -53,6 +69,8 @@ class AuthServiceTest {
     private PasswordResetService passwordResetService;
     @Mock
     private RestaurantService restaurantService;
+    @Mock
+    private BillingService billingService;
     @Mock
     private EmailService emailService;
     @Mock
@@ -68,11 +86,16 @@ class AuthServiceTest {
                 userAccountRepository,
                 userRestaurantRepository,
                 refreshTokenRepository,
+                passwordResetTokenRepository,
+                staffShiftAssignmentRepository,
+                staffWeeklyWorkHoursRepository,
+                vacationRepository,
                 passwordEncoder,
                 tokenService,
                 jwtService,
                 passwordResetService,
                 restaurantService,
+                billingService,
                 emailService,
                 auditService,
                 tokenDenylistService,
@@ -236,17 +259,26 @@ class AuthServiceTest {
         UserRestaurant ownerMembership = new UserRestaurant(owner, restaurant, RestaurantRole.OWNER);
 
         when(userAccountRepository.findById(101L)).thenReturn(Optional.of(deletedUser));
+        when(passwordEncoder.matches("secret", deletedUser.getPasswordHash())).thenReturn(true);
+        when(passwordEncoder.encode(anyString())).thenReturn("scrubbed-hash");
         when(userRestaurantRepository.findByUserIdWithRestaurant(101L)).thenReturn(List.of(membership));
         when(userRestaurantRepository.findByRestaurantIdAndRoleWithUser(30L, RestaurantRole.OWNER))
                 .thenReturn(List.of(ownerMembership));
 
-        authService.deleteCurrentUser(101L);
+        authService.deleteCurrentUser(101L, new DeleteCurrentUserRequest("secret", "DELETE"));
 
         verify(emailService).sendAccountDeletionNoticeToOwner("owner@example.com", "staff@example.com", "Demo");
         verify(restaurantService, never()).hardDelete(any());
+        verify(staffShiftAssignmentRepository).deleteByUser_Id(101L);
+        verify(staffWeeklyWorkHoursRepository).deleteByUser_Id(101L);
+        verify(vacationRepository).deleteByUserId(101L);
+        verify(passwordResetTokenRepository).deleteByUser_Id(101L);
+        verify(billingService).cancelBillingForAccountDeletion(deletedUser);
         verify(userRestaurantRepository).deleteByUser_Id(101L);
         verify(refreshTokenRepository).deleteByUser_Id(101L);
         verify(userAccountRepository).save(deletedUser);
+        assertThat(deletedUser.getStatus()).isEqualTo(UserAccountStatus.DELETED);
+        assertThat(deletedUser.getEmail()).isEqualTo("deleted-user-101@anonymized.invalid");
     }
 
     @Test
@@ -256,15 +288,45 @@ class AuthServiceTest {
         UserRestaurant ownerMembership = new UserRestaurant(ownerUser, ownedRestaurant, RestaurantRole.OWNER);
 
         when(userAccountRepository.findById(101L)).thenReturn(Optional.of(ownerUser));
+        when(passwordEncoder.matches("secret", ownerUser.getPasswordHash())).thenReturn(true);
+        when(passwordEncoder.encode(anyString())).thenReturn("scrubbed-hash");
         when(userRestaurantRepository.findByUserIdWithRestaurant(101L)).thenReturn(List.of(ownerMembership));
 
-        authService.deleteCurrentUser(101L);
+        authService.deleteCurrentUser(101L, new DeleteCurrentUserRequest("secret", "DELETE"));
 
         verify(emailService, never()).sendAccountDeletionNoticeToOwner(any(), any(), any());
         verify(restaurantService, times(1)).markDeleted(77L);
+        verify(billingService).cancelBillingForAccountDeletion(ownerUser);
         verify(userRestaurantRepository).deleteByUser_Id(101L);
         verify(refreshTokenRepository).deleteByUser_Id(101L);
         verify(userAccountRepository).save(ownerUser);
+    }
+
+    @Test
+    void deleteCurrentUser_rejectsWrongPassword() {
+        UserAccount user = buildUser(101L, "owner@example.com");
+        when(userAccountRepository.findById(101L)).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches("wrong", user.getPasswordHash())).thenReturn(false);
+
+        assertThatThrownBy(() -> authService.deleteCurrentUser(101L, new DeleteCurrentUserRequest("wrong", "DELETE")))
+                .isInstanceOf(ValidationException.class);
+
+        verify(restaurantService, never()).markDeleted(anyLong());
+        verify(userRestaurantRepository, never()).deleteByUser_Id(anyLong());
+        verify(billingService, never()).cancelBillingForAccountDeletion(any());
+    }
+
+    @Test
+    void deleteCurrentUser_rejectsWrongConfirmPhrase() {
+        UserAccount user = buildUser(101L, "owner@example.com");
+        when(userAccountRepository.findById(101L)).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches("secret", user.getPasswordHash())).thenReturn(true);
+
+        assertThatThrownBy(() -> authService.deleteCurrentUser(101L, new DeleteCurrentUserRequest("secret", "delete")))
+                .isInstanceOf(ValidationException.class);
+
+        verify(restaurantService, never()).markDeleted(anyLong());
+        verify(billingService, never()).cancelBillingForAccountDeletion(any());
     }
 
     private UserAccount buildUser(Long id, String email) {

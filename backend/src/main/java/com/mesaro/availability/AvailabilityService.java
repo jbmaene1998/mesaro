@@ -2,7 +2,6 @@ package com.mesaro.availability;
 
 import com.mesaro.common.exception.ValidationException;
 import com.mesaro.infra.TimeService;
-import com.mesaro.openinghours.OpeningHours;
 import com.mesaro.restaurant.AssignmentMode;
 import com.mesaro.restaurant.Restaurant;
 import com.mesaro.restaurant.RestaurantService;
@@ -23,7 +22,6 @@ import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Optional;
 
 @Service
 @Transactional(readOnly = true)
@@ -78,32 +76,7 @@ public class AvailabilityService {
             );
         }
 
-        // Step 2: Check opening hours for the day
-        DayOfWeek dayOfWeek = request.date().getDayOfWeek();
-        Optional<OpeningHours> openingHours = restaurantService.findOpeningHoursForDay(
-                restaurant.getId(), dayOfWeek.getValue());
-        if (openingHours.isEmpty() ||
-                openingHours.get().getOpenLocalTime() == null ||
-                openingHours.get().getCloseLocalTime() == null) {
-            log.debug("Restaurant {} is closed on {}", request.restaurantSlug(), request.date());
-            return AvailabilityResponse.closed(
-                    restaurant.getSlug(),
-                    restaurant.getName(),
-                    restaurant.getTimezone(),
-                    restaurant.getLocale(),
-                    request.date(),
-                    request.partySize(),
-                    restaurant.getMinNoticeMinutes(),
-                    restaurant.getMaxAdvanceDays(),
-                    restaurant.getMaxPartySize(),
-                    "Restaurant is closed on this day"
-            );
-        }
-
-        LocalTime openTime = openingHours.get().getOpenLocalTime();
-        LocalTime closeTime = openingHours.get().getCloseLocalTime();
-
-        // Step 3: Check for restaurant closure
+        // Step 2: Check for restaurant closure
         if (vacationService.isRestaurantClosed(restaurant.getId(), request.date())) {
             log.debug("Restaurant {} is closed on {}", request.restaurantSlug(), request.date());
             return AvailabilityResponse.closed(
@@ -120,7 +93,8 @@ public class AvailabilityService {
             );
         }
 
-        // Step 4: Load active shifts for the day plus overnight carry-over from previous day
+        // Step 3: Load active shifts for the day plus overnight carry-over from previous day
+        DayOfWeek dayOfWeek = request.date().getDayOfWeek();
         int dayValue = dayOfWeek.getValue();
         int previousDay = dayValue == 1 ? 7 : dayValue - 1;
         List<Shift> shifts = new ArrayList<>(shiftService.findActiveByRestaurantAndDay(restaurant.getId(), dayValue));
@@ -146,14 +120,11 @@ public class AvailabilityService {
             );
         }
 
-        // Step 5: Generate slots for each shift
+        // Step 4: Generate slots for each shift
         List<TimeSlot> allSlots = new ArrayList<>();
         Instant now = timeService.now();
         Instant dayStartUtc = timeService.toUtc(request.date(), LocalTime.MIDNIGHT, timezone);
         Instant dayEndUtc = timeService.toUtc(request.date().plusDays(1), LocalTime.MIDNIGHT, timezone);
-
-        int openMinute = minuteOfDay(openTime);
-        int closeMinute = minuteOfDay(closeTime);
 
         for (Shift shift : shifts) {
             int[] shiftWindow = shiftWindowForDate(dayValue, shift);
@@ -161,8 +132,8 @@ public class AvailabilityService {
                 continue;
             }
 
-            int slotStart = Math.max(shiftWindow[0], openMinute);
-            int slotEnd = Math.min(shiftWindow[1], closeMinute);
+            int slotStart = shiftWindow[0];
+            int slotEnd = shiftWindow[1];
             if (slotStart >= slotEnd) {
                 continue;
             }
@@ -205,16 +176,11 @@ public class AvailabilityService {
             return true;
         }
 
-        DayOfWeek dayOfWeek = date.getDayOfWeek();
-        Optional<OpeningHours> openingHours = restaurantService.findOpeningHoursForDay(
-                restaurant.getId(), dayOfWeek.getValue());
-        if (openingHours.isEmpty() ||
-                openingHours.get().getOpenLocalTime() == null ||
-                openingHours.get().getCloseLocalTime() == null) {
+        if (vacationService.isRestaurantClosed(restaurant.getId(), date)) {
             return true;
         }
 
-        return vacationService.isRestaurantClosed(restaurant.getId(), date);
+        return !hasActiveServiceOnDate(restaurant.getId(), date);
     }
 
     public String getClosedReason(String restaurantSlug, LocalDate date) {
@@ -223,17 +189,26 @@ public class AvailabilityService {
             return "Booking is currently disabled";
         }
 
-        DayOfWeek dayOfWeek = date.getDayOfWeek();
-        Optional<OpeningHours> openingHours = restaurantService.findOpeningHoursForDay(
-                restaurant.getId(), dayOfWeek.getValue());
-        if (openingHours.isEmpty() ||
-                openingHours.get().getOpenLocalTime() == null ||
-                openingHours.get().getCloseLocalTime() == null) {
-            return "Restaurant is closed on this day";
+        String vacationReason = vacationService.getClosureReason(restaurant.getId(), date);
+        if (vacationReason != null) {
+            return vacationReason;
         }
 
-        String vacationReason = vacationService.getClosureReason(restaurant.getId(), date);
-        return vacationReason != null ? vacationReason : null;
+        if (!hasActiveServiceOnDate(restaurant.getId(), date)) {
+            return "No service available on this day";
+        }
+
+        return null;
+    }
+
+    private boolean hasActiveServiceOnDate(Long restaurantId, LocalDate date) {
+        int dayValue = date.getDayOfWeek().getValue();
+        int previousDay = dayValue == 1 ? 7 : dayValue - 1;
+        if (!shiftService.findActiveByRestaurantAndDay(restaurantId, dayValue).isEmpty()) {
+            return true;
+        }
+        return shiftService.findActiveByRestaurantAndDay(restaurantId, previousDay).stream()
+                .anyMatch(Shift::isOvernight);
     }
 
     private void validateRequest(AvailabilityRequest request, LocalDate today, Restaurant restaurant) {
@@ -357,14 +332,6 @@ public class AvailabilityService {
         }
 
         return TimeSlot.available(time, utcTime, shift.getId(), shift.getName());
-    }
-
-    private LocalTime max(LocalTime a, LocalTime b) {
-        return a.isAfter(b) ? a : b;
-    }
-
-    private LocalTime min(LocalTime a, LocalTime b) {
-        return a.isBefore(b) ? a : b;
     }
 
     private int[] shiftWindowForDate(int requestedDayOfWeek, Shift shift) {

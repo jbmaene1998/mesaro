@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 
 import { changePassword, deleteCurrentUser, getCurrentUser, updateCurrentUser } from "@/api/auth";
@@ -10,6 +10,8 @@ import { useAuth } from "@/hooks/use-auth";
 import { useI18n } from "@/i18n";
 import { showApiError, showSuccess } from "@/lib/toast";
 
+const DELETE_CONFIRM_PHRASE = "DELETE";
+
 export function AccountPage() {
   const { locale } = useI18n();
   const auth = useAuth();
@@ -20,6 +22,8 @@ export function AccountPage() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+  const [deletePassword, setDeletePassword] = useState("");
+  const [deleteConfirmPhrase, setDeleteConfirmPhrase] = useState("");
 
   const profileQuery = useQuery({
     queryKey: ["auth-current-user"],
@@ -34,6 +38,11 @@ export function AccountPage() {
     setFullNameDraft(profileQuery.data.fullName ?? "");
     setPhoneDraft(profileQuery.data.phone ?? "");
   }, [profileQuery.data]);
+
+  const ownedRestaurantCount = useMemo(
+    () => (auth.restaurants ?? []).filter((restaurant) => restaurant.role === "OWNER").length,
+    [auth.restaurants]
+  );
 
   const copy = {
     en: {
@@ -58,12 +67,18 @@ export function AccountPage() {
       passwordMismatch: "Passwords do not match.",
       submitPassword: "Change password",
       deleteAccount: "Delete account",
-      deleteAccountDesc: "Delete your account permanently. This action cannot be undone.",
-      deleteAccountWarning: "If you own a restaurant, it will be permanently deleted including staff access.",
+      deleteAccountDesc: "Permanently close your Mesaro account. This cannot be undone.",
+      deleteAccountWarning:
+        "Your account is deactivated immediately. Staff memberships are removed and any active subscription is cancelled.",
+      deleteOwnerWarning:
+        "You own {count} restaurant(s). They stop accepting bookings now and are permanently purged after the retention window (default 7 days), including reservations and staff access.",
       cancel: "Cancel",
       confirmDelete: "Delete permanently",
       deleteTitle: "Delete account?",
-      deletePrompt: "This action cannot be undone."
+      deletePrompt: "Confirm with your password and type DELETE to continue.",
+      deletePasswordLabel: "Password",
+      deleteConfirmLabel: "Type DELETE to confirm",
+      deleteConfirmHint: "Confirmation must match DELETE exactly."
     },
     nl: {
       accountUpdated: "Accountgegevens bijgewerkt",
@@ -87,12 +102,18 @@ export function AccountPage() {
       passwordMismatch: "Wachtwoorden komen niet overeen.",
       submitPassword: "Wachtwoord wijzigen",
       deleteAccount: "Account verwijderen",
-      deleteAccountDesc: "Verwijder je account permanent. Deze actie kan niet ongedaan worden gemaakt.",
-      deleteAccountWarning: "Als je eigenaar bent van een restaurant, wordt het inclusief personeel permanent verwijderd.",
+      deleteAccountDesc: "Sluit je Mesaro-account permanent. Dit kan niet ongedaan worden gemaakt.",
+      deleteAccountWarning:
+        "Je account wordt meteen gedeactiveerd. Lidmaatschappen worden verwijderd en een actief abonnement wordt geannuleerd.",
+      deleteOwnerWarning:
+        "Je bezit {count} restaurant(s). Boekingen stoppen nu en ze worden na de retentieperiode (standaard 7 dagen) permanent verwijderd, inclusief reserveringen en personeelstoegang.",
       cancel: "Annuleren",
       confirmDelete: "Permanent verwijderen",
       deleteTitle: "Account verwijderen?",
-      deletePrompt: "Deze actie kan niet ongedaan worden gemaakt."
+      deletePrompt: "Bevestig met je wachtwoord en typ DELETE om door te gaan.",
+      deletePasswordLabel: "Wachtwoord",
+      deleteConfirmLabel: "Typ DELETE om te bevestigen",
+      deleteConfirmHint: "Bevestiging moet exact DELETE zijn."
     },
     fr: {
       accountUpdated: "Details du compte mis a jour",
@@ -116,12 +137,18 @@ export function AccountPage() {
       passwordMismatch: "Les mots de passe ne correspondent pas.",
       submitPassword: "Changer le mot de passe",
       deleteAccount: "Supprimer le compte",
-      deleteAccountDesc: "Supprimez votre compte definitivement. Action irreversible.",
-      deleteAccountWarning: "Si vous etes proprietaire d un restaurant, il sera supprime avec les acces equipe.",
+      deleteAccountDesc: "Fermez definitivement votre compte Mesaro. Action irreversible.",
+      deleteAccountWarning:
+        "Votre compte est desactive immediatement. Les appartenances sont retirees et tout abonnement actif est annule.",
+      deleteOwnerWarning:
+        "Vous possedez {count} restaurant(s). Les reservations s'arretent maintenant et ils sont purges apres la periode de retention (7 jours par defaut), y compris reservations et acces equipe.",
       cancel: "Annuler",
       confirmDelete: "Supprimer definitivement",
       deleteTitle: "Supprimer le compte ?",
-      deletePrompt: "Cette action est irreversible."
+      deletePrompt: "Confirmez avec votre mot de passe et tapez DELETE pour continuer.",
+      deletePasswordLabel: "Mot de passe",
+      deleteConfirmLabel: "Tapez DELETE pour confirmer",
+      deleteConfirmHint: "La confirmation doit etre exactement DELETE."
     },
     es: {
       accountUpdated: "Datos de la cuenta actualizados",
@@ -145,12 +172,18 @@ export function AccountPage() {
       passwordMismatch: "Las contrasenas no coinciden.",
       submitPassword: "Cambiar contrasena",
       deleteAccount: "Eliminar cuenta",
-      deleteAccountDesc: "Elimina tu cuenta permanentemente. Esta accion no se puede deshacer.",
-      deleteAccountWarning: "Si eres propietario de un restaurante, se eliminara junto con el acceso del personal.",
+      deleteAccountDesc: "Cierra tu cuenta de Mesaro de forma permanente. No se puede deshacer.",
+      deleteAccountWarning:
+        "Tu cuenta se desactiva de inmediato. Se eliminan membresias y se cancela cualquier suscripcion activa.",
+      deleteOwnerWarning:
+        "Eres propietario de {count} restaurante(s). Dejan de aceptar reservas ahora y se eliminan tras la retencion (7 dias por defecto), incluidas reservas y acceso del personal.",
       cancel: "Cancelar",
       confirmDelete: "Eliminar permanentemente",
       deleteTitle: "Eliminar cuenta?",
-      deletePrompt: "Esta accion no se puede deshacer."
+      deletePrompt: "Confirma con tu contrasena y escribe DELETE para continuar.",
+      deletePasswordLabel: "Contrasena",
+      deleteConfirmLabel: "Escribe DELETE para confirmar",
+      deleteConfirmHint: "La confirmacion debe ser exactamente DELETE."
     }
   }[locale];
 
@@ -179,8 +212,9 @@ export function AccountPage() {
   });
 
   const deleteAccountMutation = useMutation({
-    mutationFn: () => deleteCurrentUser(),
+    mutationFn: () => deleteCurrentUser(deletePassword, deleteConfirmPhrase.trim()),
     onSuccess: async () => {
+      setConfirmDeleteOpen(false);
       await auth.logout();
     },
     onError: (error) => showApiError(error)
@@ -188,6 +222,14 @@ export function AccountPage() {
 
   const passwordMismatch = newPassword.length > 0 && newPassword !== confirmPassword;
   const canSubmitPassword = currentPassword.trim().length > 0 && newPassword.length >= 8 && !passwordMismatch;
+  const canConfirmDelete =
+    deletePassword.trim().length > 0 && deleteConfirmPhrase.trim() === DELETE_CONFIRM_PHRASE;
+
+  const openDeleteDialog = () => {
+    setDeletePassword("");
+    setDeleteConfirmPhrase("");
+    setConfirmDeleteOpen(true);
+  };
 
   return (
     <div className="space-y-6">
@@ -306,8 +348,13 @@ export function AccountPage() {
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-sm text-destructive">{copy.deleteAccountWarning}</p>
+          {ownedRestaurantCount > 0 ? (
+            <p className="text-sm text-destructive">
+              {copy.deleteOwnerWarning.replace("{count}", String(ownedRestaurantCount))}
+            </p>
+          ) : null}
           <div className="flex justify-end">
-            <Button variant="destructive" onClick={() => setConfirmDeleteOpen(true)}>
+            <Button variant="destructive" onClick={openDeleteDialog}>
               {copy.deleteAccount}
             </Button>
           </div>
@@ -320,6 +367,36 @@ export function AccountPage() {
             <DialogTitle>{copy.deleteTitle}</DialogTitle>
             <DialogDescription>{copy.deletePrompt}</DialogDescription>
           </DialogHeader>
+          <div className="space-y-3">
+            {ownedRestaurantCount > 0 ? (
+              <p className="text-sm text-destructive">
+                {copy.deleteOwnerWarning.replace("{count}", String(ownedRestaurantCount))}
+              </p>
+            ) : null}
+            <div className="space-y-1">
+              <label className="text-sm font-medium">{copy.deletePasswordLabel}</label>
+              <input
+                type="password"
+                value={deletePassword}
+                onChange={(event) => setDeletePassword(event.target.value)}
+                className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+                autoComplete="current-password"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-sm font-medium">{copy.deleteConfirmLabel}</label>
+              <input
+                value={deleteConfirmPhrase}
+                onChange={(event) => setDeleteConfirmPhrase(event.target.value)}
+                className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+                placeholder={DELETE_CONFIRM_PHRASE}
+                autoComplete="off"
+              />
+              {deleteConfirmPhrase.length > 0 && deleteConfirmPhrase !== DELETE_CONFIRM_PHRASE ? (
+                <p className="text-xs text-destructive">{copy.deleteConfirmHint}</p>
+              ) : null}
+            </div>
+          </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setConfirmDeleteOpen(false)}>
               {copy.cancel}
@@ -327,7 +404,7 @@ export function AccountPage() {
             <Button
               variant="destructive"
               onClick={() => deleteAccountMutation.mutate()}
-              disabled={deleteAccountMutation.isPending}
+              disabled={!canConfirmDelete || deleteAccountMutation.isPending}
             >
               {deleteAccountMutation.isPending ? <InlineLoader /> : null}
               {copy.confirmDelete}
