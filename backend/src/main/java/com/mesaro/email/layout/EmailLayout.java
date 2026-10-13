@@ -45,8 +45,12 @@ public class EmailLayout {
         return frontendUrl + normalized;
     }
 
+    /**
+     * Logo is embedded as an inline CID attachment by the email transport.
+     * Remote frontend URLs often fail in inboxes (private hosts, SPA routing, blocked hotlinking).
+     */
     public String logoUrl() {
-        return url("/brand/mesaro-wordmark.png");
+        return "cid:" + EmailBrandAssets.LOGO_CONTENT_ID;
     }
 
     public String render(EmailDocument doc) {

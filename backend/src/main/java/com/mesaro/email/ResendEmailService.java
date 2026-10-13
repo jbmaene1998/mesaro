@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mesaro.config.AppProperties;
 import com.mesaro.email.layout.EmailBlocks;
+import com.mesaro.email.layout.EmailBrandAssets;
 import com.mesaro.email.layout.EmailDocument;
 import com.mesaro.email.layout.EmailLayout;
 import com.mesaro.email.layout.EmailTone;
@@ -25,6 +26,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.Base64;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -42,17 +44,22 @@ public class ResendEmailService implements EmailService {
     private final HttpClient httpClient;
     private final ObjectMapper objectMapper;
     private final EmailLayout emailLayout;
+    private final EmailBrandAssets emailBrandAssets;
     private final String apiBaseUrl;
     private final String apiKey;
     private final String fromAddress;
     private final String supportAddress;
 
-    public ResendEmailService(AppProperties appProperties, ObjectMapper objectMapper, EmailLayout emailLayout) {
+    public ResendEmailService(AppProperties appProperties,
+                              ObjectMapper objectMapper,
+                              EmailLayout emailLayout,
+                              EmailBrandAssets emailBrandAssets) {
         this.httpClient = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(10))
                 .build();
         this.objectMapper = objectMapper;
         this.emailLayout = emailLayout;
+        this.emailBrandAssets = emailBrandAssets;
         this.apiBaseUrl = EmailLayout.trimTrailingSlash(appProperties.getEmail().getResend().getApiBaseUrl());
         this.apiKey = appProperties.getEmail().getResend().getApiKey();
         this.fromAddress = appProperties.getEmail().getFormattedFrom();
@@ -413,13 +420,21 @@ public class ResendEmailService implements EmailService {
             if (replyTo != null && !replyTo.isBlank()) {
                 payload.put("reply_to", List.of(replyTo));
             }
+            List<Map<String, Object>> attachments = new ArrayList<>();
+            attachments.add(Map.of(
+                    "filename", EmailBrandAssets.LOGO_FILENAME,
+                    "content", Base64.getEncoder().encodeToString(emailBrandAssets.logoPngBytes()),
+                    "content_type", EmailBrandAssets.LOGO_CONTENT_TYPE,
+                    "content_id", EmailBrandAssets.LOGO_CONTENT_ID
+            ));
             if (attachmentBytes != null && attachmentBytes.length > 0) {
-                payload.put("attachments", List.of(Map.of(
+                attachments.add(Map.of(
                         "filename", "reservation.ics",
                         "content", Base64.getEncoder().encodeToString(attachmentBytes),
-                        "type", "text/calendar"
-                )));
+                        "content_type", "text/calendar"
+                ));
             }
+            payload.put("attachments", attachments);
 
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(apiBaseUrl + "/emails"))

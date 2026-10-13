@@ -17,7 +17,7 @@ class EmailLayoutTest {
     }
 
     @Test
-    void render_usesFrontendHostedPngLogoAndPresentationalTables() {
+    void render_usesInlineCidLogoAndPresentationalTables() {
         EmailDocument doc = EmailDocument.of(
                 "Welcome to Mesaro",
                 "Your account is ready",
@@ -32,7 +32,8 @@ class EmailLayoutTest {
         assertThat(html).contains("lang=\"en\"");
         assertThat(html).contains("dir=\"ltr\"");
         assertThat(html).contains("role=\"presentation\"");
-        assertThat(html).contains("http://localhost:3000/brand/mesaro-wordmark.png");
+        assertThat(html).contains("cid:" + EmailBrandAssets.LOGO_CONTENT_ID);
+        assertThat(html).doesNotContain("/brand/mesaro-wordmark.png");
         assertThat(html).doesNotContain(".svg");
         assertThat(html).contains("display:none");
         assertThat(html).contains("Your account is ready");
