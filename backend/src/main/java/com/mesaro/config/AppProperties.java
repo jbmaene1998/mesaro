@@ -464,6 +464,8 @@ public class AppProperties {
         private boolean enabled = true;
         @NotBlank
         private String index = "mesaro-api-actions";
+        @NotBlank
+        private String auditIndex = "mesaro-audit-events";
         @Min(100)
         private int connectTimeoutMs = 1500;
         @Min(100)
@@ -483,6 +485,14 @@ public class AppProperties {
 
         public void setIndex(String index) {
             this.index = index;
+        }
+
+        public String getAuditIndex() {
+            return auditIndex;
+        }
+
+        public void setAuditIndex(String auditIndex) {
+            this.auditIndex = auditIndex;
         }
 
         public int getConnectTimeoutMs() {

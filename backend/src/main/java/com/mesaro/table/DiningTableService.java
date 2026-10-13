@@ -1,5 +1,7 @@
 package com.mesaro.table;
 
+import com.mesaro.audit.AuditEventType;
+import com.mesaro.audit.AuditService;
 import com.mesaro.common.exception.ConflictException;
 import com.mesaro.common.exception.NotFoundException;
 import com.mesaro.common.exception.ValidationException;
@@ -14,6 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
 
 @Service
 @Transactional(readOnly = true)
@@ -27,6 +30,7 @@ public class DiningTableService {
     private final ReservationRepository reservationRepository;
     private final RestaurantService restaurantService;
     private final TimeService timeService;
+    private final AuditService auditService;
 
     public DiningTableService(
             DiningTableRepository tableRepository,
@@ -34,13 +38,15 @@ public class DiningTableService {
             HoldRepository holdRepository,
             ReservationRepository reservationRepository,
             RestaurantService restaurantService,
-            TimeService timeService) {
+            TimeService timeService,
+            AuditService auditService) {
         this.tableRepository = tableRepository;
         this.combinationRepository = combinationRepository;
         this.holdRepository = holdRepository;
         this.reservationRepository = reservationRepository;
         this.restaurantService = restaurantService;
         this.timeService = timeService;
+        this.auditService = auditService;
     }
 
     public DiningTable findById(Long id) {
@@ -80,6 +86,14 @@ public class DiningTableService {
         DiningTable table = new DiningTable(restaurant, request.label(), request.seats());
         DiningTable saved = tableRepository.save(table);
         log.info("Created table '{}' for restaurant {}", saved.getLabel(), restaurantId);
+        auditService.record(
+                AuditEventType.TABLE_CREATED,
+                restaurantId,
+                null,
+                saved.getId(),
+                "TABLE",
+                Map.of("label", saved.getLabel(), "seats", saved.getSeats())
+        );
         return saved;
     }
 
@@ -116,6 +130,14 @@ public class DiningTableService {
 
         DiningTable saved = tableRepository.save(table);
         log.info("Updated table '{}' for restaurant {}", saved.getLabel(), restaurantId);
+        auditService.record(
+                AuditEventType.TABLE_UPDATED,
+                restaurantId,
+                null,
+                saved.getId(),
+                "TABLE",
+                Map.of("label", saved.getLabel(), "status", saved.getStatus().name())
+        );
         return saved;
     }
 
@@ -138,8 +160,17 @@ public class DiningTableService {
             throw new ConflictException("Cannot delete table: it is linked to hold history");
         }
 
+        String label = table.getLabel();
         tableRepository.delete(table);
-        log.info("Deleted table '{}' from restaurant {}", table.getLabel(), restaurantId);
+        log.info("Deleted table '{}' from restaurant {}", label, restaurantId);
+        auditService.record(
+                AuditEventType.TABLE_DELETED,
+                restaurantId,
+                null,
+                tableId,
+                "TABLE",
+                Map.of("label", label)
+        );
     }
 
     private void validateLabelUnique(Long restaurantId, String label, Long excludeTableId) {

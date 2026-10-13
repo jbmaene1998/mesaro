@@ -252,6 +252,11 @@ public class RestaurantService {
 
     @Transactional
     public Restaurant create(CreateRestaurantRequest request) {
+        return create(request, null);
+    }
+
+    @Transactional
+    public Restaurant create(CreateRestaurantRequest request, Long actorUserId) {
         validateTimezone(request.timezone());
         validateSlugUnique(request.slug());
 
@@ -270,6 +275,14 @@ public class RestaurantService {
 
         Restaurant saved = restaurantRepository.save(restaurant);
         log.info("Created restaurant: {} ({})", saved.getName(), saved.getSlug());
+        auditService.record(
+                AuditEventType.RESTAURANT_CREATED,
+                saved.getId(),
+                actorUserId,
+                saved.getId(),
+                "RESTAURANT",
+                Map.of("slug", saved.getSlug())
+        );
         return saved;
     }
 
@@ -284,7 +297,7 @@ public class RestaurantService {
             throw new RestaurantQuotaExceededException(owner.getMaxRestaurants());
         }
 
-        Restaurant restaurant = create(request);
+        Restaurant restaurant = create(request, ownerUserId);
         userRestaurantRepository.save(new UserRestaurant(owner, restaurant, RestaurantRole.OWNER));
         return restaurant;
     }
@@ -306,6 +319,14 @@ public class RestaurantService {
             log.info("Revoked {} pending staff invite(s) for archived restaurant {}", revoked, restaurantId);
         }
         log.info("Archived restaurant: {} ({})", saved.getName(), saved.getSlug());
+        auditService.record(
+                AuditEventType.RESTAURANT_ARCHIVED,
+                restaurantId,
+                null,
+                restaurantId,
+                "RESTAURANT",
+                Map.of("slug", saved.getSlug())
+        );
         return saved;
     }
 
@@ -325,6 +346,14 @@ public class RestaurantService {
             log.info("Revoked {} pending staff invite(s) for deleted restaurant {}", revoked, restaurantId);
         }
         log.info("Marked restaurant as deleted: {} ({})", saved.getName(), saved.getSlug());
+        auditService.record(
+                AuditEventType.RESTAURANT_DELETED,
+                restaurantId,
+                null,
+                restaurantId,
+                "RESTAURANT",
+                Map.of("slug", saved.getSlug())
+        );
         return saved;
     }
 
@@ -383,6 +412,14 @@ public class RestaurantService {
 
         Restaurant saved = restaurantRepository.save(restaurant);
         log.info("Updated restaurant: {} ({})", saved.getName(), saved.getSlug());
+        auditService.record(
+                AuditEventType.RESTAURANT_UPDATED,
+                id,
+                null,
+                id,
+                "RESTAURANT",
+                Map.of("slug", saved.getSlug(), "bookingEnabled", saved.isBookingEnabled())
+        );
         return saved;
     }
 
@@ -392,6 +429,14 @@ public class RestaurantService {
         restaurant.setBookingEnabled(true);
         Restaurant saved = restaurantRepository.save(restaurant);
         log.info("Enabled booking for restaurant: {}", saved.getSlug());
+        auditService.record(
+                AuditEventType.RESTAURANT_BOOKING_ENABLED,
+                id,
+                null,
+                id,
+                "RESTAURANT",
+                Map.of("slug", saved.getSlug())
+        );
         return saved;
     }
 
@@ -401,12 +446,21 @@ public class RestaurantService {
         restaurant.setBookingEnabled(false);
         Restaurant saved = restaurantRepository.save(restaurant);
         log.info("Disabled booking for restaurant: {}", saved.getSlug());
+        auditService.record(
+                AuditEventType.RESTAURANT_BOOKING_DISABLED,
+                id,
+                null,
+                id,
+                "RESTAURANT",
+                Map.of("slug", saved.getSlug())
+        );
         return saved;
     }
 
     @Transactional
     public void hardDelete(Long restaurantId) {
         Restaurant restaurant = findById(restaurantId);
+        String slug = restaurant.getSlug();
 
         staffShiftAssignmentRepository.deleteByRestaurant_Id(restaurantId);
         reservationRepository.deleteByRestaurant_Id(restaurantId);
@@ -420,7 +474,15 @@ public class RestaurantService {
         userRestaurantRepository.deleteByRestaurant_Id(restaurantId);
         restaurantRepository.delete(restaurant);
 
-        log.info("Hard deleted restaurant: {} ({})", restaurant.getName(), restaurant.getSlug());
+        log.info("Hard deleted restaurant: {} ({})", restaurant.getName(), slug);
+        auditService.record(
+                AuditEventType.RESTAURANT_HARD_DELETED,
+                restaurantId,
+                null,
+                restaurantId,
+                "RESTAURANT",
+                Map.of("slug", slug)
+        );
     }
 
     public void assertCanAcceptBookings(Restaurant restaurant) {

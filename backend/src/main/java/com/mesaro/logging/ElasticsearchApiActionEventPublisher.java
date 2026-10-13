@@ -1,119 +1,77 @@
 package com.mesaro.logging;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mesaro.config.AppProperties;
-import jakarta.annotation.PreDestroy;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
-import java.nio.charset.StandardCharsets;
-import java.time.Duration;
 import java.time.Instant;
-import java.util.Base64;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 @Component
 public class ElasticsearchApiActionEventPublisher implements ApiActionEventPublisher {
 
-    private static final Logger log = LoggerFactory.getLogger(ElasticsearchApiActionEventPublisher.class);
-
-    private final ObjectMapper objectMapper;
+    private final ElasticsearchDocumentIndexer indexer;
     private final AppProperties appProperties;
-    private final String elasticsearchUris;
-    private final String elasticsearchUsername;
-    private final String elasticsearchPassword;
-    private final ExecutorService executor;
-    private final HttpClient httpClient;
 
     public ElasticsearchApiActionEventPublisher(
-            ObjectMapper objectMapper,
-            AppProperties appProperties,
-            @Value("${spring.elasticsearch.uris:}") String elasticsearchUris,
-            @Value("${spring.elasticsearch.username:}") String elasticsearchUsername,
-            @Value("${spring.elasticsearch.password:}") String elasticsearchPassword) {
-        this.objectMapper = objectMapper;
+            ElasticsearchDocumentIndexer indexer,
+            AppProperties appProperties) {
+        this.indexer = indexer;
         this.appProperties = appProperties;
-        this.elasticsearchUris = elasticsearchUris == null ? "" : elasticsearchUris.trim();
-        this.elasticsearchUsername = elasticsearchUsername == null ? "" : elasticsearchUsername.trim();
-        this.elasticsearchPassword = elasticsearchPassword == null ? "" : elasticsearchPassword.trim();
-        this.executor = Executors.newSingleThreadExecutor(r -> {
-            Thread thread = new Thread(r, "mesaro-es-action-logger");
-            thread.setDaemon(true);
-            return thread;
-        });
-        this.httpClient = HttpClient.newBuilder()
-                .connectTimeout(Duration.ofMillis(appProperties.getLogging().getElasticsearch().getConnectTimeoutMs()))
-                .build();
     }
 
     @Override
     public void publish(ApiActionEvent event) {
-        if (!appProperties.getLogging().getElasticsearch().isEnabled()) {
-            return;
-        }
-        if (elasticsearchUris.isBlank()) {
-            return;
-        }
-        executor.execute(() -> sendEvent(event));
-    }
+        Instant timestamp = event.timestamp() != null ? event.timestamp() : Instant.now();
 
-    @PreDestroy
-    void shutdown() {
-        executor.shutdown();
-    }
+        Map<String, Object> httpRequest = new LinkedHashMap<>();
+        httpRequest.put("method", event.method());
 
-    private void sendEvent(ApiActionEvent event) {
-        try {
-            String baseUri = elasticsearchUris.split(",")[0].trim();
-            String index = appProperties.getLogging().getElasticsearch().getIndex();
-            String targetPath = "/" + index + "/_doc";
-            URI target = URI.create(baseUri).resolve(targetPath);
+        Map<String, Object> httpResponse = new LinkedHashMap<>();
+        httpResponse.put("status_code", event.status());
 
-            Map<String, Object> payload = new LinkedHashMap<>();
-            payload.put("@timestamp", event.timestamp() != null ? event.timestamp() : Instant.now());
-            payload.put("event.dataset", "mesaro.api.actions");
-            payload.put("event.action", event.action());
-            payload.put("event.outcome", event.success() ? "success" : "failure");
-            payload.put("service.name", "mesaro-api");
-            payload.put("service.environment", event.environment());
-            payload.put("http.request.method", event.method());
-            payload.put("url.path", event.path());
-            payload.put("http.response.status_code", event.status());
-            payload.put("event.duration_ms", event.durationMs());
-            payload.put("trace.correlation_id", event.correlationId());
-            payload.put("trace.request_id", event.requestId());
-            payload.put("client.ip", event.clientIp());
-            payload.put("user.id", event.userId());
-            payload.put("restaurant.id", event.restaurantId());
-            payload.put("restaurant.role", event.restaurantRole());
+        Map<String, Object> http = new LinkedHashMap<>();
+        http.put("request", httpRequest);
+        http.put("response", httpResponse);
 
-            String body = objectMapper.writeValueAsString(payload);
-            HttpRequest.Builder requestBuilder = HttpRequest.newBuilder(target)
-                    .timeout(Duration.ofMillis(appProperties.getLogging().getElasticsearch().getReadTimeoutMs()))
-                    .header("Content-Type", "application/json")
-                    .POST(HttpRequest.BodyPublishers.ofString(body));
+        Map<String, Object> url = new LinkedHashMap<>();
+        url.put("path", event.path());
 
-            if (!elasticsearchUsername.isBlank()) {
-                String auth = elasticsearchUsername + ":" + elasticsearchPassword;
-                String encoded = Base64.getEncoder().encodeToString(auth.getBytes(StandardCharsets.UTF_8));
-                requestBuilder.header("Authorization", "Basic " + encoded);
-            }
+        Map<String, Object> eventFields = new LinkedHashMap<>();
+        eventFields.put("dataset", "mesaro.api.actions");
+        eventFields.put("action", event.action());
+        eventFields.put("outcome", event.success() ? "success" : "failure");
+        eventFields.put("duration_ms", event.durationMs());
 
-            HttpResponse<String> response = httpClient.send(requestBuilder.build(), HttpResponse.BodyHandlers.ofString());
-            if (response.statusCode() >= 300) {
-                log.warn("Elasticsearch action log indexing failed with status {}", response.statusCode());
-            }
-        } catch (Exception ex) {
-            log.warn("Failed to publish API action event to Elasticsearch: {}", ex.getMessage());
-        }
+        Map<String, Object> service = new LinkedHashMap<>();
+        service.put("name", "mesaro-api");
+        service.put("environment", event.environment());
+
+        Map<String, Object> trace = new LinkedHashMap<>();
+        trace.put("correlation_id", event.correlationId());
+        trace.put("request_id", event.requestId());
+
+        Map<String, Object> client = new LinkedHashMap<>();
+        client.put("ip", event.clientIp());
+
+        Map<String, Object> user = new LinkedHashMap<>();
+        user.put("id", event.userId());
+
+        Map<String, Object> restaurant = new LinkedHashMap<>();
+        restaurant.put("id", event.restaurantId());
+        restaurant.put("role", event.restaurantRole());
+
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("@timestamp", timestamp);
+        payload.put("event", eventFields);
+        payload.put("service", service);
+        payload.put("http", http);
+        payload.put("url", url);
+        payload.put("trace", trace);
+        payload.put("client", client);
+        payload.put("user", user);
+        payload.put("restaurant", restaurant);
+
+        indexer.indexAsync(appProperties.getLogging().getElasticsearch().getIndex(), timestamp, payload);
     }
 }

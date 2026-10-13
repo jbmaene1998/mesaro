@@ -209,6 +209,14 @@ public class StaffService {
                 invite.getRestaurant().getName(),
                 invite.getRole(),
                 rawToken);
+        auditService.record(
+                AuditEventType.STAFF_INVITE_RESENT,
+                restaurantId,
+                null,
+                saved.getId(),
+                "STAFF_INVITE",
+                Map.of("role", saved.getRole().name())
+        );
         return new StaffInviteWithToken(saved, rawToken);
     }
 
@@ -342,7 +350,16 @@ public class StaffService {
         }
 
         invite.setRole(newRole);
-        return staffInviteRepository.save(invite);
+        StaffInvite saved = staffInviteRepository.save(invite);
+        auditService.record(
+                AuditEventType.STAFF_INVITE_ROLE_UPDATED,
+                restaurantId,
+                null,
+                saved.getId(),
+                "STAFF_INVITE",
+                Map.of("role", newRole.name())
+        );
+        return saved;
     }
 
     @Transactional
@@ -425,6 +442,14 @@ public class StaffService {
         }
         invite.markRevoked(timeService.now());
         staffInviteRepository.save(invite);
+        auditService.record(
+                AuditEventType.STAFF_INVITE_REVOKED,
+                restaurantId,
+                null,
+                inviteId,
+                "STAFF_INVITE",
+                Map.of("role", invite.getRole().name())
+        );
     }
 
     public Optional<UserRestaurant> findMember(Long restaurantId, Long userId) {

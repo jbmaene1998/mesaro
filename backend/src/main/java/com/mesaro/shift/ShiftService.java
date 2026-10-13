@@ -1,5 +1,7 @@
 package com.mesaro.shift;
 
+import com.mesaro.audit.AuditEventType;
+import com.mesaro.audit.AuditService;
 import com.mesaro.common.exception.ConflictException;
 import com.mesaro.common.exception.NotFoundException;
 import com.mesaro.common.exception.ValidationException;
@@ -20,6 +22,7 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.ZoneId;
 import java.util.List;
+import java.util.Map;
 
 @Service
 @Transactional(readOnly = true)
@@ -33,19 +36,22 @@ public class ShiftService {
     private final StaffShiftAssignmentRepository assignmentRepository;
     private final RestaurantService restaurantService;
     private final TimeService timeService;
+    private final AuditService auditService;
 
     public ShiftService(ShiftRepository shiftRepository,
                         HoldRepository holdRepository,
                         ReservationRepository reservationRepository,
                         StaffShiftAssignmentRepository assignmentRepository,
                         RestaurantService restaurantService,
-                        TimeService timeService) {
+                        TimeService timeService,
+                        AuditService auditService) {
         this.shiftRepository = shiftRepository;
         this.holdRepository = holdRepository;
         this.reservationRepository = reservationRepository;
         this.assignmentRepository = assignmentRepository;
         this.restaurantService = restaurantService;
         this.timeService = timeService;
+        this.auditService = auditService;
     }
 
     public Shift findById(Long id) {
@@ -106,6 +112,14 @@ public class ShiftService {
         Shift saved = shiftRepository.save(shift);
         log.info("Created shift '{}' for restaurant {} on day {}",
                 saved.getName(), restaurantId, DayOfWeek.of(request.dayOfWeek()));
+        auditService.record(
+                AuditEventType.SHIFT_CREATED,
+                restaurantId,
+                null,
+                saved.getId(),
+                "SHIFT",
+                Map.of("name", saved.getName(), "dayOfWeek", saved.getDayOfWeek())
+        );
         return saved;
     }
 
@@ -191,6 +205,14 @@ public class ShiftService {
 
         Shift saved = shiftRepository.save(shift);
         log.info("Updated shift '{}' for restaurant {}", saved.getName(), restaurantId);
+        auditService.record(
+                AuditEventType.SHIFT_UPDATED,
+                restaurantId,
+                null,
+                saved.getId(),
+                "SHIFT",
+                Map.of("name", saved.getName(), "status", saved.getStatus().name())
+        );
         return saved;
     }
 
@@ -221,6 +243,14 @@ public class ShiftService {
         shift.setStatus(ShiftStatus.ACTIVE);
         Shift saved = shiftRepository.save(shift);
         log.info("Activated shift '{}' for restaurant {}", saved.getName(), restaurantId);
+        auditService.record(
+                AuditEventType.SHIFT_ACTIVATED,
+                restaurantId,
+                null,
+                saved.getId(),
+                "SHIFT",
+                Map.of("name", saved.getName())
+        );
         return saved;
     }
 
@@ -244,6 +274,14 @@ public class ShiftService {
         shift.setStatus(ShiftStatus.INACTIVE);
         Shift saved = shiftRepository.save(shift);
         log.info("Deactivated shift '{}' for restaurant {}", saved.getName(), restaurantId);
+        auditService.record(
+                AuditEventType.SHIFT_DEACTIVATED,
+                restaurantId,
+                null,
+                saved.getId(),
+                "SHIFT",
+                Map.of("name", saved.getName())
+        );
         return saved;
     }
 
@@ -269,8 +307,17 @@ public class ShiftService {
             throw new ConflictException("Cannot delete shift: it has existing staff assignments");
         }
 
+        String name = shift.getName();
         shiftRepository.delete(shift);
-        log.info("Deleted shift '{}' from restaurant {}", shift.getName(), restaurantId);
+        log.info("Deleted shift '{}' from restaurant {}", name, restaurantId);
+        auditService.record(
+                AuditEventType.SHIFT_DELETED,
+                restaurantId,
+                null,
+                shiftId,
+                "SHIFT",
+                Map.of("name", name)
+        );
     }
 
     private void validateDayOfWeek(int dayOfWeek) {

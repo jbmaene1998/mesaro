@@ -297,12 +297,14 @@ app:
     purge-cron: ${GDPR_PURGE_CRON:0 30 2 * * *}
 
   # ---------------------------------------------------------------------------
-  # API Action Logging -> Elasticsearch
+  # Observability Logging -> Elasticsearch (API actions + domain audit)
+  # Daily index suffix yyyy.MM.dd is appended by the publisher.
   # ---------------------------------------------------------------------------
   logging:
     elasticsearch:
       enabled: ${APP_LOG_ELASTIC_ENABLED:true}
       index: ${APP_LOG_ELASTIC_INDEX:mesaro-api-actions}
+      audit-index: ${APP_LOG_ELASTIC_AUDIT_INDEX:mesaro-audit-events}
       connect-timeout-ms: ${APP_LOG_ELASTIC_CONNECT_TIMEOUT_MS:1500}
       read-timeout-ms: ${APP_LOG_ELASTIC_READ_TIMEOUT_MS:2000}
 

@@ -1,5 +1,7 @@
 package com.mesaro.gdpr;
 
+import com.mesaro.audit.AuditEventType;
+import com.mesaro.audit.AuditService;
 import com.mesaro.config.AppProperties;
 import com.mesaro.reservation.ReservationRepository;
 import org.slf4j.Logger;
@@ -12,6 +14,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 @Service
 public class GdprRetentionService {
@@ -21,13 +25,16 @@ public class GdprRetentionService {
     private final AppProperties appProperties;
     private final ReservationRepository reservationRepository;
     private final JdbcTemplate jdbcTemplate;
+    private final AuditService auditService;
 
     public GdprRetentionService(AppProperties appProperties,
                                 ReservationRepository reservationRepository,
-                                JdbcTemplate jdbcTemplate) {
+                                JdbcTemplate jdbcTemplate,
+                                AuditService auditService) {
         this.appProperties = appProperties;
         this.reservationRepository = reservationRepository;
         this.jdbcTemplate = jdbcTemplate;
+        this.auditService = auditService;
     }
 
     @Transactional
@@ -52,6 +59,20 @@ public class GdprRetentionService {
         if (anonymizedReservations > 0 || anonymizedEmailLogs > 0 || deletedEmailLogs > 0 || deletedAuditEvents > 0 || deletedOutboxEvents > 0) {
             log.info("GDPR retention cleanup complete: anonymizedReservations={}, anonymizedEmailLogs={}, deletedEmailLogs={}, deletedAuditEvents={}, deletedOutboxEvents={}",
                     anonymizedReservations, anonymizedEmailLogs, deletedEmailLogs, deletedAuditEvents, deletedOutboxEvents);
+            Map<String, Object> details = new LinkedHashMap<>();
+            details.put("anonymizedReservations", anonymizedReservations);
+            details.put("anonymizedEmailLogs", anonymizedEmailLogs);
+            details.put("deletedEmailLogs", deletedEmailLogs);
+            details.put("deletedAuditEvents", deletedAuditEvents);
+            details.put("deletedOutboxEvents", deletedOutboxEvents);
+            auditService.record(
+                    AuditEventType.GDPR_RETENTION_ENFORCED,
+                    null,
+                    null,
+                    null,
+                    "GDPR",
+                    details
+            );
         }
     }
 

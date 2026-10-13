@@ -2,6 +2,7 @@ package com.mesaro.audit;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mesaro.logging.ElasticsearchAuditEventPublisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -15,7 +16,7 @@ import java.util.Objects;
 
 /**
  * Service for recording audit events.
- * Logs to file and persists to database (best-effort).
+ * Logs to file, persists to database, and dual-writes to Elasticsearch (all best-effort).
  */
 @Service
 public class AuditService {
@@ -25,10 +26,15 @@ public class AuditService {
 
     private final AuditEventRepository auditEventRepository;
     private final ObjectMapper objectMapper;
+    private final ElasticsearchAuditEventPublisher elasticsearchAuditEventPublisher;
 
-    public AuditService(AuditEventRepository auditEventRepository, ObjectMapper objectMapper) {
+    public AuditService(
+            AuditEventRepository auditEventRepository,
+            ObjectMapper objectMapper,
+            ElasticsearchAuditEventPublisher elasticsearchAuditEventPublisher) {
         this.auditEventRepository = auditEventRepository;
         this.objectMapper = objectMapper;
+        this.elasticsearchAuditEventPublisher = elasticsearchAuditEventPublisher;
     }
 
     public void record(AuditEvent event) {
@@ -46,6 +52,13 @@ public class AuditService {
         } catch (RuntimeException ex) {
             // Best-effort: never fail the main transaction due to audit persistence.
             log.warn("Failed to persist audit event type={} restaurant={} entity={}:{}",
+                    event.eventType(), event.restaurantId(), event.entityType(), event.entityId(), ex);
+        }
+
+        try {
+            elasticsearchAuditEventPublisher.publish(event, sanitizedDetails);
+        } catch (RuntimeException ex) {
+            log.warn("Failed to publish audit event to Elasticsearch type={} restaurant={} entity={}:{}",
                     event.eventType(), event.restaurantId(), event.entityType(), event.entityId(), ex);
         }
     }

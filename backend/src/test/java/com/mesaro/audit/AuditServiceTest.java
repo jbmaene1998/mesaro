@@ -2,6 +2,7 @@ package com.mesaro.audit;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mesaro.logging.ElasticsearchAuditEventPublisher;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -11,6 +12,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
@@ -19,9 +22,13 @@ class AuditServiceTest {
     @Mock
     private AuditEventRepository auditEventRepository;
 
+    @Mock
+    private ElasticsearchAuditEventPublisher elasticsearchAuditEventPublisher;
+
     @Test
     void record_redactsSensitiveFieldsInPersistedPayload() throws Exception {
-        AuditService auditService = new AuditService(auditEventRepository, new ObjectMapper());
+        AuditService auditService = new AuditService(
+                auditEventRepository, new ObjectMapper(), elasticsearchAuditEventPublisher);
 
         auditService.recordReservationEvent(
                 AuditEventType.RESERVATION_UPDATED,
@@ -64,5 +71,31 @@ class AuditServiceTest {
         assertThat(saved.getPayloadJson()).doesNotContain("plain-text-password");
         assertThat(saved.getPayloadJson()).doesNotContain("invite-secret-token");
         assertThat(saved.getPayloadJson()).doesNotContain("secret-value");
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<Map<String, Object>> detailsCaptor = ArgumentCaptor.forClass(Map.class);
+        verify(elasticsearchAuditEventPublisher).publish(any(AuditEvent.class), detailsCaptor.capture());
+        assertThat(detailsCaptor.getValue().get("guestEmail")).isEqualTo("a***@example.com");
+        assertThat(detailsCaptor.getValue().get("cancelToken")).isEqualTo("[REDACTED]");
+    }
+
+    @Test
+    void record_stillPublishesToElasticsearchWhenPersistFails() {
+        org.mockito.Mockito.doThrow(new RuntimeException("db down"))
+                .when(auditEventRepository).save(any());
+
+        AuditService auditService = new AuditService(
+                auditEventRepository, new ObjectMapper(), elasticsearchAuditEventPublisher);
+
+        auditService.record(
+                AuditEventType.RESTAURANT_CREATED,
+                1L,
+                2L,
+                1L,
+                "RESTAURANT",
+                Map.of("slug", "demo")
+        );
+
+        verify(elasticsearchAuditEventPublisher).publish(any(AuditEvent.class), eq(Map.of("slug", "demo")));
     }
 }

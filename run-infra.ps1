@@ -68,11 +68,11 @@ function Wait-ForKibanaApiReady {
     return $false
 }
 
-function Ensure-KibanaApiActionDataView {
+function Ensure-KibanaDataView {
     param(
         [string]$KibanaUrl = "http://localhost:5601",
-        [string]$DataViewTitle = "mesaro-api-actions*",
-        [string]$DataViewName = "Mesaro API Actions",
+        [string]$DataViewTitle,
+        [string]$DataViewName,
         [string]$TimeFieldName = "@timestamp"
     )
 
@@ -175,7 +175,8 @@ try {
     if (-not (Wait-ForKibanaApiReady -KibanaUrl "http://localhost:5601" -TimeoutSeconds 180)) {
         throw "Kibana API is not ready on http://localhost:5601."
     }
-    Ensure-KibanaApiActionDataView
+    Ensure-KibanaDataView -DataViewTitle "mesaro-api-actions*" -DataViewName "Mesaro API Actions"
+    Ensure-KibanaDataView -DataViewTitle "mesaro-audit-events*" -DataViewName "Mesaro Audit Events"
 
     Write-Host ""
     Write-Host "Infra services are up."

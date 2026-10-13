@@ -1,5 +1,7 @@
 package com.mesaro.gdpr;
 
+import com.mesaro.audit.AuditEventType;
+import com.mesaro.audit.AuditService;
 import com.mesaro.auth.RefreshTokenRepository;
 import com.mesaro.config.AppProperties;
 import com.mesaro.restaurant.Restaurant;
@@ -20,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Map;
 
 @Service
 public class DeletedEntityPurgeService {
@@ -33,6 +36,7 @@ public class DeletedEntityPurgeService {
     private final UserRestaurantRepository userRestaurantRepository;
     private final RefreshTokenRepository refreshTokenRepository;
     private final JdbcTemplate jdbcTemplate;
+    private final AuditService auditService;
 
     public DeletedEntityPurgeService(AppProperties appProperties,
                                      RestaurantRepository restaurantRepository,
@@ -40,7 +44,8 @@ public class DeletedEntityPurgeService {
                                      UserAccountRepository userAccountRepository,
                                      UserRestaurantRepository userRestaurantRepository,
                                      RefreshTokenRepository refreshTokenRepository,
-                                     JdbcTemplate jdbcTemplate) {
+                                     JdbcTemplate jdbcTemplate,
+                                     AuditService auditService) {
         this.appProperties = appProperties;
         this.restaurantRepository = restaurantRepository;
         this.restaurantService = restaurantService;
@@ -48,6 +53,7 @@ public class DeletedEntityPurgeService {
         this.userRestaurantRepository = userRestaurantRepository;
         this.refreshTokenRepository = refreshTokenRepository;
         this.jdbcTemplate = jdbcTemplate;
+        this.auditService = auditService;
     }
 
     @Transactional
@@ -63,6 +69,14 @@ public class DeletedEntityPurgeService {
 
         if (purgedRestaurants > 0 || purgedUsers > 0) {
             log.info("Deleted entity purge complete: restaurants={}, users={}", purgedRestaurants, purgedUsers);
+            auditService.record(
+                    AuditEventType.GDPR_ENTITY_PURGED,
+                    null,
+                    null,
+                    null,
+                    "GDPR",
+                    Map.of("purgedRestaurants", purgedRestaurants, "purgedUsers", purgedUsers)
+            );
         }
     }
 

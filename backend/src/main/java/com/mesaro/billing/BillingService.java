@@ -5,6 +5,8 @@ import com.stripe.model.Customer;
 import com.stripe.model.Invoice;
 import com.stripe.model.Subscription;
 import com.stripe.model.checkout.Session;
+import com.mesaro.audit.AuditEventType;
+import com.mesaro.audit.AuditService;
 import com.mesaro.common.exception.ConflictException;
 import com.mesaro.common.exception.ValidationException;
 import com.mesaro.common.exception.BillingAccessBlockedException;
@@ -27,6 +29,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -56,17 +59,20 @@ public class BillingService {
     private final UserAccountRepository userAccountRepository;
     private final EmailService emailService;
     private final JdbcTemplate jdbcTemplate;
+    private final AuditService auditService;
 
     public BillingService(StripeService stripeService,
                           UserRestaurantRepository userRestaurantRepository,
                           UserAccountRepository userAccountRepository,
                           EmailService emailService,
-                          JdbcTemplate jdbcTemplate) {
+                          JdbcTemplate jdbcTemplate,
+                          AuditService auditService) {
         this.stripeService = stripeService;
         this.userRestaurantRepository = userRestaurantRepository;
         this.userAccountRepository = userAccountRepository;
         this.emailService = emailService;
         this.jdbcTemplate = jdbcTemplate;
+        this.auditService = auditService;
     }
 
     // -------------------------------------------------------------------------
@@ -181,6 +187,14 @@ public class BillingService {
             Session session = stripeService.createCheckoutSession(customerId, quantity, idempotencyKey);
             log.info("Created owner checkout session {} for owner {} quantity={}",
                     session.getId(), owner.getId(), quantity);
+            auditService.record(
+                    AuditEventType.BILLING_CHECKOUT_STARTED,
+                    restaurant.getId(),
+                    owner.getId(),
+                    owner.getId(),
+                    "BILLING",
+                    Map.of("quantity", quantity)
+            );
             return session.getUrl();
         } catch (StripeException e) {
             log.error("Stripe error creating checkout session for owner {}: {}", owner.getId(), e.getMessage());
@@ -235,6 +249,14 @@ public class BillingService {
             owner.setBillingStatus(SubscriptionStatus.CANCELED);
             userAccountRepository.save(owner);
             log.info("Trial expired for owner {} — billing_status set to CANCELED", owner.getId());
+            auditService.record(
+                    AuditEventType.BILLING_TRIAL_EXPIRED,
+                    null,
+                    owner.getId(),
+                    owner.getId(),
+                    "BILLING",
+                    Map.of("billingStatus", SubscriptionStatus.CANCELED.name())
+            );
         }
     }
 
@@ -282,6 +304,14 @@ public class BillingService {
         owner.setPastDueSince(null);
         userAccountRepository.save(owner);
         log.info("Owner {} subscription activated: {}", owner.getId(), subscriptionId);
+        auditService.record(
+                AuditEventType.BILLING_SUBSCRIPTION_UPDATED,
+                null,
+                owner.getId(),
+                owner.getId(),
+                "BILLING",
+                Map.of("billingStatus", SubscriptionStatus.ACTIVE.name(), "source", "checkout.session.completed")
+        );
 
         syncOwnerQuotaFromStripe(owner, subscriptionId);
     }
@@ -310,6 +340,14 @@ public class BillingService {
         }
         userAccountRepository.save(owner);
         log.info("Owner {} subscription status -> {} (sub={})", owner.getId(), newStatus, subscription.getId());
+        auditService.record(
+                AuditEventType.BILLING_SUBSCRIPTION_UPDATED,
+                null,
+                owner.getId(),
+                owner.getId(),
+                "BILLING",
+                Map.of("billingStatus", newStatus.name(), "source", "customer.subscription.updated")
+        );
 
         syncOwnerQuotaFromStripe(owner, subscription.getId());
     }
@@ -334,6 +372,14 @@ public class BillingService {
         owner.setMaxRestaurants(1);
         userAccountRepository.save(owner);
         log.info("Owner {} subscription canceled; quota reset to 1", owner.getId());
+        auditService.record(
+                AuditEventType.BILLING_SUBSCRIPTION_DELETED,
+                null,
+                owner.getId(),
+                owner.getId(),
+                "BILLING",
+                Map.of("billingStatus", SubscriptionStatus.CANCELED.name())
+        );
     }
 
     /**
@@ -357,6 +403,14 @@ public class BillingService {
         }
         userAccountRepository.save(owner);
         log.warn("Owner {} payment failed — billing_status set to PAST_DUE", owner.getId());
+        auditService.record(
+                AuditEventType.BILLING_INVOICE_FAILED,
+                null,
+                owner.getId(),
+                owner.getId(),
+                "BILLING",
+                Map.of("billingStatus", SubscriptionStatus.PAST_DUE.name())
+        );
     }
 
     /**
@@ -380,6 +434,14 @@ public class BillingService {
             owner.setPastDueSince(null);
             userAccountRepository.save(owner);
             log.info("Owner {} payment recovered — billing_status set to ACTIVE", owner.getId());
+            auditService.record(
+                    AuditEventType.BILLING_INVOICE_PAID,
+                    null,
+                    owner.getId(),
+                    owner.getId(),
+                    "BILLING",
+                    Map.of("billingStatus", SubscriptionStatus.ACTIVE.name())
+            );
         }
     }
 
