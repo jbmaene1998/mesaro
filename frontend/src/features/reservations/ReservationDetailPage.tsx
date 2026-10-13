@@ -26,6 +26,13 @@ import { getReservation, updateReservation, updateStatus } from "@/features/rese
 import { CancelDialog } from "@/features/reservations/components/CancelDialog";
 import { SeatGuestDialog } from "@/features/reservations/components/SeatGuestDialog";
 import { SwitchTableDialog } from "@/features/reservations/components/SwitchTableDialog";
+import {
+  canCancelReservation,
+  canCompleteReservation,
+  canMarkNoShow,
+  canSeatReservation,
+  canSwitchTables as canSwitchTablesLifecycle
+} from "@/features/reservations/lifecycle";
 import { useI18n } from "@/i18n";
 import { showApiError, showSuccess } from "@/lib/toast";
 
@@ -536,25 +543,25 @@ export function ReservationDetailPage() {
                 {reservation.status}
               </Badge>
               <div className="flex flex-col gap-2">
-                {reservation.status === "CONFIRMED" && canUpdateStatus ? (
+                {canUpdateStatus && canSeatReservation(reservation).allowed ? (
                   <Button onClick={() => setOpenSeatDialog(true)}>{copy.seatGuest}</Button>
                 ) : null}
-                {reservation.status === "CONFIRMED" && canUpdateStatus ? (
+                {canUpdateStatus && canMarkNoShow(reservation).allowed ? (
                   <Button variant="outline" onClick={() => setConfirmAction("noshow")}>
                     {copy.markNoShow}
                   </Button>
                 ) : null}
-                {reservation.status === "CONFIRMED" && canCancel ? (
+                {canCancel && canCancelReservation(reservation).allowed ? (
                   <Button variant="destructive" onClick={() => setOpenCancelDialog(true)}>
                     {copy.cancel}
                   </Button>
                 ) : null}
-                {reservation.status === "SEATED" && canUpdateStatus ? (
+                {canUpdateStatus && canCompleteReservation(reservation).allowed ? (
                   <Button variant="outline" onClick={() => setConfirmAction("complete")}>
                     {copy.markCompleted}
                   </Button>
                 ) : null}
-                {(reservation.status === "CONFIRMED" || reservation.status === "SEATED") && canSwitchTables ? (
+                {canSwitchTables && canSwitchTablesLifecycle(reservation).allowed ? (
                   <Button variant="outline" onClick={() => setOpenSwitchDialog(true)}>
                     {copy.switchTable}
                   </Button>

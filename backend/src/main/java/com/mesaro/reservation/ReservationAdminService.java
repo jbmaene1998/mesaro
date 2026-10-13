@@ -205,6 +205,7 @@ public class ReservationAdminService {
         reservation.setStartLocalText(request.date() + "T" + request.time().withSecond(0).withNano(0));
         reservation.addTables(assignment.tables());
         if (Boolean.TRUE.equals(request.seatImmediately())) {
+            ReservationLifecycleRules.assertCanSeat(reservation, now, timezone);
             reservation.seat();
         }
 
@@ -312,9 +313,8 @@ public class ReservationAdminService {
         Reservation reservation = getReservation(restaurantId, reservationId);
         assertVersionMatch(reservation, expectedVersion);
 
-        if (!reservation.isCancellable()) {
-            throw new ConflictException("Reservation cannot be cancelled in status: " + reservation.getStatus());
-        }
+        // Staff cancel: status only (CONFIRMED). Start-time boundary applies to guest self-cancel.
+        ReservationLifecycleRules.assertCanCancel(reservation, timeService.now(), false);
 
         ReservationStatus previousStatus = reservation.getStatus();
         reservation.cancel();
@@ -347,9 +347,8 @@ public class ReservationAdminService {
         Reservation reservation = getReservation(restaurantId, reservationId);
         assertVersionMatch(reservation, expectedVersion);
 
-        if (reservation.getStatus() != ReservationStatus.CONFIRMED) {
-            throw new ConflictException("Can only seat CONFIRMED reservations, current status: " + reservation.getStatus());
-        }
+        ZoneId timezone = ZoneId.of(reservation.getRestaurant().getTimezone());
+        ReservationLifecycleRules.assertCanSeat(reservation, timeService.now(), timezone);
 
         reservation.seat();
         Reservation saved = reservationRepository.save(reservation);
@@ -379,9 +378,7 @@ public class ReservationAdminService {
         Reservation reservation = getReservation(restaurantId, reservationId);
         assertVersionMatch(reservation, expectedVersion);
 
-        if (reservation.getStatus() != ReservationStatus.SEATED) {
-            throw new ConflictException("Can only complete SEATED reservations, current status: " + reservation.getStatus());
-        }
+        ReservationLifecycleRules.assertCanComplete(reservation);
 
         reservation.complete();
         Reservation saved = reservationRepository.save(reservation);
@@ -411,9 +408,7 @@ public class ReservationAdminService {
         Reservation reservation = getReservation(restaurantId, reservationId);
         assertVersionMatch(reservation, expectedVersion);
 
-        if (reservation.getStatus() != ReservationStatus.CONFIRMED) {
-            throw new ConflictException("Can only mark CONFIRMED reservations as no-show, current status: " + reservation.getStatus());
-        }
+        ReservationLifecycleRules.assertCanMarkNoShow(reservation, timeService.now());
 
         reservation.markNoShow();
         Reservation saved = reservationRepository.save(reservation);

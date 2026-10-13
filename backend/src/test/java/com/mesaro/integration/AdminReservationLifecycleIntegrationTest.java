@@ -33,6 +33,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.ZoneId;
 import java.util.List;
@@ -79,11 +80,13 @@ class AdminReservationLifecycleIntegrationTest extends IntegrationTestBase {
         DiningTable table = new DiningTable(restaurant, "T1", 4);
         diningTableRepository.save(table);
 
-        LocalDate date = LocalDate.now(ZoneId.of("UTC")).plusDays(1);
-        LocalTime time = LocalTime.of(12, 0);
+        ZoneId utc = ZoneId.of("UTC");
+        LocalDateTime soon = LocalDateTime.now(utc).plusMinutes(20).withSecond(0).withNano(0);
+        LocalDate date = soon.toLocalDate();
+        LocalTime time = soon.toLocalTime();
 
-        Shift shift = new Shift(restaurant, "Lunch", date.getDayOfWeek(),
-                LocalTime.of(11, 0), LocalTime.of(15, 0), 50);
+        Shift shift = new Shift(restaurant, "Service", date.getDayOfWeek(),
+                LocalTime.of(0, 0), LocalTime.of(23, 59), 50);
         shift.setStatus(ShiftStatus.ACTIVE);
         shiftRepository.save(shift);
 
@@ -159,11 +162,13 @@ class AdminReservationLifecycleIntegrationTest extends IntegrationTestBase {
         DiningTable table = new DiningTable(restaurant, "T1", 4);
         diningTableRepository.save(table);
 
-        LocalDate date = LocalDate.now(ZoneId.of("UTC")).plusDays(1);
-        LocalTime time = LocalTime.of(12, 0);
+        ZoneId utc = ZoneId.of("UTC");
+        LocalDateTime soon = LocalDateTime.now(utc).plusMinutes(20).withSecond(0).withNano(0);
+        LocalDate date = soon.toLocalDate();
+        LocalTime time = soon.toLocalTime();
 
-        Shift shift = new Shift(restaurant, "Lunch", date.getDayOfWeek(),
-                LocalTime.of(11, 0), LocalTime.of(15, 0), 50);
+        Shift shift = new Shift(restaurant, "Service", date.getDayOfWeek(),
+                LocalTime.of(0, 0), LocalTime.of(23, 59), 50);
         shift.setStatus(ShiftStatus.ACTIVE);
         shiftRepository.save(shift);
 
