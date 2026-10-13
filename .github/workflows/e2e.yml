@@ -62,6 +62,8 @@ jobs:
           SESSION_STORE_TYPE: none
           APP_LOG_ELASTIC_ENABLED: "false"
           ELASTICSEARCH_HEALTH_ENABLED: "false"
+          # CI has no SMTP credentials; keep aggregate/liveness health green.
+          MANAGEMENT_HEALTH_MAIL_ENABLED: "false"
         run: |
           set -euo pipefail
           chmod +x mvnw
@@ -69,7 +71,7 @@ jobs:
           echo $! > /tmp/mesaro-api.pid
           for i in $(seq 1 90); do
             # Management port is separate from the API (default 9090).
-            if curl -fsS http://127.0.0.1:9090/actuator/health >/dev/null 2>&1; then
+            if curl -fsS http://127.0.0.1:9090/actuator/health/liveness >/dev/null 2>&1; then
               echo "API healthy"
               exit 0
             fi
