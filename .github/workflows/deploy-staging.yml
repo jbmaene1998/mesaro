@@ -29,6 +29,8 @@ jobs:
             --exclude 'backend/frontend-dist/' \
             --exclude 'frontend/node_modules/' \
             --exclude 'frontend/dist/' \
+            --exclude 'frontend/playwright-report/' \
+            --exclude 'frontend/test-results/' \
             --exclude 'frontend/.env.production.local' \
             --exclude 'backend/target/' \
             "${GITHUB_WORKSPACE}/" /opt/mesaro/
@@ -254,7 +256,11 @@ jobs:
             echo "Could not determine staging host IP for Docker --add-host" >&2
             exit 1
           fi
+          # Run as the runner user so report dirs are not root-owned (rsync --delete would fail).
           docker run --rm \
+            --user "$(id -u):$(id -g)" \
+            -e HOME=/tmp \
+            -e npm_config_cache=/tmp/npm-cache \
             --add-host="app.mesaro.staging:${staging_ip}" \
             --add-host="api.mesaro.staging:${staging_ip}" \
             -v "$PWD:/work" \
