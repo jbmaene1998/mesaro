@@ -136,9 +136,10 @@ class BookingConcurrencyIntegrationTest extends IntegrationTestBase {
         );
         String payload = objectMapper.writeValueAsString(request);
 
+        String restaurantId = restaurant.getId().toString();
         List<Integer> statuses = runInParallel(2, () -> mockMvc.perform(post("/api/admin/reservations")
                         .with(authentication(auth))
-                        .param("restaurantId", restaurant.getId().toString())
+                        .param("restaurantId", restaurantId)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(payload))
                 .andReturn()
