@@ -1,6 +1,8 @@
 const FIRST_RUN_PENDING_KEY = "mesaro.staff.firstRun.pending";
 const FIRST_RUN_DONE_PREFIX = "mesaro.staff.firstRun.done.";
 
+export type WalkthroughRole = "OWNER" | "MANAGER" | "STAFF";
+
 export function markStaffFirstRunPending() {
   sessionStorage.setItem(FIRST_RUN_PENDING_KEY, "1");
 }
@@ -32,7 +34,7 @@ export function shouldShowStaffFirstRun(options: {
   if (!userId || !restaurantId) {
     return false;
   }
-  if (role !== "STAFF" && role !== "MANAGER") {
+  if (role !== "STAFF" && role !== "MANAGER" && role !== "OWNER") {
     return false;
   }
   if (isStaffFirstRunDone(userId, restaurantId)) {

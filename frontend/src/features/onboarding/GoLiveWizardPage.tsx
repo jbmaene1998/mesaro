@@ -9,6 +9,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useI18n } from "@/i18n";
 import { RestaurantContext } from "@/stores/restaurant-context";
 import { useOnboardingStatus, type WizardStepId } from "@/features/onboarding/hooks/useOnboardingStatus";
+import { markStaffFirstRunPending } from "@/features/onboarding/staffFirstRun";
 import { getWizardCopy } from "@/features/onboarding/wizardCopy";
 import { RestaurantStep } from "@/features/onboarding/steps/RestaurantStep";
 import { TablesStep } from "@/features/onboarding/steps/TablesStep";
@@ -138,13 +139,17 @@ export function GoLiveWizardPage() {
   }
 
   const goTo = (id: WizardStepId) => setStepId(id);
+  const finishToDashboard = () => {
+    markStaffFirstRunPending();
+    navigate("/dashboard?live=1", { replace: true });
+  };
   const goNext = () => {
     const next = STEP_ORDER[stepIndex + 1];
     if (next) {
       goTo(next);
       return;
     }
-    navigate("/dashboard?live=1", { replace: true });
+    finishToDashboard();
   };
   const goBack = () => {
     if (stepIndex <= 0) {
@@ -260,8 +265,8 @@ export function GoLiveWizardPage() {
             <StaffStep
               copy={copy}
               onSaved={refetchSetup}
-              onContinue={() => navigate("/dashboard?live=1", { replace: true })}
-              onSkip={() => navigate("/dashboard?live=1", { replace: true })}
+              onContinue={finishToDashboard}
+              onSkip={finishToDashboard}
             />
           ) : null}
 

@@ -121,7 +121,7 @@ export function DashboardPage() {
   }, [searchParams, setSearchParams, wizardCopy.youreLive]);
 
   useEffect(() => {
-    const forceTour = searchParams.get("tour") === "1";
+    const forceTour = searchParams.get("tour") === "1" || searchParams.get("live") === "1";
     const shouldShow = shouldShowStaffFirstRun({
       userId: auth.user?.id,
       restaurantId: selectedRestaurantId,
@@ -129,7 +129,7 @@ export function DashboardPage() {
       forceFromQuery: forceTour
     });
     setShowStaffTour(shouldShow);
-    if (forceTour) {
+    if (searchParams.get("tour") === "1") {
       const next = new URLSearchParams(searchParams);
       next.delete("tour");
       setSearchParams(next, { replace: true });
@@ -323,12 +323,15 @@ export function DashboardPage() {
         </Card>
       ) : null}
 
-      {showStaffTour && auth.user?.id && selectedRestaurantId && (role === "STAFF" || role === "MANAGER") ? (
+      {showStaffTour &&
+      auth.user?.id &&
+      selectedRestaurantId &&
+      (role === "STAFF" || role === "MANAGER" || role === "OWNER") ? (
         <StaffFirstRunTour
           userId={auth.user.id}
           restaurantId={selectedRestaurantId}
           role={role}
-          onboardingIncomplete={role === "MANAGER" && !onboarding.isGoLiveReady}
+          onboardingIncomplete={(role === "MANAGER" || role === "OWNER") && !onboarding.isGoLiveReady}
           onDismiss={() => setShowStaffTour(false)}
         />
       ) : null}
