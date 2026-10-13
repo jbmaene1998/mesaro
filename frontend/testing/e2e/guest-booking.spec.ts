@@ -3,6 +3,11 @@ import { expect, test } from "@playwright/test";
 import { e2eRestaurantSlug, localDatePlusDays } from "./helpers/auth";
 
 test("Guest can book a reservation", { tag: "@smoke" }, async ({ page }) => {
+  const remote = Boolean(process.env.PLAYWRIGHT_BASE_URL?.trim());
+  const configuredSlug = process.env.E2E_RESTAURANT_SLUG?.trim();
+  // Remote staging must not fall back to the local demo slug.
+  test.skip(remote && !configuredSlug, "Missing E2E_RESTAURANT_SLUG for remote smoke");
+
   const slug = e2eRestaurantSlug();
   await page.goto(`/r/${slug}`);
 

@@ -15,6 +15,8 @@ export default defineConfig({
   reporter: process.env.CI ? [["html", { open: "never" }], ["list"]] : "html",
   use: {
     baseURL,
+    // Staging uses Caddy `tls internal`; LAN clients accept the warning once, CI must skip verify.
+    ignoreHTTPSErrors: isRemote,
     trace: "on-first-retry"
   },
   ...(isRemote
