@@ -1,19 +1,17 @@
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { addDays, format } from "date-fns";
 
 import type { Shift } from "@/api/types";
-import { getAvailability } from "@/features/booking/api";
 import { Button } from "@/components/ui/button";
 import { createShiftsBulk } from "@/features/shifts/api";
 import { expandShiftTemplate, SHIFT_TEMPLATES } from "@/features/onboarding/templates";
+import { buildSampleSlotsFromShifts, tomorrowInTimezone } from "@/features/onboarding/sampleSlots";
 import type { WizardCopy } from "@/features/onboarding/wizardCopy";
 import { showApiError, showSuccess } from "@/lib/toast";
 
 interface ShiftsStepProps {
   copy: WizardCopy;
   existingShifts: Shift[];
-  restaurantSlug?: string;
+  restaurantTimezone?: string;
   onSaved: () => Promise<void>;
   onContinue: () => void;
 }
@@ -38,7 +36,7 @@ function interpolate(template: string, values: Record<string, string | number>) 
 export function ShiftsStep({
   copy,
   existingShifts,
-  restaurantSlug,
+  restaurantTimezone = "UTC",
   onSaved,
   onContinue
 }: ShiftsStepProps) {
@@ -49,14 +47,14 @@ export function ShiftsStep({
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const activeCount = existingShifts.filter((shift) => shift.status === "ACTIVE").length;
-  const tomorrow = format(addDays(new Date(), 1), "yyyy-MM-dd");
 
-  const previewQuery = useQuery({
-    queryKey: ["onboarding-availability-preview", restaurantSlug, tomorrow],
-    queryFn: () => getAvailability(restaurantSlug!, tomorrow, 2),
-    enabled: Boolean(restaurantSlug) && activeCount >= 1,
-    retry: false
-  });
+  const sampleSlots = useMemo(() => {
+    if (activeCount < 1) {
+      return [];
+    }
+    const { dayOfWeek } = tomorrowInTimezone(restaurantTimezone);
+    return buildSampleSlotsFromShifts(existingShifts, dayOfWeek);
+  }, [activeCount, existingShifts, restaurantTimezone]);
 
   const previewPayload = useMemo(() => {
     const packs = SHIFT_TEMPLATES.filter((pack) => selectedPackIds.includes(pack.id));
@@ -209,12 +207,11 @@ export function ShiftsStep({
       {activeCount >= 1 ? (
         <div className="rounded-md border p-3">
           <p className="mb-2 text-sm font-medium">{copy.slotsPreview}</p>
-          {previewQuery.isLoading ? <p className="text-xs text-muted-foreground">{copy.saving}</p> : null}
-          {(previewQuery.data?.length ?? 0) > 0 ? (
+          {sampleSlots.length > 0 ? (
             <div className="flex flex-wrap gap-2">
-              {(previewQuery.data ?? []).slice(0, 8).map((slot) => (
-                <span key={slot.time} className="rounded-md border px-2 py-1 text-xs">
-                  {slot.displayTime || slot.time}
+              {sampleSlots.map((time) => (
+                <span key={time} className="rounded-md border px-2 py-1 text-xs">
+                  {time}
                 </span>
               ))}
             </div>

@@ -226,7 +226,7 @@ export function GoLiveWizardPage() {
             <ShiftsStep
               copy={copy}
               existingShifts={shiftsQuery.data ?? []}
-              restaurantSlug={detailsQuery.data?.slug}
+              restaurantTimezone={detailsQuery.data?.timezone}
               onSaved={refetchSetup}
               onContinue={goNext}
             />
