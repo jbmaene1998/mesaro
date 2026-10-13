@@ -13,6 +13,7 @@ jobs:
   deploy:
     name: Deploy to Omen staging
     runs-on: [self-hosted, linux, mesaro-staging]
+    environment: staging
     timeout-minutes: 45
     steps:
       - name: Checkout
@@ -31,7 +32,154 @@ jobs:
             --exclude 'frontend/.env.production.local' \
             --exclude 'backend/target/' \
             "${GITHUB_WORKSPACE}/" /opt/mesaro/
-          test -f /opt/mesaro/backend/.env.staging
+
+      - name: Materialize staging env from GitHub Environment
+        env:
+          SPRING_PROFILES_ACTIVE: ${{ vars.SPRING_PROFILES_ACTIVE }}
+          MESARO_DOMAIN: ${{ vars.MESARO_DOMAIN }}
+          ACME_EMAIL: ${{ vars.ACME_EMAIL }}
+          FRONTEND_DIST_PATH: ${{ vars.FRONTEND_DIST_PATH }}
+          MANAGEMENT_PORT: ${{ vars.MANAGEMENT_PORT }}
+          POSTGRES_DB: ${{ vars.POSTGRES_DB }}
+          POSTGRES_USER: ${{ vars.POSTGRES_USER }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          DB_URL: ${{ vars.DB_URL }}
+          DB_USER: ${{ vars.DB_USER }}
+          DB_PASS: ${{ secrets.DB_PASS }}
+          DB_POOL_SIZE: ${{ vars.DB_POOL_SIZE }}
+          DB_POOL_MIN_IDLE: ${{ vars.DB_POOL_MIN_IDLE }}
+          REDIS_HOST: ${{ vars.REDIS_HOST }}
+          REDIS_PORT: ${{ vars.REDIS_PORT }}
+          REDIS_PASSWORD: ${{ secrets.REDIS_PASSWORD }}
+          SESSION_STORE_TYPE: ${{ vars.SESSION_STORE_TYPE }}
+          ELASTICSEARCH_URIS: ${{ vars.ELASTICSEARCH_URIS }}
+          ELASTICSEARCH_USERNAME: ${{ vars.ELASTICSEARCH_USERNAME }}
+          ELASTICSEARCH_PASSWORD: ${{ secrets.ELASTICSEARCH_PASSWORD }}
+          ELASTICSEARCH_HEALTH_ENABLED: ${{ vars.ELASTICSEARCH_HEALTH_ENABLED }}
+          APP_LOG_ELASTIC_ENABLED: ${{ vars.APP_LOG_ELASTIC_ENABLED }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          HOLD_TOKEN_SECRET: ${{ secrets.HOLD_TOKEN_SECRET }}
+          RESERVATION_TOKEN_SECRET: ${{ secrets.RESERVATION_TOKEN_SECRET }}
+          STAFF_TOKEN_SECRET: ${{ secrets.STAFF_TOKEN_SECRET }}
+          APP_BASE_URL: ${{ vars.APP_BASE_URL }}
+          API_BASE_URL: ${{ vars.API_BASE_URL }}
+          FRONTEND_URL: ${{ vars.FRONTEND_URL }}
+          API_CORS_ORIGINS: ${{ vars.API_CORS_ORIGINS }}
+          EMAIL_PROVIDER: ${{ vars.EMAIL_PROVIDER }}
+          SMTP_HOST: ${{ vars.SMTP_HOST }}
+          SMTP_PORT: ${{ vars.SMTP_PORT }}
+          SMTP_USERNAME: ${{ vars.SMTP_USERNAME }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          SMTP_AUTH: ${{ vars.SMTP_AUTH }}
+          SMTP_STARTTLS: ${{ vars.SMTP_STARTTLS }}
+          EMAIL_FROM: ${{ vars.EMAIL_FROM }}
+          EMAIL_FROM_NAME: ${{ vars.EMAIL_FROM_NAME }}
+          EMAIL_SUPPORT_ADDRESS: ${{ vars.EMAIL_SUPPORT_ADDRESS }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          RESEND_API_BASE_URL: ${{ vars.RESEND_API_BASE_URL }}
+          STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+          STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
+          STRIPE_PRICE_ID: ${{ vars.STRIPE_PRICE_ID }}
+          STRIPE_SUCCESS_URL: ${{ vars.STRIPE_SUCCESS_URL }}
+          STRIPE_CANCEL_URL: ${{ vars.STRIPE_CANCEL_URL }}
+          STRIPE_PORTAL_RETURN_URL: ${{ vars.STRIPE_PORTAL_RETURN_URL }}
+        run: |
+          set -euo pipefail
+          # Required by docker-compose.prod.yml (${VAR?…}) — empty optional keys allowed.
+          required=(
+            SPRING_PROFILES_ACTIVE
+            MESARO_DOMAIN
+            POSTGRES_DB
+            POSTGRES_USER
+            POSTGRES_PASSWORD
+            DB_URL
+            DB_USER
+            DB_PASS
+            REDIS_HOST
+            REDIS_PORT
+            REDIS_PASSWORD
+            JWT_SECRET
+            HOLD_TOKEN_SECRET
+            RESERVATION_TOKEN_SECRET
+            STAFF_TOKEN_SECRET
+            APP_BASE_URL
+            API_BASE_URL
+            FRONTEND_URL
+            API_CORS_ORIGINS
+            EMAIL_PROVIDER
+            EMAIL_FROM
+            EMAIL_SUPPORT_ADDRESS
+            STRIPE_SECRET_KEY
+            STRIPE_WEBHOOK_SECRET
+            STRIPE_PRICE_ID
+          )
+          missing=0
+          for k in "${required[@]}"; do
+            if [ -z "${!k:-}" ]; then
+              echo "missing $k — add it on GitHub Environment 'staging' (Variable or Secret). See .github/environments/README.md" >&2
+              missing=1
+            fi
+          done
+          if [ "$missing" -ne 0 ]; then
+            exit 1
+          fi
+
+          mkdir -p /opt/mesaro/backend
+          umask 077
+          env_file=/opt/mesaro/backend/.env.staging
+          kv() { printf '%s=%s\n' "$1" "$2"; }
+          {
+            kv SPRING_PROFILES_ACTIVE "${SPRING_PROFILES_ACTIVE}"
+            kv MESARO_DOMAIN "${MESARO_DOMAIN}"
+            kv ACME_EMAIL "${ACME_EMAIL:-staging@mesaro.staging}"
+            kv FRONTEND_DIST_PATH "${FRONTEND_DIST_PATH:-./frontend-dist}"
+            kv MANAGEMENT_PORT "${MANAGEMENT_PORT:-9090}"
+            kv POSTGRES_DB "${POSTGRES_DB}"
+            kv POSTGRES_USER "${POSTGRES_USER}"
+            kv POSTGRES_PASSWORD "${POSTGRES_PASSWORD}"
+            kv DB_URL "${DB_URL}"
+            kv DB_USER "${DB_USER}"
+            kv DB_PASS "${DB_PASS}"
+            kv DB_POOL_SIZE "${DB_POOL_SIZE:-20}"
+            kv DB_POOL_MIN_IDLE "${DB_POOL_MIN_IDLE:-10}"
+            kv REDIS_HOST "${REDIS_HOST}"
+            kv REDIS_PORT "${REDIS_PORT}"
+            kv REDIS_PASSWORD "${REDIS_PASSWORD}"
+            kv SESSION_STORE_TYPE "${SESSION_STORE_TYPE:-redis}"
+            kv ELASTICSEARCH_URIS "${ELASTICSEARCH_URIS:-}"
+            kv ELASTICSEARCH_USERNAME "${ELASTICSEARCH_USERNAME:-}"
+            kv ELASTICSEARCH_PASSWORD "${ELASTICSEARCH_PASSWORD:-}"
+            kv ELASTICSEARCH_HEALTH_ENABLED "${ELASTICSEARCH_HEALTH_ENABLED:-false}"
+            kv APP_LOG_ELASTIC_ENABLED "${APP_LOG_ELASTIC_ENABLED:-false}"
+            kv JWT_SECRET "${JWT_SECRET}"
+            kv HOLD_TOKEN_SECRET "${HOLD_TOKEN_SECRET}"
+            kv RESERVATION_TOKEN_SECRET "${RESERVATION_TOKEN_SECRET}"
+            kv STAFF_TOKEN_SECRET "${STAFF_TOKEN_SECRET}"
+            kv APP_BASE_URL "${APP_BASE_URL}"
+            kv API_BASE_URL "${API_BASE_URL}"
+            kv FRONTEND_URL "${FRONTEND_URL}"
+            kv API_CORS_ORIGINS "${API_CORS_ORIGINS}"
+            kv EMAIL_PROVIDER "${EMAIL_PROVIDER}"
+            kv SMTP_HOST "${SMTP_HOST:-}"
+            kv SMTP_PORT "${SMTP_PORT:-1025}"
+            kv SMTP_USERNAME "${SMTP_USERNAME:-}"
+            kv SMTP_PASSWORD "${SMTP_PASSWORD:-}"
+            kv SMTP_AUTH "${SMTP_AUTH:-false}"
+            kv SMTP_STARTTLS "${SMTP_STARTTLS:-false}"
+            kv EMAIL_FROM "${EMAIL_FROM}"
+            kv EMAIL_FROM_NAME "${EMAIL_FROM_NAME:-Mesaro Staging}"
+            kv EMAIL_SUPPORT_ADDRESS "${EMAIL_SUPPORT_ADDRESS}"
+            kv RESEND_API_KEY "${RESEND_API_KEY:-}"
+            kv RESEND_API_BASE_URL "${RESEND_API_BASE_URL:-https://api.resend.com}"
+            kv STRIPE_SECRET_KEY "${STRIPE_SECRET_KEY}"
+            kv STRIPE_WEBHOOK_SECRET "${STRIPE_WEBHOOK_SECRET}"
+            kv STRIPE_PRICE_ID "${STRIPE_PRICE_ID}"
+            kv STRIPE_SUCCESS_URL "${STRIPE_SUCCESS_URL:-}"
+            kv STRIPE_CANCEL_URL "${STRIPE_CANCEL_URL:-}"
+            kv STRIPE_PORTAL_RETURN_URL "${STRIPE_PORTAL_RETURN_URL:-}"
+          } > "$env_file"
+          chmod 600 "$env_file"
+          echo "Wrote $env_file (mode 600) from GitHub Environment staging"
 
       - name: Build frontend
         working-directory: /opt/mesaro/frontend
