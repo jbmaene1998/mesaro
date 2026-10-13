@@ -303,12 +303,10 @@ public class ReservationService {
     }
 
     private Reservation cancelReservation(Reservation reservation, String cancelledBy) {
-
-        if (!reservation.isCancellable()) {
-            throw new ConflictException("Reservation cannot be cancelled in status: " + reservation.getStatus());
-        }
-
         Instant now = timeService.now();
+        boolean guestCancel = "GUEST".equalsIgnoreCase(cancelledBy);
+        ReservationLifecycleRules.assertCanCancel(reservation, now, guestCancel);
+
         if (reservation.getCancelTokenExpiresAtUtc() != null &&
                 !reservation.getCancelTokenExpiresAtUtc().isAfter(now)) {
             throw new ConflictException("Cancellation link has expired");
@@ -341,11 +339,6 @@ public class ReservationService {
     @Transactional
     public Reservation cancelByStaff(Long reservationId) {
         Reservation reservation = findById(reservationId);
-
-        if (!reservation.isCancellable()) {
-            throw new ConflictException("Reservation cannot be cancelled in status: " + reservation.getStatus());
-        }
-
         return cancelReservation(reservation, "STAFF");
     }
 
@@ -355,10 +348,8 @@ public class ReservationService {
     @Transactional
     public Reservation seat(Long reservationId) {
         Reservation reservation = findById(reservationId);
-
-        if (reservation.getStatus() != ReservationStatus.CONFIRMED) {
-            throw new ConflictException("Can only seat CONFIRMED reservations");
-        }
+        ZoneId timezone = ZoneId.of(reservation.getRestaurant().getTimezone());
+        ReservationLifecycleRules.assertCanSeat(reservation, timeService.now(), timezone);
 
         reservation.seat();
         Reservation saved = reservationRepository.save(reservation);
@@ -385,10 +376,7 @@ public class ReservationService {
     @Transactional
     public Reservation complete(Long reservationId) {
         Reservation reservation = findById(reservationId);
-
-        if (reservation.getStatus() != ReservationStatus.SEATED) {
-            throw new ConflictException("Can only complete SEATED reservations");
-        }
+        ReservationLifecycleRules.assertCanComplete(reservation);
 
         reservation.complete();
         Reservation saved = reservationRepository.save(reservation);
@@ -415,10 +403,7 @@ public class ReservationService {
     @Transactional
     public Reservation markNoShow(Long reservationId) {
         Reservation reservation = findById(reservationId);
-
-        if (reservation.getStatus() != ReservationStatus.CONFIRMED) {
-            throw new ConflictException("Can only mark CONFIRMED reservations as no-show");
-        }
+        ReservationLifecycleRules.assertCanMarkNoShow(reservation, timeService.now());
 
         reservation.markNoShow();
         meterRegistry.counter("mesaro.reservations.no_show").increment();

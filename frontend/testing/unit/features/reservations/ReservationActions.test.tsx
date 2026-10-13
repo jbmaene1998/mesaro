@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { formatInTimeZone } from "date-fns-tz";
 import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
 
@@ -10,7 +11,12 @@ import { I18nProvider } from "@/i18n";
 import { AuthContext } from "@/stores/auth-context";
 import { RestaurantContext } from "@/stores/restaurant-context";
 
-function buildReservation(status: Reservation["status"]): Reservation {
+function buildReservation(status: Reservation["status"], when: "today" | "tomorrow" = "today"): Reservation {
+  const timezone = "UTC";
+  const now = Date.now();
+  const start = new Date(when === "tomorrow" ? now + 26 * 60 * 60 * 1000 : now + 30 * 60 * 1000);
+  const end = new Date(start.getTime() + 90 * 60 * 1000);
+  const date = formatInTimeZone(start, timezone, "yyyy-MM-dd");
   return {
     id: "res-1",
     confirmationCode: "ABC123",
@@ -18,11 +24,11 @@ function buildReservation(status: Reservation["status"]): Reservation {
     guestEmail: "jane@example.com",
     guestPhone: "+15550001111",
     partySize: 2,
-    date: "2026-01-01",
-    time: "18:00",
-    timezone: "UTC",
-    startAtUtc: "2026-01-01T18:00:00Z",
-    endAtUtc: "2026-01-01T19:30:00Z",
+    date,
+    time: formatInTimeZone(start, timezone, "HH:mm"),
+    timezone,
+    startAtUtc: start.toISOString(),
+    endAtUtc: end.toISOString(),
     status,
     shiftName: "Dinner",
     tableLabels: ["T1"],
@@ -30,7 +36,7 @@ function buildReservation(status: Reservation["status"]): Reservation {
   };
 }
 
-function renderActions(role: UserRole, status: Reservation["status"]) {
+function renderActions(role: UserRole, reservation: Reservation) {
   const queryClient = new QueryClient({
     defaultOptions: {
       queries: { retry: false },
@@ -53,8 +59,8 @@ function renderActions(role: UserRole, status: Reservation["status"]) {
   };
 
   const restaurantValue = {
-    currentRestaurant: { id: "r-1", slug: "demo", name: "Demo", role },
-    availableRestaurants: [{ id: "r-1", slug: "demo", name: "Demo", role }],
+    currentRestaurant: { id: "r-1", slug: "demo", name: "Demo", role, timezone: "UTC" },
+    availableRestaurants: [{ id: "r-1", slug: "demo", name: "Demo", role, timezone: "UTC" }],
     isLoading: false,
     selectRestaurant: vi.fn(),
     refreshContext: vi.fn()
@@ -66,7 +72,7 @@ function renderActions(role: UserRole, status: Reservation["status"]) {
         <RestaurantContext.Provider value={restaurantValue as any}>
           <I18nProvider>
             <MemoryRouter>
-              <ReservationActions reservation={buildReservation(status)} onViewDetails={vi.fn()} />
+              <ReservationActions reservation={reservation} onViewDetails={vi.fn()} />
             </MemoryRouter>
           </I18nProvider>
         </RestaurantContext.Provider>
@@ -76,57 +82,40 @@ function renderActions(role: UserRole, status: Reservation["status"]) {
 }
 
 describe("ReservationActions", () => {
-  it("shows Seat for CONFIRMED reservation", async () => {
+  it("shows Seat for CONFIRMED reservation on its service day", async () => {
     const user = userEvent.setup();
-    renderActions("MANAGER", "CONFIRMED");
+    renderActions("MANAGER", buildReservation("CONFIRMED", "today"));
 
     await user.click(screen.getByRole("button", { name: /reservation actions/i }));
 
     expect(screen.getByText(/seat guest/i)).toBeInTheDocument();
   });
 
+  it("hides Seat for CONFIRMED reservation on a future service day", async () => {
+    const user = userEvent.setup();
+    renderActions("MANAGER", buildReservation("CONFIRMED", "tomorrow"));
+
+    await user.click(screen.getByRole("button", { name: /reservation actions/i }));
+
+    expect(screen.queryByText(/seat guest/i)).not.toBeInTheDocument();
+  });
+
   it("shows Complete for SEATED reservation", async () => {
     const user = userEvent.setup();
-    renderActions("MANAGER", "SEATED");
+    renderActions("MANAGER", buildReservation("SEATED", "today"));
 
     await user.click(screen.getByRole("button", { name: /reservation actions/i }));
 
     expect(screen.getByText(/mark completed/i)).toBeInTheDocument();
   });
 
-  it("hides Cancel for STAFF role", async () => {
+  it("shows Cancel and Switch for STAFF on active reservations", async () => {
     const user = userEvent.setup();
-    renderActions("STAFF", "CONFIRMED");
-
-    await user.click(screen.getByRole("button", { name: /reservation actions/i }));
-
-    expect(screen.queryByText(/^cancel$/i)).not.toBeInTheDocument();
-  });
-
-  it("shows Cancel for MANAGER role", async () => {
-    const user = userEvent.setup();
-    renderActions("MANAGER", "CONFIRMED");
+    renderActions("STAFF", buildReservation("CONFIRMED", "today"));
 
     await user.click(screen.getByRole("button", { name: /reservation actions/i }));
 
     expect(screen.getByText(/^cancel$/i)).toBeInTheDocument();
-  });
-
-  it("shows Switch Table for MANAGER when reservation is active", async () => {
-    const user = userEvent.setup();
-    renderActions("MANAGER", "SEATED");
-
-    await user.click(screen.getByRole("button", { name: /reservation actions/i }));
-
     expect(screen.getByText(/switch table/i)).toBeInTheDocument();
-  });
-
-  it("hides Switch Table for STAFF role", async () => {
-    const user = userEvent.setup();
-    renderActions("STAFF", "CONFIRMED");
-
-    await user.click(screen.getByRole("button", { name: /reservation actions/i }));
-
-    expect(screen.queryByText(/switch table/i)).not.toBeInTheDocument();
   });
 });

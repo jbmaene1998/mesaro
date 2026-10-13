@@ -27,6 +27,13 @@ import { getReservation, updateStatus } from "@/features/reservations/api";
 import { CancelDialog } from "@/features/reservations/components/CancelDialog";
 import { SeatGuestDialog } from "@/features/reservations/components/SeatGuestDialog";
 import { SwitchTableDialog } from "@/features/reservations/components/SwitchTableDialog";
+import {
+  canCancelReservation,
+  canCompleteReservation,
+  canMarkNoShow,
+  canSeatReservation,
+  canSwitchTables
+} from "@/features/reservations/lifecycle";
 import { showApiError, showSuccess } from "@/lib/toast";
 
 interface ReservationActionsProps {
@@ -62,6 +69,12 @@ export function ReservationActions({ reservation, onViewDetails, onUpdated }: Re
     onError: (error) => showApiError(error)
   });
 
+  const seat = canSeatReservation(reservation);
+  const noShow = canMarkNoShow(reservation);
+  const complete = canCompleteReservation(reservation);
+  const cancel = canCancelReservation(reservation);
+  const switchTables = canSwitchTables(reservation);
+
   return (
     <>
       <DropdownMenu>
@@ -78,32 +91,34 @@ export function ReservationActions({ reservation, onViewDetails, onUpdated }: Re
             <DropdownMenuItem onClick={() => onViewDetails(reservation.id)}>{copy.viewDetails}</DropdownMenuItem>
           </PermissionGate>
 
-          {reservation.status === "CONFIRMED" ? (
-            <>
-              <PermissionGate permission="updateStatus">
-                <DropdownMenuItem onClick={() => setOpenSeatDialog(true)}>{copy.seatGuest}</DropdownMenuItem>
-              </PermissionGate>
-              <PermissionGate permission="updateStatus">
-                <DropdownMenuItem onClick={() => setConfirmAction("noshow")}>{copy.markNoShow}</DropdownMenuItem>
-              </PermissionGate>
-              <PermissionGate permission="cancelReservation">
-                <DropdownMenuItem onClick={() => setOpenCancelDialog(true)}>{copy.cancel}</DropdownMenuItem>
-              </PermissionGate>
-              <PermissionGate permission="switchTables">
-                <DropdownMenuItem onClick={() => setOpenSwitchDialog(true)}>{copy.switchTable}</DropdownMenuItem>
-              </PermissionGate>
-            </>
+          {seat.allowed ? (
+            <PermissionGate permission="updateStatus">
+              <DropdownMenuItem onClick={() => setOpenSeatDialog(true)}>{copy.seatGuest}</DropdownMenuItem>
+            </PermissionGate>
           ) : null}
 
-          {reservation.status === "SEATED" ? (
-            <>
-              <PermissionGate permission="updateStatus">
-                <DropdownMenuItem onClick={() => setConfirmAction("complete")}>{copy.markCompleted}</DropdownMenuItem>
-              </PermissionGate>
-              <PermissionGate permission="switchTables">
-                <DropdownMenuItem onClick={() => setOpenSwitchDialog(true)}>{copy.switchTable}</DropdownMenuItem>
-              </PermissionGate>
-            </>
+          {noShow.allowed ? (
+            <PermissionGate permission="updateStatus">
+              <DropdownMenuItem onClick={() => setConfirmAction("noshow")}>{copy.markNoShow}</DropdownMenuItem>
+            </PermissionGate>
+          ) : null}
+
+          {cancel.allowed ? (
+            <PermissionGate permission="cancelReservation">
+              <DropdownMenuItem onClick={() => setOpenCancelDialog(true)}>{copy.cancel}</DropdownMenuItem>
+            </PermissionGate>
+          ) : null}
+
+          {complete.allowed ? (
+            <PermissionGate permission="updateStatus">
+              <DropdownMenuItem onClick={() => setConfirmAction("complete")}>{copy.markCompleted}</DropdownMenuItem>
+            </PermissionGate>
+          ) : null}
+
+          {switchTables.allowed ? (
+            <PermissionGate permission="switchTables">
+              <DropdownMenuItem onClick={() => setOpenSwitchDialog(true)}>{copy.switchTable}</DropdownMenuItem>
+            </PermissionGate>
           ) : null}
         </DropdownMenuContent>
       </DropdownMenu>
