@@ -1,5 +1,6 @@
 package com.mesaro.email;
 
+import com.mesaro.email.layout.ReservationEmailComposer;
 import com.mesaro.infra.EmailService;
 import com.mesaro.infra.LogSanitizer;
 import org.slf4j.Logger;
@@ -8,11 +9,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
-
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
-import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
 
 /**
  * Sends reservation confirmation emails after transaction commit.
@@ -32,8 +28,6 @@ import java.time.format.DateTimeFormatter;
 public class ReservationConfirmationEmailSender {
 
     private static final Logger log = LoggerFactory.getLogger(ReservationConfirmationEmailSender.class);
-    private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("EEEE, MMMM d, yyyy");
-    private static final DateTimeFormatter TIME_FORMAT = DateTimeFormatter.ofPattern("h:mm a");
 
     private final EmailService emailService;
     private final IcsService icsService;
@@ -88,67 +82,18 @@ public class ReservationConfirmationEmailSender {
     }
 
     private void sendConfirmationEmailOrThrow(ReservationEmailData data) {
-        String subject = buildSubject(data);
-        String body = buildEmailBody(data);
+        var composed = ReservationEmailComposer.confirmation(data, frontendUrl);
         byte[] icsBytes = buildIcsAttachment(data);
 
-        emailService.sendReservationConfirmation(data.guestEmail(), subject, body, icsBytes);
+        emailService.sendReservationConfirmation(
+                data.guestEmail(),
+                composed.subject(),
+                composed.plainBody(),
+                composed.document(),
+                icsBytes
+        );
         log.info("Sent confirmation email for reservation {} to {}",
                 data.confirmationCode(), LogSanitizer.maskEmail(data.guestEmail()));
-    }
-
-    private String buildSubject(ReservationEmailData data) {
-        return String.format("Reservation Confirmed - %s (%s)",
-                data.restaurantName(), data.confirmationCode());
-    }
-
-    private String buildEmailBody(ReservationEmailData data) {
-        ZoneId tz = data.getTimezoneId();
-        String date = data.startAtUtc().atZone(tz).format(DATE_FORMAT);
-        String time = data.startAtUtc().atZone(tz).format(TIME_FORMAT);
-        String tables = String.join(", ", data.tableLabels());
-        String cancelUrl = buildCancelUrl(data);
-
-        return String.format("""
-                Dear %s,
-
-                Your reservation has been confirmed!
-
-                RESERVATION DETAILS
-                -------------------
-                Confirmation Code: %s
-                Restaurant: %s
-                Date: %s
-                Time: %s
-                Party Size: %d guests
-                Table(s): %s
-
-                IMPORTANT INFORMATION
-                --------------------
-                Please arrive on time. Your table will be held for 15 minutes after your reservation time.
-
-                NEED TO CANCEL?
-                ---------------
-                If you need to cancel your reservation, please use the link below:
-                %s
-
-                This cancellation link will expire 7 days after your reservation was made.
-
-                We look forward to seeing you!
-
-                Best regards,
-                %s
-                """,
-                data.guestName(),
-                data.confirmationCode(),
-                data.restaurantName(),
-                date,
-                time,
-                data.partySize(),
-                tables,
-                cancelUrl,
-                data.restaurantName()
-        );
     }
 
     private byte[] buildIcsAttachment(ReservationEmailData data) {
@@ -170,21 +115,5 @@ public class ReservationConfirmationEmailSender {
                 data.getTimezoneId(),
                 fromEmail
         );
-    }
-
-    private String buildCancelUrl(ReservationEmailData data) {
-        String cancelToken = data.cancelToken();
-        if (cancelToken == null || cancelToken.isEmpty()) {
-            return "(cancellation link not available)";
-        }
-
-        String base = frontendUrl.endsWith("/") ? frontendUrl.substring(0, frontendUrl.length() - 1) : frontendUrl;
-        String slug = data.restaurantSlug() == null ? "" : data.restaurantSlug().trim();
-        String code = data.confirmationCode();
-        String path = slug.isEmpty()
-                ? base + "/r/_/reservation/" + code
-                : base + "/r/" + slug + "/reservation/" + code;
-
-        return path + "?cancelToken=" + URLEncoder.encode(cancelToken, StandardCharsets.UTF_8);
     }
 }

@@ -1,5 +1,6 @@
 package com.mesaro.infra;
 
+import com.mesaro.email.layout.EmailDocument;
 import com.mesaro.security.RestaurantRole;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -61,17 +62,24 @@ public class LoggingEmailService implements EmailService {
     }
 
     @Override
-    public void sendReservationConfirmation(String toEmail, String subject, String bodyText, byte[] icsAttachmentBytes) {
+    public void sendReservationConfirmation(String toEmail,
+                                            String subject,
+                                            String plainBody,
+                                            EmailDocument document,
+                                            byte[] icsAttachmentBytes) {
         log.info("Reservation confirmation email to {}: subject='{}', bodyLength={}, icsSize={}",
-                LogSanitizer.maskEmail(toEmail), subject, bodyText.length(),
+                LogSanitizer.maskEmail(toEmail), subject, plainBody.length(),
                 icsAttachmentBytes != null ? icsAttachmentBytes.length : 0);
         log.debug("Reservation email body omitted from logs for security");
     }
 
     @Override
-    public void sendReservationReminder(String toEmail, String subject, String bodyText) {
+    public void sendReservationReminder(String toEmail,
+                                        String subject,
+                                        String plainBody,
+                                        EmailDocument document) {
         log.info("Reservation reminder email to {}: subject='{}', bodyLength={}",
-                LogSanitizer.maskEmail(toEmail), subject, bodyText.length());
+                LogSanitizer.maskEmail(toEmail), subject, plainBody.length());
         log.debug("Reservation reminder body omitted from logs for security");
     }
 
@@ -79,6 +87,7 @@ public class LoggingEmailService implements EmailService {
     public void sendReservationCancelled(String toEmail,
                                          String guestName,
                                          String restaurantName,
+                                         String restaurantSlug,
                                          String confirmationCode,
                                          String cancelledBy) {
         log.info("Reservation cancelled email to {} for {} ({}) by {}",
@@ -89,6 +98,7 @@ public class LoggingEmailService implements EmailService {
     public void sendReservationUpdated(String toEmail,
                                        String guestName,
                                        String restaurantName,
+                                       String restaurantSlug,
                                        String confirmationCode) {
         log.info("Reservation updated email to {} for {} ({})",
                 LogSanitizer.maskEmail(toEmail), confirmationCode, restaurantName);

@@ -1,5 +1,6 @@
 package com.mesaro.email;
 
+import com.mesaro.email.layout.ReservationEmailComposer;
 import com.mesaro.infra.EmailService;
 import com.mesaro.infra.LogSanitizer;
 import com.mesaro.infra.TimeService;
@@ -14,16 +15,12 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
 import java.util.List;
-import java.util.Locale;
 
 @Service
 public class ReservationReminderScheduler {
 
     private static final Logger log = LoggerFactory.getLogger(ReservationReminderScheduler.class);
-    private static final DateTimeFormatter REMINDER_TIME_FORMATTER =
-            DateTimeFormatter.ofPattern("EEEE, MMM d 'at' HH:mm", Locale.ENGLISH);
 
     private final ReservationRepository reservationRepository;
     private final EmailService emailService;
@@ -76,15 +73,19 @@ public class ReservationReminderScheduler {
                 continue;
             }
 
-            String subject = buildSubject(reservation);
-            String body = buildBody(reservation);
+            var composed = buildReminder(reservation);
             try {
-                emailService.sendReservationReminder(reservation.getGuestEmail(), subject, body);
+                emailService.sendReservationReminder(
+                        reservation.getGuestEmail(),
+                        composed.subject(),
+                        composed.plainBody(),
+                        composed.document()
+                );
                 emailSendLogService.logSent(
                         reservation.getRestaurant().getId(),
                         reservation.getGuestEmail(),
                         "RESERVATION_REMINDER",
-                        subject,
+                        composed.subject(),
                         "RESERVATION",
                         reservation.getId()
                 );
@@ -94,7 +95,7 @@ public class ReservationReminderScheduler {
                         reservation.getRestaurant().getId(),
                         reservation.getGuestEmail(),
                         "RESERVATION_REMINDER",
-                        subject,
+                        composed.subject(),
                         "RESERVATION",
                         reservation.getId(),
                         ex.getMessage()
@@ -110,32 +111,17 @@ public class ReservationReminderScheduler {
         }
     }
 
-    private String buildSubject(Reservation reservation) {
-        return "Reminder: your reservation at " + reservation.getRestaurant().getName();
-    }
-
-    private String buildBody(Reservation reservation) {
+    private ReservationEmailComposer.ComposedEmail buildReminder(Reservation reservation) {
         ZoneId timezone = ZoneId.of(reservation.getRestaurant().getTimezone());
-        String localTime = reservation.getStartAtUtc().atZone(timezone).format(REMINDER_TIME_FORMATTER);
-        String timezoneId = reservation.getRestaurant().getTimezone();
-
-        return String.format("""
-                Hi %s,
-
-                This is a reminder for your upcoming reservation at %s.
-
-                Confirmation code: %s
-                Party size: %d
-                Date and time: %s (%s)
-
-                If you need to cancel, use your cancellation link from the confirmation email.
-                """,
+        String localTime = ReservationEmailComposer.formatReminderLocalTime(
+                reservation.getStartAtUtc(), timezone);
+        return ReservationEmailComposer.reminder(
                 reservation.getGuestName(),
                 reservation.getRestaurant().getName(),
                 reservation.getConfirmationCode(),
                 reservation.getPartySize(),
                 localTime,
-                timezoneId
+                reservation.getRestaurant().getTimezone()
         );
     }
 }

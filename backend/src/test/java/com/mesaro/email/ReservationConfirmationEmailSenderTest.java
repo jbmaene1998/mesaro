@@ -53,6 +53,7 @@ class ReservationConfirmationEmailSenderTest {
                         org.mockito.ArgumentMatchers.eq(data.guestEmail()),
                         org.mockito.ArgumentMatchers.anyString(),
                         org.mockito.ArgumentMatchers.anyString(),
+                        org.mockito.ArgumentMatchers.any(),
                         org.mockito.ArgumentMatchers.any(byte[].class)
                 );
 
@@ -80,6 +81,7 @@ class ReservationConfirmationEmailSenderTest {
                         org.mockito.ArgumentMatchers.eq(data.guestEmail()),
                         org.mockito.ArgumentMatchers.anyString(),
                         org.mockito.ArgumentMatchers.anyString(),
+                        org.mockito.ArgumentMatchers.any(),
                         org.mockito.ArgumentMatchers.any(byte[].class)
                 );
 
