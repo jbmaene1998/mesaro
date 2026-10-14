@@ -52,6 +52,7 @@ class DstBookingIntegrationTest extends IntegrationTestBase {
         restaurant = restaurantRepository.save(restaurant);
         attachBillableOwner(restaurant);
         diningTableRepository.save(new DiningTable(restaurant, "T1", 4));
+        diningTableRepository.save(new DiningTable(restaurant, "T2", 4));
         Shift shift = new Shift(restaurant, "Night", gapDate.getDayOfWeek(),
                 LocalTime.of(0, 0), LocalTime.of(4, 0), 50);
         shift.setStatus(ShiftStatus.ACTIVE);

@@ -71,7 +71,6 @@ public interface StaffShiftAssignmentRepository extends JpaRepository<StaffShift
             """)
     int deleteFutureAssignments(Long restaurantId, Long userId, LocalDate startDate);
 
-    @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query(value = """
             SELECT a.*
             FROM staff_shift_assignment a
