@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-import { loginAs } from './helpers/auth';
+import { loginAsOwnerWithoutRestaurants } from './helpers/auth';
 
 test.describe('Go-live onboarding wizard', () => {
   test('auth guard: unauthenticated user is redirected to /login', async ({ page }) => {
@@ -10,15 +10,7 @@ test.describe('Go-live onboarding wizard', () => {
 
   test.describe('when authenticated without restaurants', () => {
     test.beforeEach(async ({ page }) => {
-      await loginAs(page, 'manager');
-      await page.route('**/api/restaurants**', async (route) => {
-        if (route.request().method() === 'GET') {
-          await route.fulfill({ status: 200, json: { success: true, data: [] } });
-          return;
-        }
-        await route.continue();
-      });
-      await page.goto('/onboarding');
+      await loginAsOwnerWithoutRestaurants(page);
     });
 
     test('renders go-live wizard heading', async ({ page }) => {
@@ -40,6 +32,7 @@ test.describe('Go-live onboarding wizard', () => {
         if (route.request().method() === 'POST') {
           await route.fulfill({
             status: 200,
+            contentType: 'application/json',
             json: {
               success: true,
               data: {
@@ -79,7 +72,7 @@ test.describe('Go-live onboarding wizard', () => {
       });
       await page.getByLabel(/restaurant name/i).fill('My Test Restaurant');
       await page.getByRole('button', { name: /create restaurant/i }).click();
-      await expect(page.getByText(/couldn't create|error|failed|try again/i)).toBeVisible();
+      await expect(page.getByText(/couldn't create|error|failed|try again/i).first()).toBeVisible();
     });
 
     test('responsive: form visible at 375 × 812', async ({ page }) => {

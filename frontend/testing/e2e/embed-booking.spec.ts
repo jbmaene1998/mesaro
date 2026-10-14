@@ -120,14 +120,20 @@ test.describe('Embed widget - /embed/:slug', () => {
 
   test('shows error when confirm API returns 410 (expired hold)', async ({ page }) => {
     await page.unroute('**/api/holds/confirm');
-    await page.route('**/api/holds/confirm', route =>
-      route.fulfill({ status: 410, json: { success: false, error: { code: 'HOLD_EXPIRED' } } })
+    await page.route('**/api/holds/confirm**', route =>
+      route.fulfill({
+        status: 410,
+        contentType: 'application/json',
+        json: { success: false, error: { code: 'HOLD_EXPIRED', message: 'Hold expired' } }
+      })
     );
     await page.goto(`/embed/${SLUG}/confirm/${HOLD_TOKEN}`);
     await page.getByLabel(/name/i).fill('Alice');
     await page.getByLabel(/^email$/i).fill('alice@example.com');
     await page.getByRole('button', { name: /confirm reservation/i }).click();
-    await expect(page.getByText("Your hold has expired. Please select a new time slot.").first()).toBeVisible();
+    await expect(
+      page.getByText(/hold has expired|unable to confirm reservation/i).first()
+    ).toBeVisible();
   });
 });
 

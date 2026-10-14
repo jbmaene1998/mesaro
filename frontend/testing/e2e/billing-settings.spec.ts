@@ -11,22 +11,33 @@ test.describe('Billing Settings Page', () => {
   test('role guard: STAFF user sees access denied', async ({ page }) => {
     await loginAs(page, 'staff');
     await page.goto('/settings/billing');
-    await expect(page.getByText(/403|access denied/i)).toBeVisible();
+    await expect(page.getByText(/access denied/i).first()).toBeVisible();
   });
 
   test('role guard: MANAGER user sees access denied', async ({ page }) => {
     await loginAs(page, 'manager');
     await page.goto('/settings/billing');
-    await expect(page.getByText(/403|access denied/i)).toBeVisible();
+    await expect(page.getByText(/access denied/i).first()).toBeVisible();
   });
 
   test.describe('when authenticated as owner', () => {
     test.beforeEach(async ({ page }) => {
       await loginAs(page, 'owner');
-      await page.route('**/api/billing/status**', route =>
+      // Real path is /api/restaurants/{id}/billing/status
+      await page.route('**/billing/status**', route =>
         route.fulfill({
           status: 200,
-          json: { success: true, data: { status: 'trialing', trialEndsAt: '2026-03-17' } }
+          contentType: 'application/json',
+          json: {
+            success: true,
+            data: {
+              status: 'TRIALING',
+              trialEndsAt: '2026-12-17T00:00:00Z',
+              stripeSubscriptionId: null,
+              currentQuantity: 1,
+              activeRestaurantCount: 1
+            }
+          }
         })
       );
       await page.goto('/settings/billing');
@@ -41,9 +52,9 @@ test.describe('Billing Settings Page', () => {
     });
 
     test('OWNER: shows error when billing API returns 500', async ({ page }) => {
-      await page.route('**/api/billing/status**', route => route.fulfill({ status: 500 }));
+      await page.route('**/billing/status**', route => route.fulfill({ status: 500 }));
       await page.goto('/settings/billing');
-      await expect(page.getByText(/something went wrong|error|failed/i)).toBeVisible();
+      await expect(page.getByText(/failed to load billing|something went wrong|error|failed/i).first()).toBeVisible();
     });
   });
 });

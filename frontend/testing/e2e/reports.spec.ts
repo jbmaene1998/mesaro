@@ -1,16 +1,25 @@
 import { test, expect } from '@playwright/test';
 
+import { expectApiErrorVisible } from './helpers/assertions';
 import { loginAs } from './helpers/auth';
 
 const mockSummary = {
-  totalReservations: 42,
-  totalCovers: 98,
-  avgPartySize: 2.3,
-  noShowRate: 5.2,
-  cancellationRate: 8.1,
-  byStatus: {},
-  dailyTrend: [],
-  shiftPerformance: []
+  restaurantId: 'r1',
+  restaurantName: 'Demo',
+  timezone: 'Europe/Brussels',
+  startDate: '2026-09-01',
+  endDate: '2026-09-30',
+  generatedAt: '2026-10-01T12:00:00Z',
+  totals: {
+    totalReservations: 42,
+    totalCovers: 98,
+    averagePartySize: 2.3,
+    noShowRatePercent: 5.2,
+    cancellationRatePercent: 8.1
+  },
+  statusBreakdown: {},
+  dailyBreakdown: [],
+  shiftBreakdown: []
 };
 
 test.describe('Reports Page', () => {
@@ -22,7 +31,7 @@ test.describe('Reports Page', () => {
   test('role guard: STAFF user sees access denied', async ({ page }) => {
     await loginAs(page, 'staff');
     await page.goto('/reports');
-    await expect(page.getByText(/403|access denied/i)).toBeVisible();
+    await expect(page.getByText(/access denied/i).first()).toBeVisible();
   });
 
   test.describe('when authenticated as manager', () => {
@@ -38,11 +47,11 @@ test.describe('Reports Page', () => {
     });
 
     test('renders Reports heading', async ({ page }) => {
-      await expect(page.getByRole('heading', { name: /reports/i })).toBeVisible();
+      await expect(page.getByRole('heading', { name: /reports/i }).first()).toBeVisible();
     });
 
     test('metric cards are visible', async ({ page }) => {
-      await expect(page.getByText(/total reservations/i)).toBeVisible();
+      await expect(page.getByText(/^reservations$/i).first()).toBeVisible();
     });
 
     test('date range quick buttons are visible', async ({ page }) => {
@@ -56,12 +65,12 @@ test.describe('Reports Page', () => {
     test('shows error state when summary API returns 500', async ({ page }) => {
       await page.route('**/api/reports/summary**', route => route.fulfill({ status: 500 }));
       await page.reload();
-      await expect(page.getByText(/something went wrong|error|failed/i)).toBeVisible();
+      await expectApiErrorVisible(page);
     });
 
     test('responsive: heading and quick buttons visible at 375 × 812', async ({ page }) => {
       await page.setViewportSize({ width: 375, height: 812 });
-      await expect(page.getByRole('heading', { name: /reports/i })).toBeVisible();
+      await expect(page.getByRole('heading', { name: /reports/i }).first()).toBeVisible();
     });
   });
 });

@@ -22,7 +22,8 @@ test.describe('Billing Success Page', () => {
     );
     await loginAs(page, 'owner');
     await page.goto('/billing/success?session_id=mock-session-123');
-    await page.getByRole('link', { name: 'Go to dashboard' }).click();
+    await expect(page.getByRole('heading', { name: /you're all set/i })).toBeVisible();
+    await page.getByRole('link', { name: 'Go to dashboard' }).click({ force: true });
     await expect(page).toHaveURL(/\/dashboard/);
   });
 

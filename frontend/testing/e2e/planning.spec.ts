@@ -41,7 +41,7 @@ test.describe('Staff Planning Page', () => {
     });
 
     test('Today button navigates back to current week', async ({ page }) => {
-      await page.getByRole('button', { name: /today/i }).click();
+      await page.getByRole('button', { name: 'Today', exact: true }).click();
       // After clicking Today, week range text should still be visible
       await expect(page.getByRole('heading', { name: /staff planning/i })).toBeVisible();
     });
@@ -49,7 +49,7 @@ test.describe('Staff Planning Page', () => {
     test('shows error state when API returns 500', async ({ page }) => {
       await page.route('**/api/staff-planning**', route => route.fulfill({ status: 500 }));
       await page.reload();
-      await expect(page.getByText(/something went wrong|error|failed/i)).toBeVisible();
+      await expect(page.getByText(/something went wrong|error|failed/i).first()).toBeVisible();
     });
 
     test('responsive: heading and week navigation visible at 375 × 812', async ({ page }) => {

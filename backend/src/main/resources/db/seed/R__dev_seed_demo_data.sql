@@ -18,9 +18,12 @@ INSERT INTO restaurant (
     assignment_mode
 )
 VALUES
-    ('Bonita Calle Larios', 'demo-restaurant', 'Europe/Brussels', 'es-ES', true, 15, 90, 30, 90, 20, 'AUTO'),
+    ('Bonita Calle Larios', 'demo-restaurant', 'Europe/Brussels', 'en', true, 15, 90, 30, 90, 20, 'AUTO'),
     ('Bonita Avenida de Barcelona', 'demo-terrace', 'Europe/Brussels', 'en-US', true, 15, 90, 60, 60, 12, 'AUTO')
 ON CONFLICT (slug) DO NOTHING;
+
+-- Keep guest/embed E2E on English copy (INSERT above is no-op once the row exists).
+UPDATE restaurant SET locale = 'en' WHERE slug = 'demo-restaurant' AND locale IS DISTINCT FROM 'en';
 
 -- -----------------------------------------------------------------------------
 -- Dining tables

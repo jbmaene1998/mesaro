@@ -1,5 +1,7 @@
 import { expect, Page, test } from "@playwright/test";
 
+import { mintAccessToken } from "./jwt";
+
 type Role = "staff" | "manager" | "owner";
 
 /** Dev-seed defaults when E2E_* secrets are unset (ephemeral CI / local). */
@@ -47,6 +49,49 @@ export async function loginAs(page: Page, role: Role) {
   await page.getByRole("button", { name: "Sign In" }).click();
 
   await expect(page).toHaveURL(/\/dashboard$/);
+}
+
+/** Owner JWT with zero restaurants — lands on the go-live wizard. */
+export async function loginAsOwnerWithoutRestaurants(page: Page) {
+  const accessToken = mintAccessToken();
+  const tokens = {
+    accessToken,
+    refreshToken: "e2e-refresh-no-restaurants",
+    expiresIn: 3600
+  };
+
+  await page.route("**/api/auth/login", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      json: { success: true, data: tokens }
+    })
+  );
+  await page.route("**/api/auth/refresh", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      json: { success: true, data: tokens }
+    })
+  );
+  await page.route("**/api/restaurants**", async (route) => {
+    if (route.request().method() === "GET") {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        json: { success: true, data: [] }
+      });
+      return;
+    }
+    await route.continue();
+  });
+
+  await page.goto("/login");
+  await page.getByLabel("Email").fill("e2e.norestaurants@example.com");
+  await page.getByRole("textbox", { name: "Password", exact: true }).fill("demo123");
+  await page.getByRole("button", { name: "Sign In" }).click();
+
+  await expect(page).toHaveURL(/\/onboarding/);
 }
 
 /** Restaurant slug for guest booking (dev seed: demo-restaurant). */

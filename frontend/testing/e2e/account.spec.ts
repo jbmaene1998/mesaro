@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 
+import { expectApiErrorVisible } from './helpers/assertions';
 import { loginAs } from './helpers/auth';
 
 const mockUser = {
@@ -37,7 +38,7 @@ test.describe('Account Page', () => {
     test('saves profile successfully', async ({ page }) => {
       await page.getByLabel(/full name|your name/i).fill('Jane Updated');
       await page.getByRole('button', { name: /save profile/i }).click();
-      await expect(page.getByText(/saved|updated|success/i)).toBeVisible();
+      await expect(page.getByText(/saved|updated|success/i).first()).toBeVisible();
     });
 
     test('shows error when profile update API returns 500', async ({ page }) => {
@@ -49,14 +50,14 @@ test.describe('Account Page', () => {
       });
       await page.getByLabel(/full name|your name/i).fill('Jane Updated');
       await page.getByRole('button', { name: /save profile/i }).click();
-      await expect(page.getByText(/something went wrong|error|failed/i)).toBeVisible();
+      await expectApiErrorVisible(page);
     });
 
     test('shows password mismatch error', async ({ page }) => {
       await page.getByLabel('Current password', { exact: true }).fill('oldpass123');
       await page.getByLabel('New password', { exact: true }).fill('newpass456');
       await page.getByLabel('Confirm new password', { exact: true }).fill('different789');
-      await page.getByRole('button', { name: /change password/i }).click();
+      // Button stays disabled while mismatched — assert inline validation instead of clicking.
       await expect(page.getByText(/do not match|passwords must match/i)).toBeVisible();
     });
 

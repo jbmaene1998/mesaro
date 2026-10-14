@@ -7,13 +7,15 @@ test("Staff can create a walk-in reservation", async ({ page }) => {
 
   await page.getByRole("button", { name: "New Walk-in" }).click();
 
-  await page.getByLabel("Party Size").fill("4");
-  await page.getByLabel("Guest Name (optional)").fill("E2E Walkin Guest");
+  const dialog = page.getByRole("dialog");
+  await expect(dialog).toBeVisible();
+  await dialog.getByLabel("Party Size").fill("4");
+  await dialog.getByLabel("Guest Name (optional)").fill("E2E Walkin Guest");
 
-  const firstTableCheckbox = page.locator("input[type='checkbox']").first();
+  const firstTableCheckbox = dialog.locator("input[type='checkbox']").first();
   await firstTableCheckbox.check();
 
-  await page.getByRole("button", { name: "Seat Walk-in" }).click();
+  await dialog.getByRole("button", { name: "Seat Walk-in" }).click();
 
   await expect(page.getByText(/Walk-in seated at Table/i)).toBeVisible();
 

@@ -19,7 +19,7 @@ test.describe('Vacations & Closures Page', () => {
 
     test('renders Vacations & Closures heading', async ({ page }) => {
       await expect(
-        page.getByRole('heading', { name: /vacations|closures/i })
+        page.getByRole('heading', { level: 1, name: /vacations & closures/i })
       ).toBeVisible();
     });
 
@@ -39,9 +39,14 @@ test.describe('Vacations & Closures Page', () => {
     });
 
     test('shows error state when API returns 500', async ({ page }) => {
-      await page.route('**/api/vacations**', route => route.fulfill({ status: 500 }));
+      await page.route('**/vacations**', route => {
+        if (!route.request().url().includes('/api/')) {
+          return route.continue();
+        }
+        return route.fulfill({ status: 500 });
+      });
       await page.reload();
-      await expect(page.getByText(/something went wrong|error|failed/i)).toBeVisible();
+      await expect(page.getByText(/something went wrong|error|failed|unable/i).first()).toBeVisible();
     });
 
     test('responsive: tabs visible at 375 × 812', async ({ page }) => {
