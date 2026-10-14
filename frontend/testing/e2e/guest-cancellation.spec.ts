@@ -28,6 +28,7 @@ test("Guest can cancel their reservation", async ({ page }) => {
 
   await page.getByRole("button", { name: "Cancel Reservation" }).click();
   await page.getByRole("button", { name: "Confirm Cancellation" }).click();
+  await page.keyboard.press("Escape");
 
   await expect(page.getByText(/Reservation cancelled successfully/i)).toBeVisible();
   await expect(page.getByText(/This reservation has been cancelled/i)).toBeVisible();

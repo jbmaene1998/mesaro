@@ -119,6 +119,7 @@ test.describe('Embed widget - /embed/:slug', () => {
   });
 
   test('shows error when confirm API returns 410 (expired hold)', async ({ page }) => {
+    await page.unroute('**/api/holds/confirm');
     await page.route('**/api/holds/confirm', route =>
       route.fulfill({ status: 410, json: { success: false, error: { code: 'HOLD_EXPIRED' } } })
     );

@@ -20,7 +20,7 @@ test.describe('Home Page', () => {
   });
 
   test('Request Demo link navigates to /contact', async ({ page }) => {
-    await page.getByRole('link', { name: /request demo/i }).first().click();
+    await page.getByRole('link', { name: /request a demo/i }).click();
     await expect(page).toHaveURL(/\/contact/);
   });
 
