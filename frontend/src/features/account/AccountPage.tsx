@@ -257,8 +257,11 @@ export function AccountPage() {
           {!profileQuery.isLoading && !profileQuery.isError ? (
             <>
               <div className="space-y-1">
-                <label className="text-sm font-medium">{copy.email}</label>
+                <label htmlFor="account-email" className="text-sm font-medium">
+                  {copy.email}
+                </label>
                 <input
+                  id="account-email"
                   value={emailDraft}
                   onChange={(event) => setEmailDraft(event.target.value)}
                   className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
@@ -266,8 +269,11 @@ export function AccountPage() {
                 />
               </div>
               <div className="space-y-1">
-                <label className="text-sm font-medium">{copy.fullName}</label>
+                <label htmlFor="account-full-name" className="text-sm font-medium">
+                  {copy.fullName}
+                </label>
                 <input
+                  id="account-full-name"
                   value={fullNameDraft}
                   onChange={(event) => setFullNameDraft(event.target.value)}
                   className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
@@ -275,8 +281,11 @@ export function AccountPage() {
                 />
               </div>
               <div className="space-y-1">
-                <label className="text-sm font-medium">{copy.phone}</label>
+                <label htmlFor="account-phone" className="text-sm font-medium">
+                  {copy.phone}
+                </label>
                 <input
+                  id="account-phone"
                   value={phoneDraft}
                   onChange={(event) => setPhoneDraft(event.target.value)}
                   className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
@@ -301,8 +310,11 @@ export function AccountPage() {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-1">
-            <label className="text-sm font-medium">{copy.currentPassword}</label>
+            <label htmlFor="account-current-password" className="text-sm font-medium">
+              {copy.currentPassword}
+            </label>
             <input
+              id="account-current-password"
               type="password"
               value={currentPassword}
               onChange={(event) => setCurrentPassword(event.target.value)}
@@ -310,8 +322,11 @@ export function AccountPage() {
             />
           </div>
           <div className="space-y-1">
-            <label className="text-sm font-medium">{copy.newPassword}</label>
+            <label htmlFor="account-new-password" className="text-sm font-medium">
+              {copy.newPassword}
+            </label>
             <input
+              id="account-new-password"
               type="password"
               value={newPassword}
               onChange={(event) => setNewPassword(event.target.value)}
@@ -319,8 +334,11 @@ export function AccountPage() {
             />
           </div>
           <div className="space-y-1">
-            <label className="text-sm font-medium">{copy.confirmPassword}</label>
+            <label htmlFor="account-confirm-password" className="text-sm font-medium">
+              {copy.confirmPassword}
+            </label>
             <input
+              id="account-confirm-password"
               type="password"
               value={confirmPassword}
               onChange={(event) => setConfirmPassword(event.target.value)}

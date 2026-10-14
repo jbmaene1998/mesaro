@@ -20,7 +20,18 @@ export default defineConfig({
     reducedMotion: "reduce",
     // Staging uses Caddy `tls internal`; LAN clients accept the warning once, CI must skip verify.
     ignoreHTTPSErrors: isRemote,
-    trace: "on-first-retry"
+    trace: "on-first-retry",
+    // Demo seed restaurant is es-ES; without a pinned UI locale, AppShell syncs Spanish and
+    // English-only assertions (My Account, Dashboard, …) miss. Pinning marks locale as manual.
+    storageState: {
+      cookies: [],
+      origins: [
+        {
+          origin: baseURL.replace(/\/$/, ""),
+          localStorage: [{ name: "mesaro.locale", value: "en" }]
+        }
+      ]
+    }
   },
   ...(isRemote
     ? {}

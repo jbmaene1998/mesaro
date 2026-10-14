@@ -4,9 +4,10 @@ import { loginAs } from './helpers/auth';
 
 const mockUser = {
   id: '1',
-  name: 'Jane Manager',
+  fullName: 'Jane Manager',
   email: 'manager@example.com',
-  phone: '+32 470 000 000'
+  phone: '+32 470 000 000',
+  restaurants: [] as { restaurantId: string; role: string }[]
 };
 
 test.describe('Account Page', () => {
@@ -52,9 +53,9 @@ test.describe('Account Page', () => {
     });
 
     test('shows password mismatch error', async ({ page }) => {
-      await page.getByLabel(/current password/i).fill('oldpass123');
-      await page.getByLabel(/new password/i).fill('newpass456');
-      await page.getByLabel(/confirm password/i).fill('different789');
+      await page.getByLabel('Current password', { exact: true }).fill('oldpass123');
+      await page.getByLabel('New password', { exact: true }).fill('newpass456');
+      await page.getByLabel('Confirm new password', { exact: true }).fill('different789');
       await page.getByRole('button', { name: /change password/i }).click();
       await expect(page.getByText(/do not match|passwords must match/i)).toBeVisible();
     });
