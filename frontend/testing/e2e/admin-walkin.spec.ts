@@ -12,6 +12,10 @@ test("Staff can create a walk-in reservation", async ({ page }) => {
   await dialog.getByRole("spinbutton", { name: "Party Size" }).fill("4");
   await dialog.getByLabel("Guest Name (optional)").fill("E2E Walkin Guest");
 
+  // Default 90 min may not fit near Dinner end (22:00) — use the shortest duration.
+  await dialog.locator("#walkin-duration").click();
+  await page.getByRole("option", { name: "30 min" }).click();
+
   // Tables are selectable buttons (best-fit auto-selects). Wait until one is available.
   await expect(dialog.getByRole("button", { name: /seats|available|best/i }).first()).toBeVisible({
     timeout: 15_000

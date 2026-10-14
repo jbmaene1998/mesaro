@@ -4,6 +4,8 @@ import { loginAs } from "./helpers/auth";
 
 const API_BASE = (process.env.VITE_API_URL || "http://127.0.0.1:8080/api").replace(/\/$/, "");
 const RESTAURANT_TZ = "Europe/Brussels";
+/** Short enough to still fit near Dinner end (22:00). */
+const DURATION_MINUTES = 30;
 
 function decodeJwtPayload(token: string): Record<string, unknown> {
   const segment = token.split(".")[1];
@@ -13,7 +15,7 @@ function decodeJwtPayload(token: string): Record<string, unknown> {
   return JSON.parse(Buffer.from(segment, "base64url").toString("utf8")) as Record<string, unknown>;
 }
 
-/** Dinner last_reservation_time is 21:00 — pick a future quarter-hour still inside that window. */
+/** Pick a future quarter-hour that still fits duration before Dinner service end 22:00. */
 function nextDinnerSlotInBrussels(now = new Date()): { date: string; time: string; endTime: string } | null {
   const parts = Object.fromEntries(
     new Intl.DateTimeFormat("en-GB", {
@@ -40,13 +42,15 @@ function nextDinnerSlotInBrussels(now = new Date()): { date: string; time: strin
     hour = 18;
     minute = 0;
   }
-  // last_reservation_time for Dinner is 21:00
-  if (hour > 21 || (hour === 21 && minute > 0)) {
+
+  const startMinutes = hour * 60 + minute;
+  const dinnerEnd = 22 * 60; // service end
+  if (startMinutes + DURATION_MINUTES > dinnerEnd) {
     return null;
   }
 
   const time = `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
-  const endTotal = hour * 60 + minute + 90;
+  const endTotal = startMinutes + DURATION_MINUTES;
   const endTime = `${String(Math.floor(endTotal / 60)).padStart(2, "0")}:${String(endTotal % 60).padStart(2, "0")}`;
   return { date, time, endTime };
 }
@@ -68,7 +72,7 @@ test("Manager can manage reservation lifecycle", async ({ page }) => {
   expect(restaurantId, "manager restaurant id").toBeGreaterThan(0);
 
   const slot = nextDinnerSlotInBrussels();
-  test.skip(!slot, "Too late for Dinner last_reservation_time (21:00 Europe/Brussels)");
+  test.skip(!slot, "Too late for a 30-minute Dinner booking before 22:00 Europe/Brussels");
 
   const headers = { Authorization: `Bearer ${accessToken}` };
   const statusRes = await page.request.get(`${API_BASE}/restaurants/${restaurantId}/tables/status`, {
@@ -100,7 +104,7 @@ test("Manager can manage reservation lifecycle", async ({ page }) => {
       partySize: 2,
       date: slot!.date,
       time: slot!.time,
-      durationMinutes: 90,
+      durationMinutes: DURATION_MINUTES,
       tableIds: [Number(free!.id)],
       seatImmediately: false
     }
