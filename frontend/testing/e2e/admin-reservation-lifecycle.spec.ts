@@ -4,8 +4,11 @@ import { loginAs } from "./helpers/auth";
 
 const API_BASE = (process.env.VITE_API_URL || "http://127.0.0.1:8080/api").replace(/\/$/, "");
 const RESTAURANT_TZ = "Europe/Brussels";
-/** Short enough to still fit near Dinner end (22:00). */
-const DURATION_MINUTES = 30;
+/** Matches Walk-in UI options (60/90/120) and still fits before Dinner end 22:00. */
+const DURATION_MINUTES = 60;
+const DINNER_START = 18 * 60;
+const DINNER_END = 22 * 60;
+const LAST_RESERVATION = 21 * 60;
 
 function decodeJwtPayload(token: string): Record<string, unknown> {
   const segment = token.split(".")[1];
@@ -15,8 +18,7 @@ function decodeJwtPayload(token: string): Record<string, unknown> {
   return JSON.parse(Buffer.from(segment, "base64url").toString("utf8")) as Record<string, unknown>;
 }
 
-/** Pick a future quarter-hour that still fits duration before Dinner service end 22:00. */
-function nextDinnerSlotInBrussels(now = new Date()): { date: string; time: string; endTime: string } | null {
+function brusselsClock(now = new Date()) {
   const parts = Object.fromEntries(
     new Intl.DateTimeFormat("en-GB", {
       timeZone: RESTAURANT_TZ,
@@ -32,25 +34,33 @@ function nextDinnerSlotInBrussels(now = new Date()): { date: string; time: strin
       .map((part) => [part.type, part.value])
   ) as Record<string, string>;
 
-  const date = `${parts.year}-${parts.month}-${parts.day}`;
-  let totalMinutes = Number(parts.hour) * 60 + Number(parts.minute) + 15;
-  totalMinutes = Math.ceil(totalMinutes / 15) * 15;
-  let hour = Math.floor(totalMinutes / 60);
-  let minute = totalMinutes % 60;
+  return {
+    date: `${parts.year}-${parts.month}-${parts.day}`,
+    minutes: Number(parts.hour) * 60 + Number(parts.minute)
+  };
+}
 
-  if (hour < 18) {
-    hour = 18;
-    minute = 0;
+/** Future Dinner slot that respects last_reservation_time and duration-vs-service-end. */
+function nextDinnerSlotInBrussels(now = new Date()): { date: string; time: string; endTime: string } | null {
+  const { date, minutes: nowMinutes } = brusselsClock(now);
+  let start = Math.ceil((nowMinutes + 5) / 15) * 15;
+  if (start < DINNER_START) {
+    start = DINNER_START;
   }
-
-  const startMinutes = hour * 60 + minute;
-  const dinnerEnd = 22 * 60; // service end
-  if (startMinutes + DURATION_MINUTES > dinnerEnd) {
+  if (start > LAST_RESERVATION) {
+    // Still allow booking exactly at last_reservation if that moment is still ahead.
+    if (nowMinutes < LAST_RESERVATION) {
+      start = LAST_RESERVATION;
+    } else {
+      return null;
+    }
+  }
+  if (start + DURATION_MINUTES > DINNER_END) {
     return null;
   }
 
-  const time = `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
-  const endTotal = startMinutes + DURATION_MINUTES;
+  const time = `${String(Math.floor(start / 60)).padStart(2, "0")}:${String(start % 60).padStart(2, "0")}`;
+  const endTotal = start + DURATION_MINUTES;
   const endTime = `${String(Math.floor(endTotal / 60)).padStart(2, "0")}:${String(endTotal % 60).padStart(2, "0")}`;
   return { date, time, endTime };
 }
@@ -72,7 +82,7 @@ test("Manager can manage reservation lifecycle", async ({ page }) => {
   expect(restaurantId, "manager restaurant id").toBeGreaterThan(0);
 
   const slot = nextDinnerSlotInBrussels();
-  test.skip(!slot, "Too late for a 30-minute Dinner booking before 22:00 Europe/Brussels");
+  test.skip(!slot, "Too late for a 60-minute Dinner booking before 22:00 Europe/Brussels");
 
   const headers = { Authorization: `Bearer ${accessToken}` };
   const statusRes = await page.request.get(`${API_BASE}/restaurants/${restaurantId}/tables/status`, {
