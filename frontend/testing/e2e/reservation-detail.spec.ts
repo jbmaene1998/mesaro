@@ -40,7 +40,7 @@ test.describe('Reservation Detail Page', () => {
     });
 
     test('renders confirmation code and CONFIRMED status badge', async ({ page }) => {
-      await expect(page.getByText(/RES-001/)).toBeVisible();
+      await expect(page.getByText(/RES-001/).first()).toBeVisible();
       await expect(page.getByText(/confirmed/i).first()).toBeVisible();
     });
 
@@ -66,7 +66,7 @@ test.describe('Reservation Detail Page', () => {
 
     test('responsive: reservation info visible at 375 × 812', async ({ page }) => {
       await page.setViewportSize({ width: 375, height: 812 });
-      await expect(page.getByText(/RES-001/)).toBeVisible();
+      await expect(page.getByText(/RES-001/).first()).toBeVisible();
     });
   });
 });

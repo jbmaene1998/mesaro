@@ -40,7 +40,7 @@ test.describe('Timeline Page', () => {
     });
 
     test('date picker is visible', async ({ page }) => {
-      await expect(page.getByLabel(/date/i).first()).toBeVisible();
+      await expect(page.locator('input[type="date"]').first()).toBeVisible();
     });
 
     test('slot duration controls are visible', async ({ page }) => {

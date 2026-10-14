@@ -9,7 +9,8 @@ test("Staff can create a walk-in reservation", async ({ page }) => {
 
   const dialog = page.getByRole("dialog");
   await expect(dialog).toBeVisible();
-  await dialog.getByLabel("Party Size").fill("4");
+  // +/- buttons also match getByLabel(/party size/i) — use the spinbutton.
+  await dialog.getByRole("spinbutton", { name: "Party Size" }).fill("4");
   await dialog.getByLabel("Guest Name (optional)").fill("E2E Walkin Guest");
 
   const firstTableCheckbox = dialog.locator("input[type='checkbox']").first();

@@ -13,21 +13,23 @@ test.describe('Staff Planning Page', () => {
   test.describe('when authenticated as staff', () => {
     test.beforeEach(async ({ page }) => {
       await loginAs(page, 'staff');
-      await page.route('**/api/staff-planning**', route =>
-        route.fulfill({
+      await page.route('**/staff-planning**', (route) => {
+        if (!route.request().url().includes('/api/')) {
+          return route.continue();
+        }
+        return route.fulfill({
           status: 200,
+          contentType: 'application/json',
           json: {
             success: true,
             data: {
-              weekStart: '2026-03-02',
-              totalShifts: 0,
-              assignedSlots: 0,
-              openSlots: 0,
-              days: []
+              date: '2026-03-02',
+              assignments: [],
+              openShifts: []
             }
           }
-        })
-      );
+        });
+      });
       await page.goto('/planning');
     });
 
@@ -47,9 +49,14 @@ test.describe('Staff Planning Page', () => {
     });
 
     test('shows error state when API returns 500', async ({ page }) => {
-      await page.route('**/api/staff-planning**', route => route.fulfill({ status: 500 }));
+      await page.route('**/staff-planning**', (route) => {
+        if (!route.request().url().includes('/api/')) {
+          return route.continue();
+        }
+        return route.fulfill({ status: 500 });
+      });
       await page.reload();
-      await expect(page.getByText(/something went wrong|error|failed/i).first()).toBeVisible();
+      await expect(page.getByText(/unable to load planning|something went wrong|error|failed/i).first()).toBeVisible();
     });
 
     test('responsive: heading and week navigation visible at 375 × 812', async ({ page }) => {

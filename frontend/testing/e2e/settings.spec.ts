@@ -34,7 +34,12 @@ test.describe('Settings Page', () => {
     });
 
     test('OWNER: restaurant name field is editable', async ({ page }) => {
-      await expect(page.getByLabel(/restaurant name/i)).toBeVisible();
+      const nameField = page
+        .locator('div')
+        .filter({ has: page.getByText(/^Restaurant Name$/i) })
+        .locator('input')
+        .first();
+      await expect(nameField).toBeVisible();
     });
 
     test('OWNER: shows error when save API returns 500', async ({ page }) => {
@@ -45,9 +50,13 @@ test.describe('Settings Page', () => {
         }
         await route.continue();
       });
-      const nameField = page.getByLabel(/restaurant name/i);
+      const nameField = page
+        .locator('div')
+        .filter({ has: page.getByText(/^Restaurant Name$/i) })
+        .locator('input')
+        .first();
       await nameField.fill(`${(await nameField.inputValue()) || 'Demo'} Updated`);
-      await page.getByRole('button', { name: /save/i }).first().click();
+      await page.getByRole('button', { name: /save changes/i }).click();
       await expectApiErrorVisible(page);
     });
   });

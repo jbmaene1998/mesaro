@@ -51,23 +51,28 @@ export async function loginAs(page: Page, role: Role) {
   await expect(page).toHaveURL(/\/dashboard$/);
 }
 
-/** Owner JWT with zero restaurants — lands on the go-live wizard. */
+/** Owner JWT with zero restaurants — lands on the go-live wizard (skips login form). */
 export async function loginAsOwnerWithoutRestaurants(page: Page) {
   const accessToken = mintAccessToken();
-  const tokens = {
-    accessToken,
-    refreshToken: "e2e-refresh-no-restaurants",
-    expiresIn: 3600
-  };
+  const refreshToken = "e2e-refresh-no-restaurants";
+  const tokens = { accessToken, refreshToken, expiresIn: 3600 };
 
-  await page.route("**/api/auth/login", (route) =>
+  await page.addInitScript(
+    ({ refresh, locale }) => {
+      localStorage.setItem("mesaro.locale", locale);
+      localStorage.setItem("mesaro.refreshToken", refresh);
+    },
+    { refresh: refreshToken, locale: "en" }
+  );
+
+  await page.route("**/api/auth/refresh", (route) =>
     route.fulfill({
       status: 200,
       contentType: "application/json",
       json: { success: true, data: tokens }
     })
   );
-  await page.route("**/api/auth/refresh", (route) =>
+  await page.route("**/api/auth/login", (route) =>
     route.fulfill({
       status: 200,
       contentType: "application/json",
@@ -86,12 +91,8 @@ export async function loginAsOwnerWithoutRestaurants(page: Page) {
     await route.continue();
   });
 
-  await page.goto("/login");
-  await page.getByLabel("Email").fill("e2e.norestaurants@example.com");
-  await page.getByRole("textbox", { name: "Password", exact: true }).fill("demo123");
-  await page.getByRole("button", { name: "Sign In" }).click();
-
-  await expect(page).toHaveURL(/\/onboarding/);
+  await page.goto("/onboarding");
+  await expect(page).toHaveURL(/\/onboarding/, { timeout: 15_000 });
 }
 
 /** Restaurant slug for guest booking (dev seed: demo-restaurant). */

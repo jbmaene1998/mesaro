@@ -17,9 +17,12 @@ test.describe('Shift Management Page', () => {
   test.describe('when authenticated as manager', () => {
     test.beforeEach(async ({ page }) => {
       await loginAs(page, 'manager');
-      await page.route('**/api/shifts**', route =>
-        route.fulfill({ status: 200, json: { success: true, data: [] } })
-      );
+      await page.route('**/shifts**', (route) => {
+        if (!route.request().url().includes('/api/')) {
+          return route.continue();
+        }
+        return route.fulfill({ status: 200, contentType: 'application/json', json: { success: true, data: [] } });
+      });
       await page.goto('/shifts');
     });
 
@@ -37,9 +40,14 @@ test.describe('Shift Management Page', () => {
     });
 
     test('shows error state when API returns 500', async ({ page }) => {
-      await page.route('**/api/shifts**', route => route.fulfill({ status: 500 }));
+      await page.route('**/shifts**', (route) => {
+        if (!route.request().url().includes('/api/')) {
+          return route.continue();
+        }
+        return route.fulfill({ status: 500 });
+      });
       await page.reload();
-      await expect(page.getByText(/something went wrong|error|failed/i).first()).toBeVisible();
+      await expect(page.getByText(/unable to load shifts|something went wrong|error|failed/i).first()).toBeVisible();
     });
 
     test('responsive: heading and Add Shift button visible at 375 × 812', async ({ page }) => {
