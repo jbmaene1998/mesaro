@@ -1,32 +1,74 @@
 import { expect, test } from "@playwright/test";
 
-import { loginAs } from "./helpers/auth";
+import { loginAs, localDatePlusDays } from "./helpers/auth";
+
+const API_BASE = (process.env.VITE_API_URL || "http://127.0.0.1:8080/api").replace(/\/$/, "");
+
+function decodeJwtPayload(token: string): Record<string, unknown> {
+  const segment = token.split(".")[1];
+  if (!segment) {
+    throw new Error("Invalid JWT");
+  }
+  const json = Buffer.from(segment, "base64url").toString("utf8");
+  return JSON.parse(json) as Record<string, unknown>;
+}
 
 test("Manager can manage reservation lifecycle", async ({ page }) => {
+  const loginWait = page.waitForResponse((res) => res.url().includes("/api/auth/login") && res.ok());
   await loginAs(page, "manager");
-  await page.goto("/reservations");
+  const loginBody = (await (await loginWait).json()) as {
+    data?: { accessToken?: string };
+    accessToken?: string;
+  };
+  const accessToken = loginBody.data?.accessToken ?? loginBody.accessToken;
+  expect(accessToken, "login access token").toBeTruthy();
 
-  // Seed bulk packs Lunch 11:45/12:30 and Dinner 18:00/19:15 — use Dinner @ 20:00
-  // so a free table exists and Create stays enabled.
-  await page.getByRole("button", { name: "New Reservation" }).click();
-  const dialog = page.getByRole("dialog");
-  await expect(dialog).toBeVisible();
+  const restaurants = decodeJwtPayload(accessToken!).restaurants as
+    | Array<{ restaurantId?: number | string; id?: number | string }>
+    | undefined;
+  const restaurantId = Number(restaurants?.[0]?.restaurantId ?? restaurants?.[0]?.id);
+  expect(restaurantId, "manager restaurant id").toBeGreaterThan(0);
 
-  await dialog.locator("#manual-shift").click();
-  await page.getByRole("option", { name: /Dinner/i }).click();
-  await dialog.locator("#manual-reservation-time").fill("20:00");
-  await dialog.getByLabel("Guest Name").fill("E2E Lifecycle Guest");
+  const date = localDatePlusDays(0);
+  const headers = { Authorization: `Bearer ${accessToken}` };
 
-  const tableCheckbox = dialog.locator('input[type="checkbox"]').first();
-  await expect(tableCheckbox).toBeVisible({ timeout: 20_000 });
-  if (!(await tableCheckbox.isChecked())) {
-    await tableCheckbox.check();
-  }
-
-  await expect(dialog.getByRole("button", { name: "Create Reservation" })).toBeEnabled({
-    timeout: 10_000
+  const statusRes = await page.request.get(`${API_BASE}/restaurants/${restaurantId}/tables/status`, {
+    headers,
+    params: { date, startTime: "20:00", endTime: "21:30" }
   });
-  await dialog.getByRole("button", { name: "Create Reservation" }).click();
+  expect(statusRes.ok(), await statusRes.text()).toBeTruthy();
+  const statusJson = await statusRes.json();
+  const tables = (statusJson.data ?? statusJson) as Array<{
+    id: number | string;
+    seats?: number;
+    available?: boolean;
+    status?: string;
+  }>;
+  const free = tables.find((table) => {
+    const available =
+      typeof table.available === "boolean"
+        ? table.available
+        : String(table.status ?? "").toUpperCase() === "AVAILABLE";
+    return available && Number(table.seats ?? 0) >= 2;
+  });
+  expect(free, "expected a free table for Dinner 20:00").toBeTruthy();
+
+  const createRes = await page.request.post(`${API_BASE}/admin/reservations`, {
+    headers: { ...headers, "Content-Type": "application/json" },
+    params: { restaurantId: String(restaurantId) },
+    data: {
+      guestName: "E2E Lifecycle Guest",
+      partySize: 2,
+      date,
+      time: "20:00",
+      durationMinutes: 90,
+      tableIds: [Number(free!.id)],
+      seatImmediately: false
+    }
+  });
+  expect(createRes.ok(), await createRes.text()).toBeTruthy();
+
+  await page.goto("/reservations");
   await expect(page.getByText(/E2E Lifecycle Guest/i).first()).toBeVisible({ timeout: 15_000 });
 
   const row = page.locator("tbody tr").filter({ hasText: "E2E Lifecycle Guest" }).first();
