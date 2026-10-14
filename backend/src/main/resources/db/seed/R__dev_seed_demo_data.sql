@@ -234,6 +234,28 @@ SET password_hash = EXCLUDED.password_hash,
     max_restaurants = GREATEST(user_account.max_restaurants, EXCLUDED.max_restaurants),
     email_verified_at = COALESCE(user_account.email_verified_at, EXCLUDED.email_verified_at);
 
+-- Owner with no restaurants — used by go-live onboarding E2E (password: demo123).
+INSERT INTO user_account (email, password_hash, enabled, max_restaurants, email_verified_at, billing_status, trial_ends_at)
+VALUES (
+    'owner.empty@demo.com',
+    '$2a$10$eCalHosZDgLgBUP7juq0Re3j/6ShX3HsDS8CXeqDZWS0y1WkLqWP2',
+    true,
+    3,
+    NOW(),
+    'TRIALING',
+    NOW() + INTERVAL '14 days'
+)
+ON CONFLICT (email) DO UPDATE
+SET password_hash = EXCLUDED.password_hash,
+    enabled = EXCLUDED.enabled,
+    max_restaurants = GREATEST(user_account.max_restaurants, EXCLUDED.max_restaurants),
+    email_verified_at = COALESCE(user_account.email_verified_at, EXCLUDED.email_verified_at),
+    billing_status = EXCLUDED.billing_status,
+    trial_ends_at = COALESCE(user_account.trial_ends_at, EXCLUDED.trial_ends_at);
+
+DELETE FROM user_restaurant
+WHERE user_id = (SELECT id FROM user_account WHERE email = 'owner.empty@demo.com');
+
 -- Demo OWNER has two active restaurants; keep quota aligned with seed inventory.
 UPDATE user_account
 SET max_restaurants = GREATEST(max_restaurants, 2)

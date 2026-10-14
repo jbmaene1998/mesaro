@@ -23,8 +23,8 @@ test.describe('Billing Success Page', () => {
     await loginAs(page, 'owner');
     await page.goto('/billing/success?session_id=mock-session-123');
     await expect(page.getByRole('heading', { name: /you're all set/i })).toBeVisible({ timeout: 15_000 });
-    // Client-side React Router navigation — do not wait for a full document "load".
-    await page.locator('a[href="/dashboard"]').first().click();
+    // Link can stay "unstable" under success-state layout animations.
+    await page.getByRole('link', { name: /go to dashboard/i }).click({ force: true });
     await expect(page).toHaveURL(/\/dashboard/, { timeout: 15_000 });
   });
 

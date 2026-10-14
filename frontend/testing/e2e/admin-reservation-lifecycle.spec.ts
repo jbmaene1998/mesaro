@@ -6,22 +6,32 @@ test("Manager can manage reservation lifecycle", async ({ page }) => {
   await loginAs(page, "manager");
   await page.goto("/reservations");
 
-  // Seat is only allowed on the service day — keep the default "today" filter.
-  const row = page.locator("tbody tr").filter({ hasText: "CONFIRMED" }).first();
-  await expect(row).toBeVisible({ timeout: 20_000 });
+  // Ensure a seatable CONFIRMED reservation exists for today.
+  await page.getByRole("button", { name: "New Reservation" }).click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog).toBeVisible();
+  await dialog.getByLabel("Guest Name").fill("E2E Lifecycle Guest");
+  await expect(dialog.getByRole("button", { name: /seats|available|best/i }).first()).toBeVisible({
+    timeout: 15_000
+  });
+  await dialog.getByRole("button", { name: "Create Reservation" }).click();
+  await expect(page.getByText(/E2E Lifecycle Guest/i).first()).toBeVisible({ timeout: 15_000 });
+
+  const row = page.locator("tbody tr").filter({ hasText: "E2E Lifecycle Guest" }).first();
+  await expect(row).toBeVisible();
+  await expect(row.getByText("CONFIRMED")).toBeVisible();
 
   await row.getByRole("button", { name: "Reservation actions" }).click();
   await page.getByRole("menuitem", { name: "Seat Guest" }).click();
   await page.getByRole("button", { name: "Confirm" }).click();
 
   await expect(page.getByText(/marked as seated/i).first()).toBeVisible();
-  await expect(page.locator("tbody tr").filter({ hasText: "SEATED" }).first()).toBeVisible();
+  await expect(row.getByText("SEATED")).toBeVisible();
 
-  const seatedRow = page.locator("tbody tr").filter({ hasText: "SEATED" }).first();
-  await seatedRow.getByRole("button", { name: "Reservation actions" }).click();
+  await row.getByRole("button", { name: "Reservation actions" }).click();
   await page.getByRole("menuitem", { name: "Mark Completed" }).click();
   await page.getByRole("button", { name: "Confirm" }).click();
 
   await expect(page.getByText(/marked as completed/i).first()).toBeVisible();
-  await expect(page.locator("tbody tr").filter({ hasText: "COMPLETED" }).first()).toBeVisible();
+  await expect(page.locator("tbody tr").filter({ hasText: "E2E Lifecycle Guest" }).getByText("COMPLETED")).toBeVisible();
 });

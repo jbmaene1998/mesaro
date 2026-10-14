@@ -1,7 +1,5 @@
 import { expect, Page, test } from "@playwright/test";
 
-import { mintAccessToken } from "./jwt";
-
 type Role = "staff" | "manager" | "owner";
 
 /** Dev-seed defaults when E2E_* secrets are unset (ephemeral CI / local). */
@@ -10,6 +8,8 @@ const SEED_DEFAULTS: Record<Role, { email: string; password: string }> = {
   manager: { email: "manager.demo@demo.com", password: "demo123" },
   staff: { email: "staff.demo@demo.com", password: "demo123" }
 };
+
+const EMPTY_OWNER = { email: "owner.empty@demo.com", password: "demo123" };
 
 function allowSeedFallback(): boolean {
   // Remote targets (staging smoke) must use Environment secrets — never demo seed.
@@ -51,59 +51,21 @@ export async function loginAs(page: Page, role: Role) {
   await expect(page).toHaveURL(/\/dashboard$/);
 }
 
-/** Owner JWT with zero restaurants — lands on the go-live wizard (skips login form). */
+/**
+ * Seed user `owner.empty@demo.com` has no restaurant memberships — login lands on go-live.
+ */
 export async function loginAsOwnerWithoutRestaurants(page: Page) {
-  const accessToken = mintAccessToken();
-  const refreshToken = "e2e-refresh-no-restaurants";
-  const tokens = { accessToken, refreshToken, expiresIn: 3600 };
+  test.skip(!allowSeedFallback(), "Empty-owner seed is only for ephemeral CI / local");
 
-  await page.addInitScript(
-    ({ refresh, locale }) => {
-      localStorage.setItem("mesaro.locale", locale);
-      localStorage.setItem("mesaro.refreshToken", refresh);
-    },
-    { refresh: refreshToken, locale: "en" }
-  );
+  await page.goto("/login");
+  await page.getByLabel("Email").fill(EMPTY_OWNER.email);
+  await page.getByRole("textbox", { name: "Password", exact: true }).fill(EMPTY_OWNER.password);
+  await page.getByRole("button", { name: "Sign In" }).click();
 
-  await page.route("**/auth/refresh", (route) => {
-    if (!route.request().url().includes("/api/")) {
-      return route.continue();
-    }
-    return route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      json: { success: true, data: tokens }
-    });
-  });
-  await page.route("**/auth/login", (route) => {
-    if (!route.request().url().includes("/api/")) {
-      return route.continue();
-    }
-    return route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      json: { success: true, data: tokens }
-    });
-  });
-  await page.route("**/api/restaurants**", async (route) => {
-    if (route.request().method() === "GET") {
-      await route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        json: { success: true, data: [] }
-      });
-      return;
-    }
-    await route.fallback();
-  });
-
-  await page.goto("/onboarding");
   await expect(page).toHaveURL(/\/onboarding/, { timeout: 15_000 });
-  await expect(
-    page.getByRole("heading", {
-      name: /go live with mesaro|ga live met mesaro|sal en vivo|passez en ligne/i
-    })
-  ).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByRole("heading", { name: /go live with mesaro/i })).toBeVisible({
+    timeout: 15_000
+  });
 }
 
 /** Restaurant slug for guest booking (dev seed: demo-restaurant). */
