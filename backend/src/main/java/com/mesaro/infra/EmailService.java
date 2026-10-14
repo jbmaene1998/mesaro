@@ -20,6 +20,8 @@ public interface EmailService {
 
     void sendPasswordReset(String email, String resetToken);
 
+    void sendEmailVerification(String email, String fullName, String verificationToken);
+
     void sendPasswordChangedNotice(String email);
 
     void sendWelcomeEmail(String email, String fullName);

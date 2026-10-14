@@ -1,5 +1,6 @@
 package com.mesaro.auth;
 
+import com.mesaro.common.exception.ValidationException;
 import com.mesaro.infra.EmailService;
 import com.mesaro.infra.TimeService;
 import com.mesaro.infra.TokenService;
@@ -16,7 +17,9 @@ import org.springframework.test.util.ReflectionTestUtils;
 import java.time.Instant;
 import java.util.Optional;
 
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -76,5 +79,14 @@ class PasswordResetServiceTest {
         verify(userAccountRepository).save(user);
         verify(passwordResetTokenRepository).save(resetToken);
         verify(passwordEncoder).encode("new-password");
+    }
+
+    @Test
+    void resetPassword_rejectsShortPassword() {
+        assertThatThrownBy(() -> passwordResetService.resetPassword("raw-token", "short"))
+                .isInstanceOf(ValidationException.class)
+                .hasMessageContaining("between 8 and 72");
+
+        verify(passwordEncoder, never()).encode(any());
     }
 }

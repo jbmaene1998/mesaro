@@ -47,12 +47,10 @@ public class RestaurantContextInterceptor implements HandlerInterceptor {
 
         Long headerRestaurantId = parseRestaurantId(request.getHeader(RESTAURANT_HEADER));
         Long pathRestaurantId = resolvePathRestaurantId(request);
+        Long queryRestaurantId = parseRestaurantId(request.getParameter("restaurantId"));
 
-        if (headerRestaurantId != null && pathRestaurantId != null && !headerRestaurantId.equals(pathRestaurantId)) {
-            throw new ConflictException("Restaurant context mismatch between header and path");
-        }
-
-        Long resolvedRestaurantId = headerRestaurantId != null ? headerRestaurantId : pathRestaurantId;
+        Long resolvedRestaurantId = resolveSingleRestaurantId(
+                headerRestaurantId, pathRestaurantId, queryRestaurantId);
         if (resolvedRestaurantId != null) {
             RestaurantRole role = resolveRole(principal, resolvedRestaurantId);
             if (role == null) {
@@ -107,6 +105,28 @@ public class RestaurantContextInterceptor implements HandlerInterceptor {
         return "GET".equalsIgnoreCase(method)
                 || "HEAD".equalsIgnoreCase(method)
                 || "OPTIONS".equalsIgnoreCase(method);
+    }
+
+    /**
+     * Header, path, and {@code restaurantId} query param must agree.
+     * Admin reservation routes pass the restaurant only as a query param;
+     * ignoring that let a client skip the billing gate by omitting {@code X-Restaurant-Id}.
+     */
+    private Long resolveSingleRestaurantId(Long headerRestaurantId, Long pathRestaurantId, Long queryRestaurantId) {
+        Long resolved = null;
+        for (Long candidate : new Long[] {headerRestaurantId, pathRestaurantId, queryRestaurantId}) {
+            if (candidate == null) {
+                continue;
+            }
+            if (resolved == null) {
+                resolved = candidate;
+                continue;
+            }
+            if (!resolved.equals(candidate)) {
+                throw new ConflictException("Restaurant context mismatch between header, path, and query");
+            }
+        }
+        return resolved;
     }
 
     private Long resolvePathRestaurantId(HttpServletRequest request) {

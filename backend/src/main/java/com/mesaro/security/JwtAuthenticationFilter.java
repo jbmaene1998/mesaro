@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mesaro.auth.JwtService;
 import com.mesaro.common.ApiResponse;
 import com.mesaro.common.ErrorCode;
+import com.mesaro.user.UserAccountRepository;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -24,13 +25,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final JwtService jwtService;
     private final ObjectMapper objectMapper;
     private final TokenDenylistService tokenDenylistService;
+    private final UserAccountRepository userAccountRepository;
 
     public JwtAuthenticationFilter(JwtService jwtService,
                                    ObjectMapper objectMapper,
-                                   TokenDenylistService tokenDenylistService) {
+                                   TokenDenylistService tokenDenylistService,
+                                   UserAccountRepository userAccountRepository) {
         this.jwtService = jwtService;
         this.objectMapper = objectMapper;
         this.tokenDenylistService = tokenDenylistService;
+        this.userAccountRepository = userAccountRepository;
     }
 
     @Override
@@ -50,6 +54,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 writeUnauthorized(response);
                 return;
             }
+            if (principal.getUserId() != null
+                    && userAccountRepository.findById(principal.getUserId())
+                    .filter(account -> !account.isEmailVerified())
+                    .isPresent()) {
+                SecurityContextHolder.clearContext();
+                writeEmailUnverified(response);
+                return;
+            }
             UsernamePasswordAuthenticationToken authentication =
                     new UsernamePasswordAuthenticationToken(principal, token, List.of());
             SecurityContextHolder.getContext().setAuthentication(authentication);
@@ -65,5 +77,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         response.setContentType("application/json");
         response.setCharacterEncoding("UTF-8");
         objectMapper.writeValue(response.getWriter(), ApiResponse.error(ErrorCode.UNAUTHORIZED, "Invalid token"));
+    }
+
+    private void writeEmailUnverified(HttpServletResponse response) throws IOException {
+        response.setStatus(HttpStatus.FORBIDDEN.value());
+        response.setContentType("application/json");
+        response.setCharacterEncoding("UTF-8");
+        objectMapper.writeValue(response.getWriter(),
+                ApiResponse.error(ErrorCode.EMAIL_NOT_VERIFIED, "Verify your email before continuing"));
     }
 }

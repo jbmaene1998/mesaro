@@ -6,6 +6,7 @@ import { Link, Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
+import { resendVerification } from "@/api/auth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -30,7 +31,18 @@ function getErrorStatus(error: unknown) {
   return typeof status === "number" ? status : null;
 }
 
+function isEmailUnverified(error: unknown) {
+  return typeof error === "object"
+    && error !== null
+    && "code" in error
+    && (error as { code?: unknown }).code === "EMAIL_NOT_VERIFIED";
+}
+
 function getLoginErrorMessage(error: unknown, copy: Copy) {
+  if (isEmailUnverified(error)) {
+    return copy.emailNotVerified;
+  }
+
   if (isRateLimited(error)) {
     return copy.tooManyAttempts;
   }
@@ -59,6 +71,8 @@ export function LoginPage() {
   const { login, isAuthenticated, isLoading: isAuthLoading } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [needsVerification, setNeedsVerification] = useState(false);
+  const [resendState, setResendState] = useState<"idle" | "sending" | "sent">("idle");
   const loginSchema = z.object({
     email: z.string().min(1, copy.emailRequired).email(copy.validEmail),
     password: z.string().min(1, copy.passwordRequired)
@@ -77,7 +91,11 @@ export function LoginPage() {
 
   useEffect(() => {
     trackEvent(ANALYTICS_EVENTS.AUTH_LOGIN_VIEW, { page: "login" });
-  }, []);
+    if (searchParams.get("unverified") === "1") {
+      setNeedsVerification(true);
+      setSubmitError(copy.emailNotVerified);
+    }
+  }, [copy.emailNotVerified, searchParams]);
 
   if (isAuthenticated) {
     return <Navigate to={redirectPath} replace />;
@@ -89,6 +107,7 @@ export function LoginPage() {
     }
 
     setSubmitError(null);
+    setNeedsVerification(false);
     trackEvent(ANALYTICS_EVENTS.AUTH_LOGIN_SUBMIT, {
       page: "login",
       hasReturnUrl: Boolean(returnUrl)
@@ -99,8 +118,28 @@ export function LoginPage() {
       trackEvent(ANALYTICS_EVENTS.AUTH_LOGIN_SUCCESS, { page: "login", redirectPath });
       navigate(redirectPath, { replace: true });
     } catch (error) {
+      const unverified = isEmailUnverified(error);
+      setNeedsVerification(unverified);
       setSubmitError(getLoginErrorMessage(error, copy));
       trackEvent(ANALYTICS_EVENTS.AUTH_LOGIN_FAILURE, { page: "login" });
+      if (!unverified) {
+        showApiError(error);
+      }
+    }
+  };
+
+  const handleResendVerification = async () => {
+    const email = form.getValues("email").trim();
+    if (!email) {
+      setSubmitError(copy.emailRequired);
+      return;
+    }
+    setResendState("sending");
+    try {
+      await resendVerification(email);
+      setResendState("sent");
+    } catch (error) {
+      setResendState("idle");
       showApiError(error);
     }
   };
@@ -146,9 +185,14 @@ export function LoginPage() {
             ) : null}
           </div>
           <div className="space-y-2">
-            <label className="text-sm font-medium" htmlFor="password">
-              {copy.password}
-            </label>
+            <div className="flex items-center justify-between gap-3">
+              <label className="text-sm font-medium" htmlFor="password">
+                {copy.password}
+              </label>
+              <Link to="/forgot-password" className="text-sm text-muted-foreground underline underline-offset-4 hover:text-foreground">
+                {copy.forgotPassword}
+              </Link>
+            </div>
             <div className="relative">
               <Input
                 id="password"
@@ -177,14 +221,24 @@ export function LoginPage() {
               {submitError}
             </p>
           ) : null}
+          {needsVerification ? (
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full"
+              disabled={resendState === "sending"}
+              onClick={() => void handleResendVerification()}
+            >
+              {resendState === "sending"
+                ? copy.resendingVerification
+                : resendState === "sent"
+                  ? copy.verificationResent
+                  : copy.resendVerification}
+            </Button>
+          ) : null}
           <Button className="w-full" type="submit" disabled={isSubmitting || isAuthLoading}>
             {(isSubmitting || isAuthLoading) ? copy.signingIn : copy.signIn}
           </Button>
-          <div className="text-center text-sm">
-            <Link to="/forgot-password" className="text-muted-foreground underline underline-offset-4 hover:text-foreground">
-              {copy.forgotPassword}
-            </Link>
-          </div>
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             <Button type="button" variant="outline" asChild>
               <Link to="/register">{copy.createNewUser}</Link>
@@ -215,6 +269,10 @@ const COPY = {
     hidePassword: "Hide password",
     showPassword: "Show password",
     forgotPassword: "Forgot password?",
+    emailNotVerified: "Verify your account before signing in. Check your email for the confirmation link.",
+    resendVerification: "Resend verification email",
+    resendingVerification: "Sending...",
+    verificationResent: "Verification email sent",
     createNewUser: "Create new user",
     goBack: "Go back"
   },
@@ -233,6 +291,10 @@ const COPY = {
     hidePassword: "Verberg wachtwoord",
     showPassword: "Toon wachtwoord",
     forgotPassword: "Wachtwoord vergeten?",
+    emailNotVerified: "Bevestig je account voordat je inlogt. Controleer je e-mail voor de bevestigingslink.",
+    resendVerification: "Verificatiemail opnieuw sturen",
+    resendingVerification: "Versturen...",
+    verificationResent: "Verificatiemail verstuurd",
     createNewUser: "Nieuwe gebruiker maken",
     goBack: "Ga terug"
   },
@@ -251,6 +313,10 @@ const COPY = {
     hidePassword: "Masquer le mot de passe",
     showPassword: "Afficher le mot de passe",
     forgotPassword: "Mot de passe oublie ?",
+    emailNotVerified: "Verifiez votre compte avant de vous connecter. Consultez votre e-mail pour le lien de confirmation.",
+    resendVerification: "Renvoyer l'e-mail de verification",
+    resendingVerification: "Envoi...",
+    verificationResent: "E-mail de verification envoye",
     createNewUser: "Creer un utilisateur",
     goBack: "Retour"
   },
@@ -269,6 +335,10 @@ const COPY = {
     hidePassword: "Ocultar contrasena",
     showPassword: "Mostrar contrasena",
     forgotPassword: "Olvidaste tu contrasena?",
+    emailNotVerified: "Verifica tu cuenta antes de iniciar sesion. Revisa tu correo para el enlace de confirmacion.",
+    resendVerification: "Reenviar correo de verificacion",
+    resendingVerification: "Enviando...",
+    verificationResent: "Correo de verificacion enviado",
     createNewUser: "Crear nuevo usuario",
     goBack: "Volver"
   }

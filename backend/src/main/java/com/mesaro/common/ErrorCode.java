@@ -13,6 +13,7 @@ public final class ErrorCode {
     public static final String CAPACITY_EXCEEDED = "CAPACITY_EXCEEDED";
     public static final String BILLING_LIMIT_EXCEEDED = "BILLING_LIMIT_EXCEEDED";
     public static final String BILLING_ACCESS_BLOCKED = "BILLING_ACCESS_BLOCKED";
+    public static final String EMAIL_NOT_VERIFIED = "EMAIL_NOT_VERIFIED";
     public static final String INTERNAL_ERROR = "INTERNAL_ERROR";
 
     private ErrorCode() {

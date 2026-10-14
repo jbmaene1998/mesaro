@@ -32,3 +32,9 @@ jobs:
         env:
           NODE_OPTIONS: --max-old-space-size=4096
         run: npm test
+
+      - name: Production build
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
+          VITE_API_URL: https://api.example.com/api
+        run: npm run build

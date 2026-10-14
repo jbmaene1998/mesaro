@@ -137,7 +137,7 @@ class AuthFlowIntegrationTest extends IntegrationTestBase {
     }
 
     @Test
-    void register_createsAccountAndTokens() throws Exception {
+    void register_requiresEmailVerificationBeforeLogin() throws Exception {
         RegisterRequest request = new RegisterRequest(
                 "signup-owner@example.com",
                 "secret123",
@@ -149,11 +149,22 @@ class AuthFlowIntegrationTest extends IntegrationTestBase {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.data.accessToken").isNotEmpty())
-                .andExpect(jsonPath("$.data.refreshToken").isNotEmpty());
+                .andExpect(jsonPath("$.data.verificationRequired").value(true))
+                .andExpect(jsonPath("$.data.email").value("signup-owner@example.com"))
+                .andExpect(jsonPath("$.data.accessToken").doesNotExist());
 
         UserAccount user = userAccountRepository.findByEmail("signup-owner@example.com").orElseThrow();
-        assertThat(user).isNotNull();
+        assertThat(user.isEmailVerified()).isFalse();
+
+        mockMvc.perform(post("/api/auth/login")
+                        .with(requestPost -> {
+                            requestPost.setRemoteAddr(TEST_IP);
+                            return requestPost;
+                        })
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new LoginRequest("signup-owner@example.com", "secret123"))))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.error.code").value("EMAIL_NOT_VERIFIED"));
     }
 
     @Test

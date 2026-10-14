@@ -1,6 +1,5 @@
 package com.mesaro.staff;
 
-import com.mesaro.auth.AuthResponse;
 import com.mesaro.common.ApiResponse;
 import com.mesaro.security.AuthPrincipal;
 import com.mesaro.security.RestaurantContext;
@@ -87,9 +86,12 @@ public class StaffController {
 
     @PostMapping("/accept-invite")
     @Operation(summary = "Accept invite", description = "Accept a staff invite using an invite token")
-    public ApiResponse<AuthResponse> acceptInvite(@Valid @RequestBody AcceptStaffInviteRequest request) {
-        AuthResponse authResponse = staffService.acceptInvite(request.inviteToken(), request.password());
-        return ApiResponse.success(authResponse, "Invite accepted");
+    public ApiResponse<AcceptInviteResponse> acceptInvite(@Valid @RequestBody AcceptStaffInviteRequest request) {
+        AcceptInviteResponse response = staffService.acceptInvite(request.inviteToken(), request.password());
+        String message = response.verificationRequired()
+                ? "Account created. Verify your email to continue."
+                : "Invite accepted";
+        return ApiResponse.success(response, message);
     }
 
     @GetMapping("/{id}")

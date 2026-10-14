@@ -223,12 +223,13 @@ ON CONFLICT (combination_id, table_id) DO NOTHING;
 -- -----------------------------------------------------------------------------
 -- Demo user and membership
 -- -----------------------------------------------------------------------------
-INSERT INTO user_account (email, password_hash, enabled, max_restaurants)
-VALUES ('admin@demo.com', '$2a$10$eCalHosZDgLgBUP7juq0Re3j/6ShX3HsDS8CXeqDZWS0y1WkLqWP2', true, 2)
+INSERT INTO user_account (email, password_hash, enabled, max_restaurants, email_verified_at)
+VALUES ('admin@demo.com', '$2a$10$eCalHosZDgLgBUP7juq0Re3j/6ShX3HsDS8CXeqDZWS0y1WkLqWP2', true, 2, NOW())
 ON CONFLICT (email) DO UPDATE
 SET password_hash = EXCLUDED.password_hash,
     enabled = EXCLUDED.enabled,
-    max_restaurants = GREATEST(user_account.max_restaurants, EXCLUDED.max_restaurants);
+    max_restaurants = GREATEST(user_account.max_restaurants, EXCLUDED.max_restaurants),
+    email_verified_at = COALESCE(user_account.email_verified_at, EXCLUDED.email_verified_at);
 
 -- Demo OWNER has two active restaurants; keep quota aligned with seed inventory.
 UPDATE user_account
@@ -245,24 +246,25 @@ ON CONFLICT (user_id, restaurant_id) DO NOTHING;
 -- -----------------------------------------------------------------------------
 -- Additional demo users (for role-based UI testing)
 -- -----------------------------------------------------------------------------
-INSERT INTO user_account (email, password_hash, enabled, full_name)
+INSERT INTO user_account (email, password_hash, enabled, full_name, email_verified_at)
 VALUES
-    ('manager.demo@demo.com', '$2a$10$eCalHosZDgLgBUP7juq0Re3j/6ShX3HsDS8CXeqDZWS0y1WkLqWP2', true, 'Alex Romero'),
-    ('staff.demo@demo.com', '$2a$10$eCalHosZDgLgBUP7juq0Re3j/6ShX3HsDS8CXeqDZWS0y1WkLqWP2', true, 'Noa Garcia'),
-    ('host.demo@demo.com', '$2a$10$eCalHosZDgLgBUP7juq0Re3j/6ShX3HsDS8CXeqDZWS0y1WkLqWP2', true, 'Luna Ortega'),
-    ('server1.demo@demo.com', '$2a$10$eCalHosZDgLgBUP7juq0Re3j/6ShX3HsDS8CXeqDZWS0y1WkLqWP2', true, 'Mateo Ruiz'),
-    ('server2.demo@demo.com', '$2a$10$eCalHosZDgLgBUP7juq0Re3j/6ShX3HsDS8CXeqDZWS0y1WkLqWP2', true, 'Iris Vidal'),
-    ('bartender.demo@demo.com', '$2a$10$eCalHosZDgLgBUP7juq0Re3j/6ShX3HsDS8CXeqDZWS0y1WkLqWP2', true, 'Sergio Costa'),
-    ('manager.terrace@demo.com', '$2a$10$eCalHosZDgLgBUP7juq0Re3j/6ShX3HsDS8CXeqDZWS0y1WkLqWP2', true, 'Emma Navarro'),
-    ('staff.terrace@demo.com', '$2a$10$eCalHosZDgLgBUP7juq0Re3j/6ShX3HsDS8CXeqDZWS0y1WkLqWP2', true, 'Leo Campos'),
-    ('host.terrace@demo.com', '$2a$10$eCalHosZDgLgBUP7juq0Re3j/6ShX3HsDS8CXeqDZWS0y1WkLqWP2', true, 'Aina Serrano'),
-    ('server1.terrace@demo.com', '$2a$10$eCalHosZDgLgBUP7juq0Re3j/6ShX3HsDS8CXeqDZWS0y1WkLqWP2', true, 'Bruno Molina'),
-    ('server2.terrace@demo.com', '$2a$10$eCalHosZDgLgBUP7juq0Re3j/6ShX3HsDS8CXeqDZWS0y1WkLqWP2', true, 'Sara Delgado'),
-    ('runner.terrace@demo.com', '$2a$10$eCalHosZDgLgBUP7juq0Re3j/6ShX3HsDS8CXeqDZWS0y1WkLqWP2', true, 'Pol Fuentes')
+    ('manager.demo@demo.com', '$2a$10$eCalHosZDgLgBUP7juq0Re3j/6ShX3HsDS8CXeqDZWS0y1WkLqWP2', true, 'Alex Romero', NOW()),
+    ('staff.demo@demo.com', '$2a$10$eCalHosZDgLgBUP7juq0Re3j/6ShX3HsDS8CXeqDZWS0y1WkLqWP2', true, 'Noa Garcia', NOW()),
+    ('host.demo@demo.com', '$2a$10$eCalHosZDgLgBUP7juq0Re3j/6ShX3HsDS8CXeqDZWS0y1WkLqWP2', true, 'Luna Ortega', NOW()),
+    ('server1.demo@demo.com', '$2a$10$eCalHosZDgLgBUP7juq0Re3j/6ShX3HsDS8CXeqDZWS0y1WkLqWP2', true, 'Mateo Ruiz', NOW()),
+    ('server2.demo@demo.com', '$2a$10$eCalHosZDgLgBUP7juq0Re3j/6ShX3HsDS8CXeqDZWS0y1WkLqWP2', true, 'Iris Vidal', NOW()),
+    ('bartender.demo@demo.com', '$2a$10$eCalHosZDgLgBUP7juq0Re3j/6ShX3HsDS8CXeqDZWS0y1WkLqWP2', true, 'Sergio Costa', NOW()),
+    ('manager.terrace@demo.com', '$2a$10$eCalHosZDgLgBUP7juq0Re3j/6ShX3HsDS8CXeqDZWS0y1WkLqWP2', true, 'Emma Navarro', NOW()),
+    ('staff.terrace@demo.com', '$2a$10$eCalHosZDgLgBUP7juq0Re3j/6ShX3HsDS8CXeqDZWS0y1WkLqWP2', true, 'Leo Campos', NOW()),
+    ('host.terrace@demo.com', '$2a$10$eCalHosZDgLgBUP7juq0Re3j/6ShX3HsDS8CXeqDZWS0y1WkLqWP2', true, 'Aina Serrano', NOW()),
+    ('server1.terrace@demo.com', '$2a$10$eCalHosZDgLgBUP7juq0Re3j/6ShX3HsDS8CXeqDZWS0y1WkLqWP2', true, 'Bruno Molina', NOW()),
+    ('server2.terrace@demo.com', '$2a$10$eCalHosZDgLgBUP7juq0Re3j/6ShX3HsDS8CXeqDZWS0y1WkLqWP2', true, 'Sara Delgado', NOW()),
+    ('runner.terrace@demo.com', '$2a$10$eCalHosZDgLgBUP7juq0Re3j/6ShX3HsDS8CXeqDZWS0y1WkLqWP2', true, 'Pol Fuentes', NOW())
 ON CONFLICT (email) DO UPDATE
 SET password_hash = EXCLUDED.password_hash,
     enabled = EXCLUDED.enabled,
-    full_name = EXCLUDED.full_name;
+    full_name = EXCLUDED.full_name,
+    email_verified_at = COALESCE(user_account.email_verified_at, EXCLUDED.email_verified_at);
 
 WITH seed_users AS (
     SELECT id

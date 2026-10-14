@@ -27,10 +27,7 @@ public record ConfirmationResult(
         LocalDate date = reservation.getStartAtUtc().atZone(timezone).toLocalDate();
         LocalTime time = reservation.getStartAtUtc().atZone(timezone).toLocalTime();
 
-        List<String> tableLabels = reservation.getTables().stream()
-                .map(t -> t.getLabel())
-                .sorted()
-                .toList();
+        List<String> tableLabels = List.of();
 
         String shiftName = reservation.getShift() != null ? reservation.getShift().getName() : null;
 

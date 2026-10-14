@@ -6,7 +6,7 @@ Some GitHub Actions workflows are intentionally **not active** yet.
 
 | Workflow | When | Job names (for required checks) |
 |----------|------|----------------------------------|
-| `backend-ci.yml` | Every PR/push to `dev`/`main` | `Backend CI / Backend unit tests` |
+| `backend-ci.yml` | Every PR/push to `dev`/`main` | `Backend CI / Backend tests` |
 | `frontend-ci.yml` | Every PR/push to `dev`/`main` | `Frontend CI / Frontend unit tests` |
 | `e2e.yml` | Every PR/push to `dev`/`main` | `E2E Tests / Playwright E2E` |
 | `deploy-staging.yml` | Push to `dev` | includes `E2E smoke (staging)` after deploy |

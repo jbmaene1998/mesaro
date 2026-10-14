@@ -1,6 +1,8 @@
+import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { billingApi, type BillingStatusResponse, type SubscriptionStatus } from '../../api/billing';
 import type { AppError } from '../../api/types';
+import { stripeBillingRedirectUrl } from '@/features/billing/stripe-redirect';
 import { useAuth, useSelectedRestaurantId } from '../../hooks/use-auth';
 import { useI18n } from '@/i18n';
 import type { messages } from '@/i18n/messages';
@@ -71,6 +73,8 @@ export default function BillingSettingsPage() {
   const restaurantId = useSelectedRestaurantId();
   const queryClient = useQueryClient();
 
+  const [redirectRejected, setRedirectRejected] = useState(false);
+
   const { data: billing, isLoading, error } = useQuery<BillingStatusResponse>({
     queryKey: ['billing', 'status', restaurantId],
     queryFn: () => billingApi.getStatus(restaurantId!),
@@ -80,14 +84,24 @@ export default function BillingSettingsPage() {
   const checkoutMutation = useMutation({
     mutationFn: () => billingApi.createCheckoutSession(restaurantId!),
     onSuccess: ({ url }) => {
-      window.location.href = url;
+      const safeUrl = stripeBillingRedirectUrl(url);
+      if (!safeUrl) {
+        setRedirectRejected(true);
+        return;
+      }
+      window.location.href = safeUrl;
     },
   });
 
   const portalMutation = useMutation({
     mutationFn: () => billingApi.createPortalSession(restaurantId!),
     onSuccess: ({ url }) => {
-      window.location.href = url;
+      const safeUrl = stripeBillingRedirectUrl(url);
+      if (!safeUrl) {
+        setRedirectRejected(true);
+        return;
+      }
+      window.location.href = safeUrl;
     },
   });
 
@@ -223,6 +237,7 @@ export default function BillingSettingsPage() {
 
       {checkoutMutation.isError && <p className="text-sm text-red-600">{t('billing.checkoutError')}</p>}
       {portalMutation.isError && <p className="text-sm text-red-600">{t('billing.portalError')}</p>}
+      {redirectRejected && <p className="text-sm text-red-600">{t('billing.checkoutError')}</p>}
       {quantityMutation.isError && (
         <p className="text-sm text-red-600">{quantityError?.message ?? t('billing.quantityErrorDefault')}</p>
       )}

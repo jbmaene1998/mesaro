@@ -8,11 +8,13 @@ on:
 
 jobs:
   backend-unit:
-    name: Backend unit tests
+    name: Backend tests
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: backend
+
+    timeout-minutes: 45
 
     # IntegrationTestBase defaults to jdbc:postgresql://localhost:55432/mesaro
     services:
@@ -43,7 +45,7 @@ jobs:
           cache-dependency-path: backend/pom.xml
 
       - name: Run unit and integration tests
-        run: ./mvnw -B test
+        run: ./mvnw -B -Pdocker-tests verify
         env:
           # Avoid requiring Redis for Spring Session during CI
           SESSION_STORE_TYPE: none
@@ -53,4 +55,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: surefire-reports
-          path: backend/target/surefire-reports/
+          path: |
+            backend/target/surefire-reports/
+            backend/target/failsafe-reports/

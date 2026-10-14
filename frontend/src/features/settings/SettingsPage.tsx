@@ -10,6 +10,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorBoundary } from "@/components/ui/error-boundary";
 import { FormSkeleton, InlineLoader } from "@/components/ui/loading";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { forgotPassword } from "@/features/auth/api";
 import { sanitizeSlug } from "@/features/auth/register-utils";
 import {
   getRestaurantDetails,
@@ -49,6 +50,7 @@ export function SettingsPage() {
   const [newRestaurantTimezone, setNewRestaurantTimezone] = useState(Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC");
   const [newRestaurantLocale, setNewRestaurantLocale] = useState("en");
   const [isCreateAdditionalOpen, setIsCreateAdditionalOpen] = useState(false);
+  const [resetEmailSent, setResetEmailSent] = useState(false);
 
   const detailsQuery = useQuery({
     queryKey: ["restaurant-details", selectedRestaurantId],
@@ -227,6 +229,21 @@ export function SettingsPage() {
     onError: (error) => showApiError(error)
   });
 
+  const passwordResetMutation = useMutation({
+    mutationFn: async () => {
+      const email = auth.user?.email?.trim();
+      if (!email) {
+        throw new Error(copy.passwordResetMissingEmail);
+      }
+      await forgotPassword(email);
+    },
+    onSuccess: () => {
+      setResetEmailSent(true);
+      showSuccess(copy.passwordResetSent);
+    },
+    onError: (error) => showApiError(error)
+  });
+
   const copyToClipboard = async (value: string, successText: string) => {
     try {
       await navigator.clipboard.writeText(value);
@@ -262,6 +279,28 @@ export function SettingsPage() {
 
         <TabsContent value="general" className="focus:ring-0 focus:outline-none">
           <ErrorBoundary level="section">
+          <div className="space-y-4">
+          <SettingsSection
+            title={copy.password}
+            description={copy.passwordDescription}
+          >
+            <p className="text-sm">
+              {copy.signedInAs}{" "}
+              <span className="font-medium">{auth.user?.email || copy.passwordResetMissingEmail}</span>
+            </p>
+            <p className="text-sm text-muted-foreground">{copy.passwordEmailHelp}</p>
+            {resetEmailSent ? (
+              <p className="text-sm text-muted-foreground">{copy.passwordResetSentDetail}</p>
+            ) : null}
+            <Button
+              type="button"
+              variant="outline"
+              disabled={!auth.user?.email || passwordResetMutation.isPending}
+              onClick={() => passwordResetMutation.mutate()}
+            >
+              {passwordResetMutation.isPending ? copy.sendingResetEmail : copy.sendResetEmail}
+            </Button>
+          </SettingsSection>
           <SettingsSection
             title={copy.restaurantProfile}
             description={copy.coreIdentity}
@@ -350,6 +389,7 @@ export function SettingsPage() {
               <EmptyState title={copy.noSettingsFound} description={copy.settingsUnavailable} />
             ) : null}
           </SettingsSection>
+          </div>
           </ErrorBoundary>
         </TabsContent>
 
@@ -648,6 +688,15 @@ const COPY = {
     restaurantCreated: "Restaurant created",
     settings: "Settings",
     settingsSubtitle: "Restaurant configuration and booking behavior.",
+    password: "Password",
+    passwordDescription: "We'll email you a link to choose a new password.",
+    signedInAs: "Signed in as",
+    passwordEmailHelp: "The link goes to this address and expires in 2 hours.",
+    sendResetEmail: "Email me a reset link",
+    sendingResetEmail: "Sending...",
+    passwordResetSent: "Reset email sent",
+    passwordResetSentDetail: "Check your inbox and spam folder for the reset link.",
+    passwordResetMissingEmail: "No email on this account",
     general: "General",
     bookingConfiguration: "Booking Configuration",
     multiRestaurant: "Multi-Restaurant",
@@ -709,6 +758,15 @@ const COPY = {
     restaurantCreated: "Restaurant aangemaakt",
     settings: "Instellingen",
     settingsSubtitle: "Restaurantconfiguratie en boekingsgedrag.",
+    password: "Wachtwoord",
+    passwordDescription: "We sturen je een e-mail met een link om een nieuw wachtwoord te kiezen.",
+    signedInAs: "Aangemeld als",
+    passwordEmailHelp: "De link gaat naar dit adres en verloopt na 2 uur.",
+    sendResetEmail: "Stuur mij een resetlink",
+    sendingResetEmail: "Versturen...",
+    passwordResetSent: "Resetmail verstuurd",
+    passwordResetSentDetail: "Controleer je inbox en spam voor de resetlink.",
+    passwordResetMissingEmail: "Geen e-mail op dit account",
     general: "Algemeen",
     bookingConfiguration: "Boekingsconfiguratie",
     multiRestaurant: "Multi-restaurant",
@@ -770,6 +828,15 @@ const COPY = {
     restaurantCreated: "Restaurant cree",
     settings: "Parametres",
     settingsSubtitle: "Configuration du restaurant et comportement de reservation.",
+    password: "Mot de passe",
+    passwordDescription: "Nous vous envoyons un e-mail avec un lien pour choisir un nouveau mot de passe.",
+    signedInAs: "Connecte en tant que",
+    passwordEmailHelp: "Le lien est envoye a cette adresse et expire dans 2 heures.",
+    sendResetEmail: "M'envoyer un lien de reinitialisation",
+    sendingResetEmail: "Envoi...",
+    passwordResetSent: "E-mail de reinitialisation envoye",
+    passwordResetSentDetail: "Verifiez votre boite de reception et vos spams.",
+    passwordResetMissingEmail: "Aucun e-mail sur ce compte",
     general: "General",
     bookingConfiguration: "Configuration des reservations",
     multiRestaurant: "Multi-restaurant",
@@ -831,6 +898,15 @@ const COPY = {
     restaurantCreated: "Restaurante creado",
     settings: "Configuracion",
     settingsSubtitle: "Configuracion del restaurante y comportamiento de reservas.",
+    password: "Contrasena",
+    passwordDescription: "Te enviamos un correo con un enlace para elegir una nueva contrasena.",
+    signedInAs: "Sesion iniciada como",
+    passwordEmailHelp: "El enlace se envia a esta direccion y caduca en 2 horas.",
+    sendResetEmail: "Enviarme un enlace",
+    sendingResetEmail: "Enviando...",
+    passwordResetSent: "Correo de restablecimiento enviado",
+    passwordResetSentDetail: "Revisa tu bandeja de entrada y el spam.",
+    passwordResetMissingEmail: "No hay correo en esta cuenta",
     general: "General",
     bookingConfiguration: "Configuracion de reservas",
     multiRestaurant: "Multi-restaurante",

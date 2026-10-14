@@ -39,6 +39,14 @@ public class LoggingEmailService implements EmailService {
     }
 
     @Override
+    public void sendEmailVerification(String email, String fullName, String verificationToken) {
+        log.info("Verification email to {} fullName='{}' tokenFingerprint={}",
+                LogSanitizer.maskEmail(email),
+                fullName == null ? "" : fullName,
+                LogSanitizer.tokenFingerprint(verificationToken));
+    }
+
+    @Override
     public void sendPasswordChangedNotice(String email) {
         log.info("Password changed notice to {}", LogSanitizer.maskEmail(email));
     }

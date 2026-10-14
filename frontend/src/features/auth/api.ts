@@ -1,6 +1,6 @@
 import { forgotPassword as forgotPasswordRequest, register as registerRequest, resetPassword as resetPasswordRequest } from "@/api/auth";
 import { apiClient } from "@/api/client";
-import type { ApiResponse, AppError, AuthResponse } from "@/api/types";
+import type { ApiResponse, AppError } from "@/api/types";
 
 export async function forgotPassword(email: string) {
   await forgotPasswordRequest(email);
@@ -37,12 +37,20 @@ export async function previewInvite(inviteToken: string) {
   return unwrapResponse(data);
 }
 
+export interface AcceptInviteResult {
+  verificationRequired: boolean;
+  email: string;
+  accessToken: string | null;
+  refreshToken: string | null;
+  expiresIn: number | null;
+}
+
 export async function acceptInvite(inviteToken: string, password?: string) {
   const payload: { inviteToken: string; password?: string } = { inviteToken };
   if (password && password.trim().length > 0) {
     payload.password = password;
   }
-  const { data } = await apiClient.post<ApiResponse<AuthResponse>>("/staff/accept-invite", payload);
+  const { data } = await apiClient.post<ApiResponse<AcceptInviteResult>>("/staff/accept-invite", payload);
   return unwrapResponse(data);
 }
 

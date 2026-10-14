@@ -29,7 +29,6 @@ public final class ReservationEmailComposer {
     public static ComposedEmail confirmation(ReservationEmailData data, String frontendUrl) {
         String date = data.startAtUtc().atZone(data.getTimezoneId()).format(DATE_FORMAT);
         String time = data.startAtUtc().atZone(data.getTimezoneId()).format(TIME_FORMAT);
-        String tables = String.join(", ", data.tableLabels());
         String cancelUrl = buildCancelUrl(frontendUrl, data);
         String subject = String.format("Reservation Confirmed - %s (%s)",
                 data.restaurantName(), data.confirmationCode());
@@ -40,7 +39,6 @@ public final class ReservationEmailComposer {
         rows.put("Date", date);
         rows.put("Time", time);
         rows.put("Party size", data.partySize() + (data.partySize() == 1 ? " guest" : " guests"));
-        rows.put("Table(s)", tables);
 
         String bodyHtml = EmailBlocks.paragraph(
                 "Hi <strong>" + EmailBlocks.escape(data.guestName()) + "</strong>, your reservation is confirmed.")
@@ -62,7 +60,6 @@ public final class ReservationEmailComposer {
                 Date: %s
                 Time: %s
                 Party Size: %d guests
-                Table(s): %s
 
                 Please arrive on time. Your table will be held for 15 minutes after your reservation time.
                 A calendar invite (.ics) is attached to this email.
@@ -78,7 +75,6 @@ public final class ReservationEmailComposer {
                 date,
                 time,
                 data.partySize(),
-                tables,
                 cancelUrl == null
                         ? ""
                         : "\nNEED TO CANCEL?\n" + cancelUrl + "\n\nThis cancellation link expires 7 days after booking.\n",

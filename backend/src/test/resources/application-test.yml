@@ -18,6 +18,8 @@ management:
       enabled: false
 
 app:
+  ops:
+    alerts-enabled: false
   logging:
     elasticsearch:
       enabled: false

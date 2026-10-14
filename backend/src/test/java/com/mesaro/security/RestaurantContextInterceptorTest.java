@@ -2,6 +2,8 @@ package com.mesaro.security;
 
 import com.mesaro.auth.AuthRestaurantSummary;
 import com.mesaro.billing.BillingService;
+import com.mesaro.common.exception.ConflictException;
+import com.mesaro.restaurant.Restaurant;
 import com.mesaro.restaurant.RestaurantRepository;
 import com.mesaro.user.UserRestaurantRepository;
 import org.junit.jupiter.api.AfterEach;
@@ -25,6 +27,7 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
@@ -104,6 +107,63 @@ class RestaurantContextInterceptorTest {
         assertThat(handled).isTrue();
         assertThat(RestaurantContextHolder.get()).isEmpty();
         verifyNoInteractions(userRestaurantRepository);
+    }
+
+    @Test
+    void preHandle_gatesBillingOnRestaurantQueryParamForWrites() {
+        AuthPrincipal principal = principalWith(
+                List.of(new RestaurantRoleAssignment(5L, RestaurantRole.STAFF))
+        );
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(principal, "token", List.of())
+        );
+        Restaurant restaurant = new Restaurant("Demo", "demo", "UTC");
+        when(userRestaurantRepository.findEffectiveRole(7L, 5L)).thenReturn(Optional.of(RestaurantRole.STAFF));
+        when(restaurantRepository.findById(5L)).thenReturn(Optional.of(restaurant));
+
+        MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/admin/reservations");
+        request.setParameter("restaurantId", "5");
+
+        boolean handled = interceptor.preHandle(request, new MockHttpServletResponse(), new Object());
+
+        assertThat(handled).isTrue();
+        verify(billingService).checkBillingAccess(restaurant);
+    }
+
+    @Test
+    void preHandle_doesNotGateBillingOnReadWithQueryParam() {
+        AuthPrincipal principal = principalWith(
+                List.of(new RestaurantRoleAssignment(5L, RestaurantRole.STAFF))
+        );
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(principal, "token", List.of())
+        );
+        when(userRestaurantRepository.findEffectiveRole(7L, 5L)).thenReturn(Optional.of(RestaurantRole.STAFF));
+
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/admin/reservations");
+        request.setParameter("restaurantId", "5");
+
+        boolean handled = interceptor.preHandle(request, new MockHttpServletResponse(), new Object());
+
+        assertThat(handled).isTrue();
+        verifyNoInteractions(billingService);
+    }
+
+    @Test
+    void preHandle_rejectsMismatchedHeaderAndQueryRestaurant() {
+        AuthPrincipal principal = principalWith(
+                List.of(new RestaurantRoleAssignment(5L, RestaurantRole.STAFF))
+        );
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(principal, "token", List.of())
+        );
+
+        MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/admin/reservations");
+        request.addHeader(RestaurantContextInterceptor.RESTAURANT_HEADER, "1");
+        request.setParameter("restaurantId", "5");
+
+        assertThatThrownBy(() -> interceptor.preHandle(request, new MockHttpServletResponse(), new Object()))
+                .isInstanceOf(ConflictException.class);
     }
 
     private AuthPrincipal principalWith(List<RestaurantRoleAssignment> roles) {

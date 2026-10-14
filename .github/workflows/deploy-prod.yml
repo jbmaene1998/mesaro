@@ -14,19 +14,233 @@ jobs:
     name: Deploy to production
     runs-on: ubuntu-latest
     environment: production
+    timeout-minutes: 45
     steps:
-      - name: Production deploy stub
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Require production configuration
         env:
-          # Bound so Hostinger cutover can reuse the same Environment names as staging.
-          # Until secrets/vars exist, this step only documents the contract (does not fail).
+          PROD_SSH_HOST: ${{ vars.PROD_SSH_HOST }}
+          PROD_SSH_USER: ${{ vars.PROD_SSH_USER }}
+          PROD_SSH_KEY: ${{ secrets.PROD_SSH_KEY }}
           MESARO_DOMAIN: ${{ vars.MESARO_DOMAIN }}
           EMAIL_FROM: ${{ vars.EMAIL_FROM }}
           EMAIL_SUPPORT_ADDRESS: ${{ vars.EMAIL_SUPPORT_ADDRESS }}
+          EMAIL_PROVIDER: ${{ vars.EMAIL_PROVIDER }}
+          SMTP_HOST: ${{ vars.SMTP_HOST }}
+          SMTP_USERNAME: ${{ vars.SMTP_USERNAME }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
           STRIPE_PRICE_ID: ${{ vars.STRIPE_PRICE_ID }}
+          STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+          STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
+          POSTGRES_DB: ${{ vars.POSTGRES_DB }}
+          POSTGRES_USER: ${{ vars.POSTGRES_USER }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          DB_URL: ${{ vars.DB_URL }}
+          DB_USER: ${{ vars.DB_USER }}
+          DB_PASS: ${{ secrets.DB_PASS }}
+          REDIS_HOST: ${{ vars.REDIS_HOST }}
+          REDIS_PORT: ${{ vars.REDIS_PORT }}
+          REDIS_PASSWORD: ${{ secrets.REDIS_PASSWORD }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          HOLD_TOKEN_SECRET: ${{ secrets.HOLD_TOKEN_SECRET }}
+          RESERVATION_TOKEN_SECRET: ${{ secrets.RESERVATION_TOKEN_SECRET }}
+          STAFF_TOKEN_SECRET: ${{ secrets.STAFF_TOKEN_SECRET }}
+          APP_BASE_URL: ${{ vars.APP_BASE_URL }}
+          API_BASE_URL: ${{ vars.API_BASE_URL }}
+          FRONTEND_URL: ${{ vars.FRONTEND_URL }}
+          API_CORS_ORIGINS: ${{ vars.API_CORS_ORIGINS }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
         run: |
           set -euo pipefail
-          echo "::notice title=Production not wired::main is the prod branch. Staging deploys from 'dev' (Omen). Replace this job when Hostinger VPS deploy is ready — materialize .env.prod from Environment 'production' the same way deploy-staging.yml does for staging."
-          echo "event=${{ github.event_name }} sha=${{ github.sha }}"
-          echo "Environment production config present (non-secret check): MESARO_DOMAIN=${MESARO_DOMAIN:+set} EMAIL_FROM=${EMAIL_FROM:+set} EMAIL_SUPPORT_ADDRESS=${EMAIL_SUPPORT_ADDRESS:+set} STRIPE_PRICE_ID=${STRIPE_PRICE_ID:+set}"
-          echo "Schema: .github/environments/README.md and backend/.env.prod.example"
-          exit 0
+          required=(
+            PROD_SSH_HOST
+            PROD_SSH_USER
+            PROD_SSH_KEY
+            MESARO_DOMAIN
+            EMAIL_FROM
+            EMAIL_SUPPORT_ADDRESS
+            EMAIL_PROVIDER
+            STRIPE_PRICE_ID
+            STRIPE_SECRET_KEY
+            STRIPE_WEBHOOK_SECRET
+            POSTGRES_DB
+            POSTGRES_USER
+            POSTGRES_PASSWORD
+            DB_URL
+            DB_USER
+            DB_PASS
+            REDIS_HOST
+            REDIS_PORT
+            REDIS_PASSWORD
+            JWT_SECRET
+            HOLD_TOKEN_SECRET
+            RESERVATION_TOKEN_SECRET
+            STAFF_TOKEN_SECRET
+            APP_BASE_URL
+            API_BASE_URL
+            FRONTEND_URL
+            API_CORS_ORIGINS
+          )
+          if [ "${EMAIL_PROVIDER}" = "resend" ]; then
+            required+=(RESEND_API_KEY)
+          fi
+          if [ "${EMAIL_PROVIDER}" = "smtp" ]; then
+            required+=(SMTP_HOST SMTP_USERNAME SMTP_PASSWORD)
+          fi
+          if [ "${EMAIL_PROVIDER}" = "log" ] || [ -z "${EMAIL_PROVIDER}" ]; then
+            echo "EMAIL_PROVIDER must be resend or smtp on Environment production" >&2
+            exit 1
+          fi
+          missing=0
+          for k in "${required[@]}"; do
+            if [ -z "${!k:-}" ]; then
+              echo "missing $k — add it on GitHub Environment 'production'. See .github/environments/README.md" >&2
+              missing=1
+            fi
+          done
+          if [ "$missing" -ne 0 ]; then
+            exit 1
+          fi
+
+      - name: Build frontend
+        working-directory: frontend
+        env:
+          VITE_API_URL: https://api.${{ vars.MESARO_DOMAIN }}/api
+        run: |
+          set -euo pipefail
+          npm ci
+          npm run build
+          mkdir -p ../backend/frontend-dist
+          rm -rf ../backend/frontend-dist/*
+          cp -a dist/. ../backend/frontend-dist/
+
+      - name: Materialize production env
+        env:
+          SPRING_PROFILES_ACTIVE: prod
+          MESARO_DOMAIN: ${{ vars.MESARO_DOMAIN }}
+          ACME_EMAIL: ${{ vars.ACME_EMAIL }}
+          FRONTEND_DIST_PATH: ${{ vars.FRONTEND_DIST_PATH }}
+          POSTGRES_DB: ${{ vars.POSTGRES_DB }}
+          POSTGRES_USER: ${{ vars.POSTGRES_USER }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          DB_URL: ${{ vars.DB_URL }}
+          DB_USER: ${{ vars.DB_USER }}
+          DB_PASS: ${{ secrets.DB_PASS }}
+          DB_POOL_SIZE: ${{ vars.DB_POOL_SIZE }}
+          DB_POOL_MIN_IDLE: ${{ vars.DB_POOL_MIN_IDLE }}
+          REDIS_HOST: ${{ vars.REDIS_HOST }}
+          REDIS_PORT: ${{ vars.REDIS_PORT }}
+          REDIS_PASSWORD: ${{ secrets.REDIS_PASSWORD }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          HOLD_TOKEN_SECRET: ${{ secrets.HOLD_TOKEN_SECRET }}
+          RESERVATION_TOKEN_SECRET: ${{ secrets.RESERVATION_TOKEN_SECRET }}
+          STAFF_TOKEN_SECRET: ${{ secrets.STAFF_TOKEN_SECRET }}
+          APP_BASE_URL: ${{ vars.APP_BASE_URL }}
+          API_BASE_URL: ${{ vars.API_BASE_URL }}
+          FRONTEND_URL: ${{ vars.FRONTEND_URL }}
+          API_CORS_ORIGINS: ${{ vars.API_CORS_ORIGINS }}
+          EMAIL_PROVIDER: ${{ vars.EMAIL_PROVIDER }}
+          SMTP_HOST: ${{ vars.SMTP_HOST }}
+          SMTP_PORT: ${{ vars.SMTP_PORT }}
+          SMTP_USERNAME: ${{ vars.SMTP_USERNAME }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          SMTP_AUTH: ${{ vars.SMTP_AUTH }}
+          SMTP_STARTTLS: ${{ vars.SMTP_STARTTLS }}
+          EMAIL_FROM: ${{ vars.EMAIL_FROM }}
+          EMAIL_FROM_NAME: ${{ vars.EMAIL_FROM_NAME }}
+          EMAIL_SUPPORT_ADDRESS: ${{ vars.EMAIL_SUPPORT_ADDRESS }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          RESEND_API_BASE_URL: ${{ vars.RESEND_API_BASE_URL }}
+          STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+          STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
+          STRIPE_PRICE_ID: ${{ vars.STRIPE_PRICE_ID }}
+          STRIPE_SUCCESS_URL: ${{ vars.STRIPE_SUCCESS_URL }}
+          STRIPE_CANCEL_URL: ${{ vars.STRIPE_CANCEL_URL }}
+          STRIPE_PORTAL_RETURN_URL: ${{ vars.STRIPE_PORTAL_RETURN_URL }}
+          RATE_LIMIT_TRUSTED_PROXY_CIDR: ${{ vars.RATE_LIMIT_TRUSTED_PROXY_CIDR }}
+        run: |
+          set -euo pipefail
+          umask 077
+          env_file=backend/.env.prod
+          kv() { printf '%s=%s\n' "$1" "$2"; }
+          {
+            kv SPRING_PROFILES_ACTIVE prod
+            kv MESARO_DOMAIN "${MESARO_DOMAIN}"
+            kv ACME_EMAIL "${ACME_EMAIL:-ops@${MESARO_DOMAIN}}"
+            kv FRONTEND_DIST_PATH "${FRONTEND_DIST_PATH:-./frontend-dist}"
+            kv POSTGRES_DB "${POSTGRES_DB}"
+            kv POSTGRES_USER "${POSTGRES_USER}"
+            kv POSTGRES_PASSWORD "${POSTGRES_PASSWORD}"
+            kv DB_URL "${DB_URL}"
+            kv DB_USER "${DB_USER}"
+            kv DB_PASS "${DB_PASS}"
+            kv DB_POOL_SIZE "${DB_POOL_SIZE:-20}"
+            kv DB_POOL_MIN_IDLE "${DB_POOL_MIN_IDLE:-10}"
+            kv REDIS_HOST "${REDIS_HOST}"
+            kv REDIS_PORT "${REDIS_PORT}"
+            kv REDIS_PASSWORD "${REDIS_PASSWORD}"
+            kv SESSION_STORE_TYPE redis
+            kv ELASTICSEARCH_HEALTH_ENABLED false
+            kv APP_LOG_ELASTIC_ENABLED false
+            kv JWT_SECRET "${JWT_SECRET}"
+            kv HOLD_TOKEN_SECRET "${HOLD_TOKEN_SECRET}"
+            kv RESERVATION_TOKEN_SECRET "${RESERVATION_TOKEN_SECRET}"
+            kv STAFF_TOKEN_SECRET "${STAFF_TOKEN_SECRET}"
+            kv APP_BASE_URL "${APP_BASE_URL}"
+            kv API_BASE_URL "${API_BASE_URL}"
+            kv FRONTEND_URL "${FRONTEND_URL}"
+            kv API_CORS_ORIGINS "${API_CORS_ORIGINS}"
+            kv EMAIL_PROVIDER "${EMAIL_PROVIDER}"
+            kv SMTP_HOST "${SMTP_HOST:-}"
+            kv SMTP_PORT "${SMTP_PORT:-587}"
+            kv SMTP_USERNAME "${SMTP_USERNAME:-}"
+            kv SMTP_PASSWORD "${SMTP_PASSWORD:-}"
+            kv SMTP_AUTH "${SMTP_AUTH:-true}"
+            kv SMTP_STARTTLS "${SMTP_STARTTLS:-true}"
+            kv EMAIL_FROM "${EMAIL_FROM}"
+            kv EMAIL_FROM_NAME "${EMAIL_FROM_NAME:-Mesaro}"
+            kv EMAIL_SUPPORT_ADDRESS "${EMAIL_SUPPORT_ADDRESS}"
+            kv RESEND_API_KEY "${RESEND_API_KEY:-}"
+            kv RESEND_API_BASE_URL "${RESEND_API_BASE_URL:-https://api.resend.com}"
+            kv STRIPE_SECRET_KEY "${STRIPE_SECRET_KEY}"
+            kv STRIPE_WEBHOOK_SECRET "${STRIPE_WEBHOOK_SECRET}"
+            kv STRIPE_PRICE_ID "${STRIPE_PRICE_ID}"
+            kv STRIPE_SUCCESS_URL "${STRIPE_SUCCESS_URL:-}"
+            kv STRIPE_CANCEL_URL "${STRIPE_CANCEL_URL:-}"
+            kv STRIPE_PORTAL_RETURN_URL "${STRIPE_PORTAL_RETURN_URL:-}"
+            kv RATE_LIMIT_TRUSTED_PROXY_CIDR "${RATE_LIMIT_TRUSTED_PROXY_CIDR:-172.16.0.0/12}"
+          } > "$env_file"
+          chmod 600 "$env_file"
+
+      - name: Deploy over SSH
+        env:
+          PROD_SSH_HOST: ${{ vars.PROD_SSH_HOST }}
+          PROD_SSH_USER: ${{ vars.PROD_SSH_USER }}
+          PROD_SSH_KEY: ${{ secrets.PROD_SSH_KEY }}
+          PROD_DEPLOY_PATH: ${{ vars.PROD_DEPLOY_PATH }}
+        run: |
+          set -euo pipefail
+          deploy_path="${PROD_DEPLOY_PATH:-/opt/mesaro}"
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$PROD_SSH_KEY" > ~/.ssh/mesaro_prod
+          chmod 600 ~/.ssh/mesaro_prod
+          ssh-keyscan -H "$PROD_SSH_HOST" >> ~/.ssh/known_hosts
+          export RSYNC_RSH="ssh -i $HOME/.ssh/mesaro_prod -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes"
+          ssh -i ~/.ssh/mesaro_prod -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes \
+            "${PROD_SSH_USER}@${PROD_SSH_HOST}" "mkdir -p '${deploy_path}'"
+          rsync -a --delete \
+            --exclude '.git/' \
+            --exclude 'backend/.env.prod' \
+            --exclude 'backend/.env.staging' \
+            --exclude 'frontend/node_modules/' \
+            --exclude 'frontend/dist/' \
+            --exclude 'backend/target/' \
+            ./ "${PROD_SSH_USER}@${PROD_SSH_HOST}:${deploy_path}/"
+          scp -i ~/.ssh/mesaro_prod -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes \
+            backend/.env.prod "${PROD_SSH_USER}@${PROD_SSH_HOST}:${deploy_path}/backend/.env.prod"
+          ssh -i ~/.ssh/mesaro_prod -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes \
+            "${PROD_SSH_USER}@${PROD_SSH_HOST}" \
+            "chmod 600 '${deploy_path}/backend/.env.prod' && sh '${deploy_path}/backend/scripts/prod-up.sh'"
+          rm -f backend/.env.prod ~/.ssh/mesaro_prod

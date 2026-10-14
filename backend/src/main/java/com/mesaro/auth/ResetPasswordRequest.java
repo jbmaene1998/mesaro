@@ -8,7 +8,7 @@ public record ResetPasswordRequest(
         @Size(max = 512, message = "Reset token is too long")
         String token,
         @NotBlank(message = "New password is required")
-        @Size(max = 255, message = "New password is too long")
+        @Size(min = 8, max = 72, message = "Password must be between 8 and 72 characters")
         String newPassword
 ) {
 }

@@ -39,9 +39,22 @@ public class AuthController {
 
     @PostMapping("/register")
     @ResponseStatus(HttpStatus.CREATED)
-    @Operation(summary = "Register", description = "Create owner account and return auth tokens")
-    public ApiResponse<AuthResponse> register(@Valid @RequestBody RegisterRequest request) {
-        return ApiResponse.success(authService.register(request), "Account created");
+    @Operation(summary = "Register", description = "Create an owner account and email a verification link")
+    public ApiResponse<RegisterResponse> register(@Valid @RequestBody RegisterRequest request) {
+        return ApiResponse.success(authService.register(request), "Account created. Verify your email to continue.");
+    }
+
+    @PostMapping("/verify-email")
+    @Operation(summary = "Verify email", description = "Confirm an account from the verification email and start a session")
+    public ApiResponse<AuthResponse> verifyEmail(@Valid @RequestBody VerifyEmailRequest request) {
+        return ApiResponse.success(authService.verifyEmail(request), "Email verified");
+    }
+
+    @PostMapping("/resend-verification")
+    @Operation(summary = "Resend verification", description = "Send another verification email when the account is still unverified")
+    public ApiResponse<Void> resendVerification(@Valid @RequestBody ResendVerificationRequest request) {
+        authService.resendVerification(request);
+        return ApiResponse.success(null, "If an unverified account exists, a verification email has been sent");
     }
 
     @PostMapping("/refresh")

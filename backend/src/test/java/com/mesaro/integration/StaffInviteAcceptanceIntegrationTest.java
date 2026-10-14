@@ -72,12 +72,12 @@ class StaffInviteAcceptanceIntegrationTest extends IntegrationTestBase {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(acceptRequest)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.accessToken").isNotEmpty())
-                .andExpect(jsonPath("$.data.refreshToken").isNotEmpty())
+                .andExpect(jsonPath("$.data.verificationRequired").value(true))
+                .andExpect(jsonPath("$.data.accessToken").doesNotExist())
                 .andReturn();
 
         JsonNode response = objectMapper.readTree(result.getResponse().getContentAsString());
-        assertNotNull(response.path("data").path("accessToken").asText());
+        assertTrue(response.path("data").path("verificationRequired").asBoolean());
 
         Optional<UserAccount> invitee = userAccountRepository.findByEmailIgnoreCase("newstaff@example.com");
         assertTrue(invitee.isPresent());

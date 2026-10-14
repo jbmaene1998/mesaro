@@ -237,14 +237,6 @@ export function ConfirmReservationPage() {
             >
               {copy.addToCalendar}
             </Button>
-            <Button asChild variant="outline">
-              <Link
-                to={`${bookingBasePath}/${restaurantSlug}/reservation/${reservation.confirmationCode}`}
-                state={{ cancelToken: reservation.cancelToken }}
-              >
-                {copy.viewReservation}
-              </Link>
-            </Button>
           </CardContent>
         </Card>
       </div>
@@ -377,7 +369,6 @@ const COPY = {
     reservationConfirmed: "Reservation Confirmed",
     confirmationEmailSoon: "You'll receive a confirmation email shortly.",
     addToCalendar: "Add to Calendar",
-    viewReservation: "View Reservation",
     completeDetailsBelow: "Complete your reservation details below.",
     holdTimer: "Hold Timer:",
     timerUnknown: "unknown",
@@ -409,7 +400,6 @@ const COPY = {
     reservationConfirmed: "Reservering bevestigd",
     confirmationEmailSoon: "Je ontvangt zo een bevestigingsmail.",
     addToCalendar: "Toevoegen aan kalender",
-    viewReservation: "Bekijk reservering",
     completeDetailsBelow: "Vul hieronder je reserveringsgegevens in.",
     holdTimer: "Hold timer:",
     timerUnknown: "onbekend",
@@ -441,7 +431,6 @@ const COPY = {
     reservationConfirmed: "Reservation confirmee",
     confirmationEmailSoon: "Vous recevrez bientot un e-mail de confirmation.",
     addToCalendar: "Ajouter au calendrier",
-    viewReservation: "Voir la reservation",
     completeDetailsBelow: "Completez vos details de reservation ci-dessous.",
     holdTimer: "Minuteur d option :",
     timerUnknown: "inconnu",
@@ -473,7 +462,6 @@ const COPY = {
     reservationConfirmed: "Reserva confirmada",
     confirmationEmailSoon: "Recibiras un correo de confirmacion en breve.",
     addToCalendar: "Agregar al calendario",
-    viewReservation: "Ver reserva",
     completeDetailsBelow: "Completa abajo los detalles de tu reserva.",
     holdTimer: "Temporizador de bloqueo:",
     timerUnknown: "desconocido",

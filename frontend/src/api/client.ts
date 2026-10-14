@@ -172,7 +172,7 @@ function shouldSendRestaurantHeader(url?: string) {
 
   return !(
     /\/restaurants\/[^/]+\/select(?:\?.*)?$/i.test(url) ||
-    /\/auth\/(?:login|register|refresh|logout|forgot-password|reset-password|current-user|change-password)(?:\?.*)?$/i.test(url)
+    /\/auth\/(?:login|register|refresh|logout|forgot-password|reset-password|verify-email|resend-verification|current-user|change-password)(?:\?.*)?$/i.test(url)
   );
 }
 
@@ -230,6 +230,21 @@ apiClient.interceptors.response.use(
         ? "Could not refresh your session because the server is unreachable. Please sign in again."
         : "Session expired. Please sign in again";
       return Promise.reject(toAppError(error, message));
+    }
+
+    if (status === 403 && responseData?.error?.code === "EMAIL_NOT_VERIFIED") {
+      const url = originalRequest?.url ?? "";
+      const isPublicAuthAttempt =
+        url.includes("/auth/login") ||
+        url.includes("/auth/register") ||
+        url.includes("/auth/verify-email") ||
+        url.includes("/auth/resend-verification") ||
+        url.includes("/staff/accept-invite");
+      if (!isPublicAuthAttempt) {
+        clearAuthSession();
+        window.location.assign("/login?unverified=1");
+      }
+      return Promise.reject(toAppError(error, "Verify your email before continuing."));
     }
 
     if (status === 429 && originalRequest) {

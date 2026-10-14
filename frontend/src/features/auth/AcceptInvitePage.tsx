@@ -4,12 +4,11 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
-import type { AuthResponse } from "@/api/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { InlineLoader } from "@/components/ui/loading";
-import { acceptInvite, previewInvite, type StaffInvitePreview } from "@/features/auth/api";
+import { acceptInvite, previewInvite, type AcceptInviteResult, type StaffInvitePreview } from "@/features/auth/api";
 import { useAuth } from "@/hooks/use-auth";
 import { useI18n } from "@/i18n";
 import { showApiError } from "@/lib/toast";
@@ -108,6 +107,7 @@ export function AcceptInvitePage() {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [needsVerification, setNeedsVerification] = useState(false);
   const [preview, setPreview] = useState<StaffInvitePreview | null>(null);
   const [previewLoading, setPreviewLoading] = useState(Boolean(inviteToken));
   const [errorKind, setErrorKind] = useState<InviteErrorKind | null>(null);
@@ -178,11 +178,19 @@ export function AcceptInvitePage() {
 
     try {
       const trimmedPassword = values.password.trim();
-      const tokens: AuthResponse = await acceptInvite(
+      const result: AcceptInviteResult = await acceptInvite(
         inviteToken,
         trimmedPassword.length > 0 ? trimmedPassword : undefined
       );
-      setAuthTokens(tokens);
+      if (result.verificationRequired || !result.accessToken || !result.refreshToken) {
+        setNeedsVerification(true);
+        return;
+      }
+      setAuthTokens({
+        accessToken: result.accessToken,
+        refreshToken: result.refreshToken,
+        expiresIn: result.expiresIn ?? 900
+      });
       markStaffFirstRunPending();
       setIsSuccess(true);
       window.setTimeout(() => {
@@ -200,14 +208,14 @@ export function AcceptInvitePage() {
   const roleLabel = preview?.role ? preview.role.toLowerCase() : "staff";
 
   const title = useMemo(() => {
-    if (isSuccess) {
+    if (isSuccess || needsVerification) {
       return copy.welcomeToMesaro;
     }
     if (errorKind && !inviteToken) {
       return copy.inviteError;
     }
     return copy.acceptingInvite;
-  }, [copy.acceptingInvite, copy.inviteError, copy.welcomeToMesaro, errorKind, inviteToken, isSuccess]);
+  }, [copy.acceptingInvite, copy.inviteError, copy.welcomeToMesaro, errorKind, inviteToken, isSuccess, needsVerification]);
 
   if (!inviteToken) {
     return (
@@ -226,7 +234,7 @@ export function AcceptInvitePage() {
     <Card className="w-full">
       <CardHeader>
         <CardTitle>{title}</CardTitle>
-        {!isSuccess && !previewLoading ? (
+        {!isSuccess && !needsVerification && !previewLoading ? (
           <CardDescription>
             {preview && !errorKind
               ? copy.joinAs.replace("{restaurant}", restaurantLabel).replace("{role}", roleLabel)
@@ -242,6 +250,15 @@ export function AcceptInvitePage() {
           </div>
         ) : null}
 
+        {needsVerification ? (
+          <div className="space-y-3 text-center">
+            <p className="text-sm text-muted-foreground">{copy.verifyEmailBody}</p>
+            <Link to="/login" className="text-sm underline underline-offset-4">
+              {copy.goToLogin}
+            </Link>
+          </div>
+        ) : null}
+
         {isSuccess ? (
           <div className="space-y-2">
             <p className="text-sm">
@@ -251,7 +268,7 @@ export function AcceptInvitePage() {
           </div>
         ) : null}
 
-        {!isSuccess && !previewLoading && errorKind ? (
+        {!isSuccess && !needsVerification && !previewLoading && errorKind ? (
           <div className="mb-4 space-y-3">
             <p className="text-sm text-destructive">{getErrorContent(errorKind)}</p>
             {errorKind === "already-accepted" ? (
@@ -262,7 +279,7 @@ export function AcceptInvitePage() {
           </div>
         ) : null}
 
-        {!isSuccess && !previewLoading && preview && !preview.alreadyAccepted && !preview.expired ? (
+        {!isSuccess && !needsVerification && !previewLoading && preview && !preview.alreadyAccepted && !preview.expired ? (
           <form className="space-y-4" onSubmit={(event) => void onSubmit(event)}>
             <p className="text-sm text-muted-foreground">
               {passwordRequired ? copy.passwordRequiredHint : copy.passwordOptionalHint}
@@ -326,7 +343,8 @@ const COPY = {
     confirmPasswordLabel: "Confirm password",
     optional: "optional",
     acceptInvite: "Accept invite",
-    yourRestaurant: "your restaurant"
+    yourRestaurant: "your restaurant",
+    verifyEmailBody: "We sent a verify-your-account email. Open that link before you sign in. Until then, onboarding and the rest of Mesaro stay locked."
   },
   nl: {
     acceptingInvite: "Word lid van je team",
@@ -345,7 +363,8 @@ const COPY = {
     confirmPasswordLabel: "Bevestig wachtwoord",
     optional: "optioneel",
     acceptInvite: "Uitnodiging accepteren",
-    yourRestaurant: "je restaurant"
+    yourRestaurant: "je restaurant",
+    verifyEmailBody: "We hebben een e-mail gestuurd om je account te bevestigen. Open die link voordat je inlogt. Tot dan blijven onboarding en de rest van Mesaro gesloten."
   },
   fr: {
     acceptingInvite: "Rejoindre votre equipe",
@@ -364,7 +383,8 @@ const COPY = {
     confirmPasswordLabel: "Confirmer le mot de passe",
     optional: "optionnel",
     acceptInvite: "Accepter l'invitation",
-    yourRestaurant: "votre restaurant"
+    yourRestaurant: "votre restaurant",
+    verifyEmailBody: "Nous avons envoye un e-mail pour verifier votre compte. Ouvrez ce lien avant de vous connecter. Jusque-la, l'onboarding et le reste de Mesaro restent bloques."
   },
   es: {
     acceptingInvite: "Unete a tu equipo",
@@ -383,6 +403,7 @@ const COPY = {
     confirmPasswordLabel: "Confirmar contrasena",
     optional: "opcional",
     acceptInvite: "Aceptar invitacion",
-    yourRestaurant: "tu restaurante"
+    yourRestaurant: "tu restaurante",
+    verifyEmailBody: "Te enviamos un correo para verificar tu cuenta. Abre ese enlace antes de iniciar sesion. Hasta entonces, el onboarding y el resto de Mesaro permanecen bloqueados."
   }
 } as const;

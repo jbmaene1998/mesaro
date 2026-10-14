@@ -59,11 +59,25 @@ export async function login(email: string, password: string) {
   return tokens;
 }
 
+export interface RegisterResult {
+  email: string;
+  verificationRequired: boolean;
+}
+
 export async function register(payload: RegisterPayload) {
-  const { data } = await apiClient.post<ApiResponse<AuthTokens>>("/auth/register", payload);
+  const { data } = await apiClient.post<ApiResponse<RegisterResult>>("/auth/register", payload);
+  return unwrapResponse(data);
+}
+
+export async function verifyEmail(token: string) {
+  const { data } = await apiClient.post<ApiResponse<AuthTokens>>("/auth/verify-email", { token });
   const tokens = unwrapResponse(data);
   setAuthSession(tokens.accessToken, tokens.refreshToken);
   return tokens;
+}
+
+export async function resendVerification(email: string) {
+  await apiClient.post<ApiResponse<null>>("/auth/resend-verification", { email });
 }
 
 export async function refresh(refreshToken: string) {

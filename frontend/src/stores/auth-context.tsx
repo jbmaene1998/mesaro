@@ -1,6 +1,6 @@
 import { createContext, useCallback, useEffect, useMemo, useRef, useState, type PropsWithChildren } from "react";
 
-import { login as loginRequest, logout as logoutRequest, refresh as refreshRequest, register as registerRequest, type RegisterPayload } from "@/api/auth";
+import { login as loginRequest, logout as logoutRequest, refresh as refreshRequest, register as registerRequest, type RegisterPayload, type RegisterResult } from "@/api/auth";
 import type { AuthTokens, UserRestaurant } from "@/api/types";
 import { clearAuthSession, getRefreshToken, setAuthSession } from "@/stores/auth-session";
 
@@ -21,7 +21,7 @@ interface AuthState {
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (payload: RegisterPayload) => Promise<void>;
+  register: (payload: RegisterPayload) => Promise<RegisterResult>;
   logout: () => Promise<void>;
   silentRefresh: () => Promise<boolean>;
   setAuthTokens: (tokens: AuthTokens) => void;
@@ -246,9 +246,8 @@ export function AuthProvider({ children }: PropsWithChildren) {
   }, [applyTokens]);
 
   const register = useCallback(async (payload: RegisterPayload) => {
-    const tokens = await registerRequest(payload);
-    applyTokens(tokens);
-  }, [applyTokens]);
+    return registerRequest(payload);
+  }, []);
 
   const logout = useCallback(async () => {
     const activeRefreshToken = refreshToken ?? getStoredRefreshToken();

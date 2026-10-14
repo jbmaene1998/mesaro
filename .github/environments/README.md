@@ -90,7 +90,17 @@ Ephemeral PR E2E (`e2e.yml`) uses the dev seed (`demo-restaurant`, `*@demo.com` 
 
 ## Production — same split
 
-Use the same variable/secret **names** on Environment `production`, with prod values from [`.env.prod.example`](../../backend/.env.prod.example) (`EMAIL_PROVIDER=resend`, live Stripe, real domain, etc.). Leave empty until Hostinger cutover; the prod workflow stays a stub until then.
+Use the same variable/secret **names** on Environment `production`, with prod values from [`.env.prod.example`](../../backend/.env.prod.example) (`EMAIL_PROVIDER=resend`, live Stripe, real domain, etc.).
+
+`deploy-prod.yml` fails the job when any required value is missing, then builds the frontend and deploys over SSH.
+
+| Name | Kind | Notes |
+|------|------|--------|
+| `PROD_SSH_HOST` | Variable | VPS hostname or IP |
+| `PROD_SSH_USER` | Variable | SSH user that can run Docker |
+| `PROD_SSH_KEY` | Secret | Private key (PEM, real newlines) |
+| `PROD_DEPLOY_PATH` | Variable | Optional. Default `/opt/mesaro` |
+| `RATE_LIMIT_TRUSTED_PROXY_CIDR` | Variable | Optional. Default `172.16.0.0/12` (Docker bridge / Caddy only) |
 
 ## One-time migration (staging)
 
