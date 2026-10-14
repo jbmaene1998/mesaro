@@ -7,8 +7,8 @@ const RESTAURANT_TZ = "Europe/Brussels";
 /** Matches Walk-in UI options (60/90/120) and still fits before Dinner end 22:00. */
 const DURATION_MINUTES = 60;
 const DINNER_START = 18 * 60;
-const DINNER_END = 22 * 60;
-const LAST_RESERVATION = 21 * 60;
+const DINNER_END = 23 * 60;
+const LAST_RESERVATION = 22 * 60;
 
 function decodeJwtPayload(token: string): Record<string, unknown> {
   const segment = token.split(".")[1];

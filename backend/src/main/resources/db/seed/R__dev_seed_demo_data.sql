@@ -79,13 +79,14 @@ seed_shifts AS (
             ('demo-restaurant', 'Lunch', 5, '11:30'::time, '14:30'::time, '13:30'::time, 40),
             ('demo-restaurant', 'Lunch', 6, '11:30'::time, '14:30'::time, '13:30'::time, 40),
             ('demo-restaurant', 'Lunch', 7, '11:30'::time, '14:30'::time, '13:30'::time, 40),
-            ('demo-restaurant', 'Dinner', 1, '18:00'::time, '22:00'::time, '21:00'::time, 40),
-            ('demo-restaurant', 'Dinner', 2, '18:00'::time, '22:00'::time, '21:00'::time, 40),
-            ('demo-restaurant', 'Dinner', 3, '18:00'::time, '22:00'::time, '21:00'::time, 40),
-            ('demo-restaurant', 'Dinner', 4, '18:00'::time, '22:00'::time, '21:00'::time, 40),
-            ('demo-restaurant', 'Dinner', 5, '18:00'::time, '22:00'::time, '21:00'::time, 50),
-            ('demo-restaurant', 'Dinner', 6, '18:00'::time, '22:00'::time, '21:00'::time, 50),
-            ('demo-restaurant', 'Dinner', 7, '18:00'::time, '22:00'::time, '21:00'::time, 50),
+            -- End 23:00 / last booking 22:00 so evening CI (and late walk-ins) still fit a 60–90 min cover.
+            ('demo-restaurant', 'Dinner', 1, '18:00'::time, '23:00'::time, '22:00'::time, 40),
+            ('demo-restaurant', 'Dinner', 2, '18:00'::time, '23:00'::time, '22:00'::time, 40),
+            ('demo-restaurant', 'Dinner', 3, '18:00'::time, '23:00'::time, '22:00'::time, 40),
+            ('demo-restaurant', 'Dinner', 4, '18:00'::time, '23:00'::time, '22:00'::time, 40),
+            ('demo-restaurant', 'Dinner', 5, '18:00'::time, '23:00'::time, '22:00'::time, 50),
+            ('demo-restaurant', 'Dinner', 6, '18:00'::time, '23:00'::time, '22:00'::time, 50),
+            ('demo-restaurant', 'Dinner', 7, '18:00'::time, '23:00'::time, '22:00'::time, 50),
             ('demo-terrace', 'Sunset', 2, '17:30'::time, '22:30'::time, '21:30'::time, 24),
             ('demo-terrace', 'Sunset', 3, '17:30'::time, '22:30'::time, '21:30'::time, 24),
             ('demo-terrace', 'Sunset', 4, '17:30'::time, '22:30'::time, '21:30'::time, 24),
@@ -109,6 +110,17 @@ WHERE NOT EXISTS (
       AND sh.end_time = ss.end_time
       AND sh.last_reservation_time = ss.last_reservation_time
 );
+
+-- Keep demo Dinner hours aligned if an older seed row already exists (avoid duplicate shifts).
+UPDATE shift sh
+SET end_time = '23:00'::time,
+    last_reservation_time = '22:00'::time
+FROM restaurant r
+WHERE r.id = sh.restaurant_id
+  AND r.slug = 'demo-restaurant'
+  AND sh.name = 'Dinner'
+  AND sh.start_time = '18:00'::time
+  AND (sh.end_time <> '23:00'::time OR sh.last_reservation_time <> '22:00'::time);
 
 -- -----------------------------------------------------------------------------
 -- Table combinations
