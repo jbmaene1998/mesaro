@@ -8,7 +8,10 @@
 
 api.{$MESARO_DOMAIN:example.com} {
 	encode gzip
-	reverse_proxy app-prod:8080
+	reverse_proxy app-prod:8080 {
+		# Replace any client-supplied chain with the TCP peer. The API trusts only the Docker bridge.
+		header_up X-Forwarded-For {http.request.remote.host}
+	}
 	header {
 		Strict-Transport-Security "max-age=31536000; includeSubDomains"
 		X-Content-Type-Options nosniff

@@ -65,6 +65,19 @@ class RateLimitFilterTest {
     }
 
     @Test
+    void lanClientBehindDockerBridge_keepsItsOwnLimit() throws Exception {
+        properties.setTrustedProxies(List.of("172.16.0.0/12"));
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/holds");
+        request.setRemoteAddr("172.28.10.5");
+        request.addHeader("X-Forwarded-For", "192.168.1.40");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        rateLimitFilter.doFilter(request, response, filterChain);
+
+        verify(rateLimiter).checkLimit(eq("ip:192.168.1.40"), eq("holds"));
+    }
+
+    @Test
     void trustedProxyChain_usesOriginalClientIp() throws Exception {
         MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/holds");
         request.setRemoteAddr("10.0.0.10");

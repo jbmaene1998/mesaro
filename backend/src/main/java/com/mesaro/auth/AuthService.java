@@ -4,6 +4,7 @@ import com.mesaro.audit.AuditEventType;
 import com.mesaro.audit.AuditService;
 import com.mesaro.billing.BillingService;
 import com.mesaro.common.exception.ConflictException;
+import com.mesaro.common.exception.EmailNotVerifiedException;
 import com.mesaro.common.exception.NotFoundException;
 import com.mesaro.common.exception.ValidationException;
 import com.mesaro.infra.TokenService;
@@ -59,6 +60,7 @@ public class AuthService {
     private final RestaurantService restaurantService;
     private final BillingService billingService;
     private final EmailService emailService;
+    private final EmailVerificationService emailVerificationService;
     private final AuditService auditService;
     private final TokenDenylistService tokenDenylistService;
     private final long refreshTokenTtlDays;
@@ -77,6 +79,7 @@ public class AuthService {
                        RestaurantService restaurantService,
                        BillingService billingService,
                        EmailService emailService,
+                       EmailVerificationService emailVerificationService,
                        AuditService auditService,
                        TokenDenylistService tokenDenylistService,
                        @Value("${app.security.jwt.refresh-token-ttl-days}") long refreshTokenTtlDays) {
@@ -94,6 +97,7 @@ public class AuthService {
         this.restaurantService = restaurantService;
         this.billingService = billingService;
         this.emailService = emailService;
+        this.emailVerificationService = emailVerificationService;
         this.auditService = auditService;
         this.tokenDenylistService = tokenDenylistService;
         this.refreshTokenTtlDays = refreshTokenTtlDays;
@@ -122,10 +126,19 @@ public class AuthService {
                 throw new BadCredentialsException("Invalid credentials");
             }
 
+            if (!user.isEmailVerified()) {
+                failureReason = "EMAIL_UNVERIFIED";
+                throw new EmailNotVerifiedException();
+            }
+
             AuthResponse response = issueTokens(user, Instant.now());
             auditAuthEvent(AuditEventType.LOGIN_SUCCESS, user.getId(), normalizedEmail,
                     Map.of("outcome", "SUCCESS"));
             return response;
+        } catch (EmailNotVerifiedException ex) {
+            auditAuthEvent(AuditEventType.LOGIN_FAILURE, user == null ? null : user.getId(), normalizedEmail,
+                    Map.of("outcome", "FAILURE", "reason", failureReason));
+            throw ex;
         } catch (BadCredentialsException ex) {
             auditAuthEvent(AuditEventType.LOGIN_FAILURE, user == null ? null : user.getId(), normalizedEmail,
                     Map.of("outcome", "FAILURE", "reason", failureReason));
@@ -134,27 +147,41 @@ public class AuthService {
     }
 
     @Transactional
-    public AuthResponse register(RegisterRequest request) {
+    public RegisterResponse register(RegisterRequest request) {
         String normalizedEmail = normalizeEmail(request.email());
         if (userAccountRepository.findByEmailIgnoreCase(normalizedEmail).isPresent()) {
             throw new ConflictException("Account with this email already exists", "email");
         }
         try {
             UserAccount user = new UserAccount(normalizedEmail, passwordEncoder.encode(request.password()));
+            user.markEmailUnverified();
             user.setFullName(trimToNull(request.ownerName()));
             user.setPhone(trimToNull(request.ownerPhone()));
             UserAccount savedUser = userAccountRepository.save(user);
-            try {
-                emailService.sendWelcomeEmail(savedUser.getEmail(), savedUser.getFullName());
-            } catch (Exception ex) {
-                log.warn("Failed to send welcome email for user {}", savedUser.getId());
-            }
+            emailVerificationService.sendVerification(savedUser);
             auditAuthEvent(AuditEventType.USER_REGISTERED, savedUser.getId(), savedUser.getEmail(),
-                    Map.of("outcome", "SUCCESS"));
-            return issueTokens(savedUser, Instant.now());
+                    Map.of("outcome", "SUCCESS", "verificationRequired", true));
+            return new RegisterResponse(savedUser.getEmail(), true);
         } catch (DataIntegrityViolationException ex) {
             throw mapRegistrationIntegrityViolation(ex);
         }
+    }
+
+    @Transactional
+    public AuthResponse verifyEmail(VerifyEmailRequest request) {
+        UserAccount user = emailVerificationService.verify(request.token());
+        AuthResponse response = issueTokens(user, Instant.now());
+        auditAuthEvent(AuditEventType.EMAIL_VERIFIED, user.getId(), user.getEmail(),
+                Map.of("outcome", "SUCCESS"));
+        return response;
+    }
+
+    @Transactional
+    public void resendVerification(ResendVerificationRequest request) {
+        String normalizedEmail = normalizeEmail(request.email());
+        emailVerificationService.resend(normalizedEmail);
+        auditAuthEvent(AuditEventType.EMAIL_VERIFICATION_RESENT, null, normalizedEmail,
+                Map.of("outcome", "ACCEPTED"));
     }
 
     @Transactional
@@ -187,6 +214,12 @@ public class AuthService {
             auditAuthEvent(AuditEventType.TOKEN_REFRESH_FAILED, user.getId(), user.getEmail(),
                     Map.of("outcome", "FAILURE", "reason", "USER_INACTIVE"));
             throw new BadCredentialsException("Invalid refresh token");
+        }
+        if (!user.isEmailVerified()) {
+            refreshTokenRepository.revokeAllForUser(user.getId());
+            auditAuthEvent(AuditEventType.TOKEN_REFRESH_FAILED, user.getId(), user.getEmail(),
+                    Map.of("outcome", "FAILURE", "reason", "EMAIL_UNVERIFIED"));
+            throw new EmailNotVerifiedException();
         }
         AuthResponse response = issueTokens(user, now);
         auditAuthEvent(AuditEventType.TOKEN_REFRESHED, user.getId(), user.getEmail(),
@@ -362,6 +395,9 @@ public class AuthService {
         if (user.getStatus() != UserAccountStatus.ACTIVE || !user.isEnabled()) {
             throw new NotFoundException("User", userId);
         }
+        if (!user.isEmailVerified()) {
+            throw new EmailNotVerifiedException();
+        }
         return user;
     }
 
@@ -379,6 +415,9 @@ public class AuthService {
     }
 
     private AuthResponse issueTokens(UserAccount user, Instant now) {
+        if (!user.isEmailVerified()) {
+            throw new EmailNotVerifiedException();
+        }
         List<AuthRestaurantSummary> restaurants = userRestaurantRepository
                 .findRestaurantSummariesByUserId(user.getId());
         String accessToken = jwtService.generateAccessToken(

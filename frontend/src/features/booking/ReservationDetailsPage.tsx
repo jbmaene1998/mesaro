@@ -104,6 +104,7 @@ export function ReservationDetailsPage() {
           onConfirm={() => cancelMutation.mutate()}
           isLoading={cancelMutation.isPending}
           isSuccess={cancelMutation.isSuccess}
+          errorMessage={cancelMutation.isError ? cancelErrorMessage(cancelMutation.error, copy) : null}
           copy={copy}
         />
       ) : null}
@@ -124,17 +125,29 @@ function getReservationLoadError(error: unknown, copy: Copy) {
   return copy.unableToLoadDetails;
 }
 
+function cancelErrorMessage(error: unknown, copy: Copy) {
+  if (typeof error === "object" && error !== null && "message" in error) {
+    const message = (error as AppError).message;
+    if (typeof message === "string" && message.trim()) {
+      return message;
+    }
+  }
+  return copy.unableToCancel;
+}
+
 function CancelReservationSection({
   reservation,
   onConfirm,
   isLoading,
   isSuccess,
+  errorMessage,
   copy
 }: {
   reservation: GuestReservation;
   onConfirm: () => void;
   isLoading: boolean;
   isSuccess: boolean;
+  errorMessage: string | null;
   copy: Copy;
 }) {
   return (
@@ -168,6 +181,12 @@ function CancelReservationSection({
           {copy.cancelledSuccessfully}
         </p>
       ) : null}
+
+      {errorMessage ? (
+        <p className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
+          {errorMessage}
+        </p>
+      ) : null}
     </div>
   );
 }
@@ -188,7 +207,8 @@ const COPY = {
     keepReservation: "Keep Reservation",
     cancelling: "Cancelling...",
     confirmCancellation: "Confirm Cancellation",
-    cancelledSuccessfully: "Reservation cancelled successfully."
+    cancelledSuccessfully: "Reservation cancelled successfully.",
+    unableToCancel: "We could not cancel this reservation. It is still confirmed."
   },
   nl: {
     loadingReservation: "Reservering laden...",
@@ -205,7 +225,8 @@ const COPY = {
     keepReservation: "Reservering behouden",
     cancelling: "Annuleren...",
     confirmCancellation: "Annulering bevestigen",
-    cancelledSuccessfully: "Reservering succesvol geannuleerd."
+    cancelledSuccessfully: "Reservering succesvol geannuleerd.",
+    unableToCancel: "We konden deze reservering niet annuleren. Hij staat nog bevestigd."
   },
   fr: {
     loadingReservation: "Chargement de la reservation...",
@@ -222,7 +243,8 @@ const COPY = {
     keepReservation: "Conserver la reservation",
     cancelling: "Annulation...",
     confirmCancellation: "Confirmer l annulation",
-    cancelledSuccessfully: "Reservation annulee avec succes."
+    cancelledSuccessfully: "Reservation annulee avec succes.",
+    unableToCancel: "Nous n'avons pas pu annuler cette reservation. Elle est toujours confirmee."
   },
   es: {
     loadingReservation: "Cargando reserva...",
@@ -239,7 +261,8 @@ const COPY = {
     keepReservation: "Mantener reserva",
     cancelling: "Cancelando...",
     confirmCancellation: "Confirmar cancelacion",
-    cancelledSuccessfully: "Reserva cancelada correctamente."
+    cancelledSuccessfully: "Reserva cancelada correctamente.",
+    unableToCancel: "No pudimos cancelar esta reserva. Sigue confirmada."
   }
 } as const;
 

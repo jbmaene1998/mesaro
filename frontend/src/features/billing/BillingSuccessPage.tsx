@@ -137,7 +137,7 @@ export default function BillingSuccessPage() {
       {state === 'missing' && (
         <>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">{t('billing.success.allSet')}</h1>
+            <h1 className="text-2xl font-bold text-gray-900">{t('billing.success.somethingWrong')}</h1>
             <p className="mt-2 text-gray-600">{t('billing.success.finalizingNoSession')}</p>
           </div>
           <Link

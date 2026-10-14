@@ -66,12 +66,18 @@ public class UserAccount {
     @Column(name = "created_at_utc", nullable = false, updatable = false)
     private Instant createdAtUtc;
 
+    @Column(name = "email_verified_at")
+    private Instant emailVerifiedAt;
+
     protected UserAccount() {
     }
 
     public UserAccount(String email, String passwordHash) {
         this.email = email;
         this.passwordHash = passwordHash;
+        // System-created rows (tests, seeds via JPA) stay usable.
+        // Registration and new staff accounts clear this before save.
+        this.emailVerifiedAt = Instant.now();
     }
 
     @PrePersist
@@ -146,6 +152,22 @@ public class UserAccount {
 
     public Instant getCreatedAtUtc() {
         return createdAtUtc;
+    }
+
+    public Instant getEmailVerifiedAt() {
+        return emailVerifiedAt;
+    }
+
+    public boolean isEmailVerified() {
+        return emailVerifiedAt != null;
+    }
+
+    public void markEmailVerified(Instant when) {
+        this.emailVerifiedAt = when;
+    }
+
+    public void markEmailUnverified() {
+        this.emailVerifiedAt = null;
     }
 
     public int getMaxRestaurants() {

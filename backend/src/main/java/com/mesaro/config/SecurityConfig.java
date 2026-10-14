@@ -43,6 +43,8 @@ public class SecurityConfig {
             "/api/auth/logout",
             "/api/auth/forgot-password",
             "/api/auth/reset-password",
+            "/api/auth/verify-email",
+            "/api/auth/resend-verification",
             "/api/staff/accept-invite",
             "/api/staff/invites/preview",
             // Actuator health endpoints are safe to expose publicly.

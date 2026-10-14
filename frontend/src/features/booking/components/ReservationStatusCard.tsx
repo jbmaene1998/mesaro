@@ -34,7 +34,6 @@ export function ReservationStatusCard({ reservation }: ReservationStatusCardProp
   const { locale } = useI18n();
   const copy = COPY[locale as keyof typeof COPY];
   const isCancelled = reservation.status === "CANCELLED";
-  const tables = reservation.tableLabels.length > 0 ? reservation.tableLabels.join(", ") : copy.unassigned;
 
   return (
     <Card>
@@ -52,7 +51,6 @@ export function ReservationStatusCard({ reservation }: ReservationStatusCardProp
         <p><span className="font-medium">{copy.dateTime}</span> {formatReservationDateTime(reservation)}</p>
         <p><span className="font-medium">{copy.partySize}</span> {reservation.partySize}</p>
         <p><span className="font-medium">{copy.shift}</span> {reservation.shiftName ?? copy.general}</p>
-        <p><span className="font-medium">{copy.tables}</span> {tables}</p>
       </CardContent>
     </Card>
   );
@@ -65,9 +63,7 @@ const COPY = {
     dateTime: "Date & Time:",
     partySize: "Party Size:",
     shift: "Shift:",
-    tables: "Tables:",
-    general: "General",
-    unassigned: "Unassigned"
+    general: "General"
   },
   nl: {
     reservation: "Reservering",
@@ -75,9 +71,7 @@ const COPY = {
     dateTime: "Datum en tijd:",
     partySize: "Groepsgrootte:",
     shift: "Shift:",
-    tables: "Tafels:",
-    general: "Algemeen",
-    unassigned: "Niet toegewezen"
+    general: "Algemeen"
   },
   fr: {
     reservation: "Reservation",
@@ -85,9 +79,7 @@ const COPY = {
     dateTime: "Date et heure :",
     partySize: "Taille du groupe :",
     shift: "Service :",
-    tables: "Tables :",
-    general: "General",
-    unassigned: "Non assigne"
+    general: "General"
   },
   es: {
     reservation: "Reserva",
@@ -95,8 +87,6 @@ const COPY = {
     dateTime: "Fecha y hora:",
     partySize: "Tamano del grupo:",
     shift: "Turno:",
-    tables: "Mesas:",
-    general: "General",
-    unassigned: "Sin asignar"
+    general: "General"
   }
 } as const;

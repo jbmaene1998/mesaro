@@ -99,10 +99,9 @@ public class ReservationConfirmationEmailSender {
     private byte[] buildIcsAttachment(ReservationEmailData data) {
         String summary = String.format("Reservation at %s", data.restaurantName());
         String description = String.format(
-                "Reservation for %d guests\\nConfirmation: %s\\nTable(s): %s",
+                "Reservation for %d guests\\nConfirmation: %s",
                 data.partySize(),
-                data.confirmationCode(),
-                String.join(", ", data.tableLabels())
+                data.confirmationCode()
         );
 
         return icsService.generateReservationIcs(

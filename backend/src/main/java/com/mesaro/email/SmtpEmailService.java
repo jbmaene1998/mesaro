@@ -173,6 +173,36 @@ public class SmtpEmailService implements EmailService {
     }
 
     @Override
+    public void sendEmailVerification(String email, String fullName, String verificationToken) {
+        String subject = "Verify your account";
+        String verifyUrl = emailLayout.url("/verify-email?token=" + verificationToken);
+        String displayName = fullName == null || fullName.isBlank() ? "there" : fullName.trim();
+        String plainBody = String.format("""
+                Hi %s,
+
+                Confirm your email to finish creating your Mesaro account.
+
+                %s
+
+                This link expires in 48 hours. If you did not create this account, you can ignore this email.
+                """, displayName, verifyUrl);
+        sendHtmlEmail(
+                email, subject, plainBody,
+                EmailDocument.of(
+                        "Verify your account",
+                        "Confirm your email to use Mesaro",
+                        EmailBlocks.paragraph("Hi <strong>" + EmailBlocks.escape(displayName) + "</strong>,")
+                                + EmailBlocks.paragraph(
+                                "Confirm your email before you sign in, finish onboarding, or use Mesaro.")
+                                + EmailBlocks.mutedNote("This link expires in 48 hours."),
+                        "Verify your account",
+                        verifyUrl,
+                        EmailTone.SECURITY
+                )
+        );
+    }
+
+    @Override
     public void sendWelcomeEmail(String email, String fullName) {
         String subject = "Welcome to Mesaro";
         String displayName = fullName == null || fullName.isBlank() ? "there" : fullName.trim();

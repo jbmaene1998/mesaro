@@ -67,6 +67,16 @@ springdoc:
   swagger-ui:
     enabled: ${SWAGGER_ENABLED:false}
 
+# Public traffic arrives through Caddy on the Docker bridge (172.16.0.0/12).
+# Trust only that range so each guest gets their own limit. Do not add 10/8 or
+# 192.168/16: those are client LANs, and treating them as proxies collapses
+# every visitor back onto one shared bucket.
+app:
+  rate-limit:
+    trust-forwarded-headers: true
+    trusted-proxies:
+      - ${RATE_LIMIT_TRUSTED_PROXY_CIDR:172.16.0.0/12}
+
 # Production logging
 logging:
   level:

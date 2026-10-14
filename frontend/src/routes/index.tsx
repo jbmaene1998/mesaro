@@ -12,6 +12,7 @@ import { ForgotPasswordPage } from "@/features/auth/ForgotPasswordPage";
 import { LoginPage } from "@/features/auth/LoginPage";
 import { RegisterPage } from "@/features/auth/RegisterPage";
 import { ResetPasswordPage } from "@/features/auth/ResetPasswordPage";
+import { VerifyEmailPage } from "@/features/auth/VerifyEmailPage";
 import { ConfirmReservationPage } from "@/features/booking/ConfirmReservationPage";
 import { GuestBookingPage } from "@/features/booking/GuestBookingPage";
 import { ReservationDetailsPage } from "@/features/booking/ReservationDetailsPage";
@@ -148,6 +149,7 @@ export function AppRoutes() {
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
+        <Route path="/verify-email" element={<VerifyEmailPage />} />
         <Route path="/accept-invite" element={<AcceptInvitePage />} />
         <Route path="/invite/accept" element={<InviteAcceptRedirect />} />
       </Route>

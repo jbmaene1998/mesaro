@@ -1,6 +1,7 @@
 package com.mesaro.reservation;
 
 import com.mesaro.audit.AuditService;
+import com.mesaro.billing.BillingService;
 import com.mesaro.availability.TableSelectionService;
 import com.mesaro.common.exception.ValidationException;
 import com.mesaro.hold.HoldRepository;
@@ -68,6 +69,8 @@ class ReservationAdminServiceTest {
     private EmailService emailService;
     @Mock
     private ShiftCapacityService shiftCapacityService;
+    @Mock
+    private BillingService billingService;
 
     private ReservationAdminService service;
 
@@ -87,7 +90,8 @@ class ReservationAdminServiceTest {
                 auditService,
                 timeService,
                 emailService,
-                shiftCapacityService
+                shiftCapacityService,
+                billingService
         );
     }
 
@@ -147,6 +151,8 @@ class ReservationAdminServiceTest {
         assertThatThrownBy(() -> service.createWalkIn(1L, request, 99L))
                 .isInstanceOf(ValidationException.class)
                 .hasMessageContaining("Cannot create reservation for past time");
+
+        verify(billingService).checkBillingAccess(restaurant);
 
         verify(shiftRepository, never()).findActiveShiftAtTimeIncludingOvernight(anyLong(), anyInt(), anyInt(), any(LocalTime.class));
     }

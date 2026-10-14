@@ -2,6 +2,7 @@ package com.mesaro.reservation;
 
 import com.mesaro.audit.AuditEventType;
 import com.mesaro.audit.AuditService;
+import com.mesaro.billing.BillingService;
 import com.mesaro.availability.TableSelectionResult;
 import com.mesaro.availability.TableSelectionService;
 import com.mesaro.common.exception.ConflictException;
@@ -70,6 +71,7 @@ public class ReservationAdminService {
     private final TimeService timeService;
     private final EmailService emailService;
     private final ShiftCapacityService shiftCapacityService;
+    private final BillingService billingService;
 
     public ReservationAdminService(
             ReservationRepository reservationRepository,
@@ -85,7 +87,8 @@ public class ReservationAdminService {
             AuditService auditService,
             TimeService timeService,
             EmailService emailService,
-            ShiftCapacityService shiftCapacityService) {
+            ShiftCapacityService shiftCapacityService,
+            BillingService billingService) {
         this.reservationRepository = reservationRepository;
         this.reservationService = reservationService;
         this.restaurantService = restaurantService;
@@ -100,6 +103,7 @@ public class ReservationAdminService {
         this.timeService = timeService;
         this.emailService = emailService;
         this.shiftCapacityService = shiftCapacityService;
+        this.billingService = billingService;
     }
 
     /**
@@ -159,6 +163,7 @@ public class ReservationAdminService {
     public Reservation createWalkIn(Long restaurantId, AdminReservationCreateRequest request, Long userId) {
         Restaurant restaurant = restaurantService.findOperationalById(restaurantId);
         restaurantService.assertCanAcceptBookings(restaurant);
+        billingService.checkBillingAccess(restaurant);
         ZoneId timezone = ZoneId.of(restaurant.getTimezone());
 
         Instant now = timeService.now();

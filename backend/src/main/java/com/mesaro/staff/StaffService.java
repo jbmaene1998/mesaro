@@ -3,7 +3,7 @@ package com.mesaro.staff;
 import com.mesaro.audit.AuditEventType;
 import com.mesaro.audit.AuditService;
 import com.mesaro.auth.AuthRestaurantSummary;
-import com.mesaro.auth.AuthResponse;
+import com.mesaro.auth.EmailVerificationService;
 import com.mesaro.auth.JwtService;
 import com.mesaro.auth.RefreshToken;
 import com.mesaro.auth.RefreshTokenRepository;
@@ -62,6 +62,7 @@ public class StaffService {
     private final PasswordEncoder passwordEncoder;
     private final StaffShiftAssignmentRepository assignmentRepository;
     private final JdbcTemplate jdbcTemplate;
+    private final EmailVerificationService emailVerificationService;
     private final long inviteTtlHours;
     private final long refreshTokenTtlDays;
 
@@ -80,6 +81,7 @@ public class StaffService {
                         PasswordEncoder passwordEncoder,
                         StaffShiftAssignmentRepository assignmentRepository,
                         JdbcTemplate jdbcTemplate,
+                        EmailVerificationService emailVerificationService,
                         @Value("${app.staff.invite-ttl-hours:72}") long inviteTtlHours,
                         @Value("${app.security.jwt.refresh-token-ttl-days}") long refreshTokenTtlDays) {
         this.restaurantService = restaurantService;
@@ -96,6 +98,7 @@ public class StaffService {
         this.passwordEncoder = passwordEncoder;
         this.assignmentRepository = assignmentRepository;
         this.jdbcTemplate = jdbcTemplate;
+        this.emailVerificationService = emailVerificationService;
         this.inviteTtlHours = inviteTtlHours;
         this.refreshTokenTtlDays = refreshTokenTtlDays;
     }
@@ -113,6 +116,7 @@ public class StaffService {
                         TokenDenylistService tokenDenylistService,
                         PasswordEncoder passwordEncoder,
                         JdbcTemplate jdbcTemplate,
+                        EmailVerificationService emailVerificationService,
                         @Value("${app.staff.invite-ttl-hours:72}") long inviteTtlHours,
                         @Value("${app.security.jwt.refresh-token-ttl-days}") long refreshTokenTtlDays) {
         this(
@@ -130,6 +134,7 @@ public class StaffService {
                 passwordEncoder,
                 null,
                 jdbcTemplate,
+                emailVerificationService,
                 inviteTtlHours,
                 refreshTokenTtlDays
         );
@@ -247,7 +252,7 @@ public class StaffService {
     }
 
     @Transactional
-    public AuthResponse acceptInvite(String inviteToken, String password) {
+    public AcceptInviteResponse acceptInvite(String inviteToken, String password) {
         String rawToken = validateInviteToken(inviteToken);
         String tokenHash = tokenService.hashToken(rawToken);
 
@@ -279,6 +284,7 @@ public class StaffService {
             }
             String passwordHash = passwordEncoder.encode(password);
             UserAccount account = new UserAccount(invite.getEmail(), passwordHash);
+            account.markEmailUnverified();
             account.setFullName(composeFullName(invite.getFirstName(), invite.getLastName()));
             user = userAccountRepository.save(account);
         }
@@ -316,6 +322,11 @@ public class StaffService {
                 )
         );
 
+        if (!user.isEmailVerified()) {
+            emailVerificationService.sendVerification(user);
+            return AcceptInviteResponse.pending(user.getEmail());
+        }
+
         List<AuthRestaurantSummary> restaurants =
                 userRestaurantRepository.findRestaurantSummariesByUserId(user.getId());
         String accessToken = jwtService.generateAccessToken(
@@ -329,7 +340,12 @@ public class StaffService {
         Instant refreshExpires = now.plus(refreshTokenTtlDays, ChronoUnit.DAYS);
         refreshTokenRepository.save(new RefreshToken(user, refreshTokenHash, refreshExpires));
 
-        return new AuthResponse(accessToken, refreshToken, jwtService.getAccessTokenTtlSeconds());
+        return AcceptInviteResponse.session(
+                user.getEmail(),
+                accessToken,
+                refreshToken,
+                jwtService.getAccessTokenTtlSeconds()
+        );
     }
 
     @Transactional

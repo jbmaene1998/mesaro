@@ -74,7 +74,7 @@ curl -fsS https://api.<domain>/actuator/health/readiness
 | Outbox dead-letters | Logs from `OutboxWorker`; alert if age > N minutes |
 | 5xx rate | Reverse-proxy / Caddy access logs |
 
-Alert ideas (wire later): webhook `failed` count, outbox backlog, readiness flapping.
+The API logs `OPS alert` and marks `opsSignal` DOWN for failed webhooks and outbox rows older than 15 minutes. Readiness stays independent. Page on that indicator, 5xx rate, and readiness flaps from the host.
 
 ## Security notes
 

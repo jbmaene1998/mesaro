@@ -19,12 +19,23 @@ test.describe('Register Page', () => {
     await expect(page).toHaveURL(/\/login/);
   });
 
-  test('successful registration redirects to /onboarding/setup', async ({ page }) => {
+  test('successful registration asks you to verify your email', async ({ page }) => {
+    await page.route('**/api/auth/register**', route => route.fulfill({
+      status: 201,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        success: true,
+        data: { email: 'owner@example.com', verificationRequired: true },
+        error: null,
+        timestamp: new Date().toISOString()
+      })
+    }));
     await page.getByLabel(/your name/i).fill('Test Owner');
     await page.getByLabel(/work email/i).fill('owner@example.com');
     await page.getByLabel(/password/i).fill('password123');
     await page.getByRole('button', { name: /create account/i }).click();
-    await expect(page).toHaveURL(/\/onboarding\/setup/);
+    await expect(page.getByRole('heading', { name: /verify your account/i })).toBeVisible();
+    await expect(page).not.toHaveURL(/\/onboarding/);
   });
 
   test('shows error message when API returns 500', async ({ page }) => {

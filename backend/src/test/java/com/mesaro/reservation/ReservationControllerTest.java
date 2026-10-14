@@ -49,7 +49,7 @@ class ReservationControllerTest {
         assertThat(response.data().confirmationCode()).isEqualTo("RES-2026-12345");
         assertThat(response.data().partySize()).isEqualTo(4);
         assertThat(response.data().status()).isEqualTo(ReservationStatus.CONFIRMED);
-        assertThat(response.data().tableLabels()).containsExactly("T1");
+        assertThat(response.data().tableLabels()).isEmpty();
         assertThat(PublicReservationResponse.class.getRecordComponents())
                 .extracting(component -> component.getName())
                 .doesNotContain("guestEmail", "guestPhone", "notes", "guestName");

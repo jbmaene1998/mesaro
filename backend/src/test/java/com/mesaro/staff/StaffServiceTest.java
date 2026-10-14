@@ -64,6 +64,8 @@ class StaffServiceTest {
     private PasswordEncoder passwordEncoder;
     @Mock
     private JdbcTemplate jdbcTemplate;
+    @Mock
+    private com.mesaro.auth.EmailVerificationService emailVerificationService;
 
     private StaffService staffService;
 
@@ -83,6 +85,7 @@ class StaffServiceTest {
                 tokenDenylistService,
                 passwordEncoder,
                 jdbcTemplate,
+                emailVerificationService,
                 72,
                 7
         );

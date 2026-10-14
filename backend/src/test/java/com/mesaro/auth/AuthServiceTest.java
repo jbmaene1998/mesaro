@@ -35,6 +35,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.anyInt;
 import static org.mockito.Mockito.anyLong;
 import static org.mockito.Mockito.anyString;
 import static org.mockito.Mockito.never;
@@ -74,6 +75,8 @@ class AuthServiceTest {
     @Mock
     private EmailService emailService;
     @Mock
+    private EmailVerificationService emailVerificationService;
+    @Mock
     private AuditService auditService;
     @Mock
     private TokenDenylistService tokenDenylistService;
@@ -97,6 +100,7 @@ class AuthServiceTest {
                 restaurantService,
                 billingService,
                 emailService,
+                emailVerificationService,
                 auditService,
                 tokenDenylistService,
                 7
@@ -223,30 +227,37 @@ class AuthServiceTest {
     }
 
     @Test
-    void register_createsOwnerMembershipAndIssuesTokens() {
+    void register_createsUnverifiedAccountAndSendsVerificationEmail() {
         when(userAccountRepository.findByEmailIgnoreCase("owner@example.com")).thenReturn(Optional.empty());
         when(passwordEncoder.encode("secret123")).thenReturn("encoded-pass");
 
         UserAccount persistedUser = buildUser(500L, "owner@example.com");
+        persistedUser.markEmailUnverified();
         when(userAccountRepository.save(any(UserAccount.class))).thenReturn(persistedUser);
 
-        when(userRestaurantRepository.findRestaurantSummariesByUserId(500L)).thenReturn(List.of());
-        when(jwtService.generateAccessToken(500L, "owner@example.com", List.of(), 1))
-                .thenReturn("access");
-        when(jwtService.getAccessTokenTtlSeconds()).thenReturn(900L);
-        when(tokenService.generateToken()).thenReturn("raw-refresh");
-        when(tokenService.hashToken("raw-refresh")).thenReturn("hashed-refresh");
-        when(refreshTokenRepository.save(any(RefreshToken.class))).thenAnswer(invocation -> invocation.getArgument(0));
-
-        AuthResponse response = authService.register(new RegisterRequest(
+        RegisterResponse response = authService.register(new RegisterRequest(
                 "owner@example.com",
                 "secret123",
                 null,
                 null
         ));
 
-        assertThat(response.accessToken()).isEqualTo("access");
-        assertThat(response.refreshToken()).isEqualTo("raw-refresh");
+        assertThat(response.email()).isEqualTo("owner@example.com");
+        assertThat(response.verificationRequired()).isTrue();
+        verify(emailVerificationService).sendVerification(persistedUser);
+        verify(jwtService, never()).generateAccessToken(any(), any(), any(), anyInt());
+    }
+
+    @Test
+    void login_rejectsUnverifiedAccount() {
+        UserAccount user = buildUser(101L, "user@example.com");
+        user.markEmailUnverified();
+        when(userAccountRepository.findByEmail("user@example.com")).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches("secret", user.getPasswordHash())).thenReturn(true);
+
+        assertThatThrownBy(() -> authService.login(new LoginRequest("user@example.com", "secret")))
+                .isInstanceOf(com.mesaro.common.exception.EmailNotVerifiedException.class);
+        verify(jwtService, never()).generateAccessToken(any(), any(), any(), anyInt());
     }
 
     @Test

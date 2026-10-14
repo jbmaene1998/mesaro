@@ -12,6 +12,8 @@ public final class AuditEventType {
     public static final String TOKEN_REFRESH_FAILED = "TOKEN_REFRESH_FAILED";
     public static final String CONTACT_FORM_SUBMITTED = "CONTACT_FORM_SUBMITTED";
     public static final String USER_REGISTERED = "USER_REGISTERED";
+    public static final String EMAIL_VERIFIED = "EMAIL_VERIFIED";
+    public static final String EMAIL_VERIFICATION_RESENT = "EMAIL_VERIFICATION_RESENT";
     public static final String USER_UPDATED = "USER_UPDATED";
     public static final String USER_DELETED = "USER_DELETED";
 

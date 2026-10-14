@@ -40,7 +40,7 @@ class ReservationConfirmationEmailSenderTest {
         when(icsService.generateReservationIcs(
                 data.confirmationCode(),
                 "Reservation at Demo Bistro",
-                "Reservation for 2 guests\\nConfirmation: RES-2026-ABCD1234\\nTable(s): T1",
+                "Reservation for 2 guests\\nConfirmation: RES-2026-ABCD1234",
                 data.restaurantName(),
                 data.startAtUtc(),
                 data.endAtUtc(),
@@ -68,7 +68,7 @@ class ReservationConfirmationEmailSenderTest {
         when(icsService.generateReservationIcs(
                 data.confirmationCode(),
                 "Reservation at Demo Bistro",
-                "Reservation for 2 guests\\nConfirmation: RES-2026-ABCD1234\\nTable(s): T1",
+                "Reservation for 2 guests\\nConfirmation: RES-2026-ABCD1234",
                 data.restaurantName(),
                 data.startAtUtc(),
                 data.endAtUtc(),

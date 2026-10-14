@@ -28,6 +28,8 @@ import jakarta.persistence.OptimisticLockException;
 public class GlobalExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+    private static final String CONSTRAINT_CONFLICT_MESSAGE =
+            "This change conflicts with existing data. Refresh and try again.";
 
     @ExceptionHandler(ApiException.class)
     public ResponseEntity<ApiResponse<Void>> handleApiException(ApiException ex) {
@@ -131,20 +133,18 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler({DataIntegrityViolationException.class, org.hibernate.exception.ConstraintViolationException.class})
     public ResponseEntity<ApiResponse<Void>> handleDataIntegrityViolation(Exception ex) {
-        String message = extractDatabaseConstraintMessage(ex);
-        log.warn("Data integrity violation: {}", message);
+        log.warn("Data integrity violation: {}", extractDatabaseConstraintMessage(ex));
         return ResponseEntity
                 .status(HttpStatus.CONFLICT)
-                .body(ApiResponse.error(ErrorCode.CONFLICT, message));
+                .body(ApiResponse.error(ErrorCode.CONFLICT, CONSTRAINT_CONFLICT_MESSAGE));
     }
 
     @ExceptionHandler(SQLException.class)
     public ResponseEntity<ApiResponse<Void>> handleSqlException(SQLException ex) {
-        String message = extractDatabaseConstraintMessage(ex);
-        log.warn("SQL constraint violation: {}", message);
+        log.warn("SQL constraint violation: {}", extractDatabaseConstraintMessage(ex));
         return ResponseEntity
                 .status(HttpStatus.CONFLICT)
-                .body(ApiResponse.error(ErrorCode.CONFLICT, message));
+                .body(ApiResponse.error(ErrorCode.CONFLICT, CONSTRAINT_CONFLICT_MESSAGE));
     }
 
     @ExceptionHandler(Exception.class)

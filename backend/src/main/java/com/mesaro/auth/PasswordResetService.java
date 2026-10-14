@@ -114,6 +114,9 @@ public class PasswordResetService {
         if (newPassword == null || newPassword.isBlank()) {
             throw new ValidationException("New password is required", "newPassword");
         }
+        if (newPassword.length() < 8 || newPassword.length() > 72) {
+            throw new ValidationException("Password must be between 8 and 72 characters", "newPassword");
+        }
         return newPassword;
     }
 }

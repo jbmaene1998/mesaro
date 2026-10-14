@@ -1,9 +1,10 @@
-import { Link, Navigate, useNavigate } from "react-router-dom";
+import { Link, Navigate } from "react-router-dom";
 import { useState } from "react";
 
 import { EMAIL_REGEX, getSignupErrorMessage } from "@/features/auth/register-utils";
 import { useAuth } from "@/hooks/use-auth";
 import { useI18n } from "@/i18n";
+import { resendVerification } from "@/api/auth";
 import { showApiError } from "@/lib/toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,7 +12,6 @@ import { Input } from "@/components/ui/input";
 
 export function RegisterPage() {
   const { t } = useI18n();
-  const navigate = useNavigate();
   const { isAuthenticated, restaurants, register } = useAuth();
   const [ownerName, setOwnerName] = useState("");
   const [ownerEmail, setOwnerEmail] = useState("");
@@ -19,9 +19,51 @@ export function RegisterPage() {
   const [ownerPhone, setOwnerPhone] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [pendingEmail, setPendingEmail] = useState<string | null>(null);
+  const [resendState, setResendState] = useState<"idle" | "sending" | "sent">("idle");
 
   if (isAuthenticated) {
     return <Navigate to={restaurants.length === 0 ? "/onboarding" : "/dashboard"} replace />;
+  }
+
+  const handleResend = async () => {
+    if (!pendingEmail) {
+      return;
+    }
+    setResendState("sending");
+    try {
+      await resendVerification(pendingEmail);
+      setResendState("sent");
+    } catch (resendError) {
+      setResendState("idle");
+      showApiError(resendError);
+    }
+  };
+
+  if (pendingEmail) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>{t("register.checkEmailTitle")}</CardTitle>
+          <CardDescription>
+            {t("register.checkEmailBody")} <span className="font-medium text-foreground">{pendingEmail}</span>
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-sm text-muted-foreground">{t("register.checkEmailDetail")}</p>
+          <Button type="button" className="w-full" onClick={() => void handleResend()} disabled={resendState === "sending"}>
+            {resendState === "sending"
+              ? t("register.resendingVerification")
+              : resendState === "sent"
+                ? t("register.verificationResent")
+                : t("register.resendVerification")}
+          </Button>
+          <p className="text-xs text-muted-foreground">
+            <Link to="/login" className="underline underline-offset-4">{t("register.logInHere")}</Link>
+          </p>
+        </CardContent>
+      </Card>
+    );
   }
 
   const handleSubmit = async () => {
@@ -47,7 +89,7 @@ export function RegisterPage() {
         ownerName: ownerName.trim(),
         ownerPhone: ownerPhone.trim() || undefined
       });
-      navigate("/onboarding", { replace: true });
+      setPendingEmail(ownerEmail.trim());
     } catch (submitError) {
       setError(getSignupErrorMessage(submitError));
       showApiError(submitError);
