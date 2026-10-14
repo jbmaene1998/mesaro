@@ -126,13 +126,15 @@ class AdminReservationLifecycleIntegrationTest extends IntegrationTestBase {
 
         mockMvc.perform(post("/api/admin/reservations/{id}/seat", reservationId)
                         .with(authentication(auth))
-                        .param("restaurantId", restaurant.getId().toString()))
+                        .param("restaurantId", restaurant.getId().toString())
+                        .header("If-Match", "\"0\""))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.status").value("SEATED"));
 
         mockMvc.perform(post("/api/admin/reservations/{id}/complete", reservationId)
                         .with(authentication(auth))
-                        .param("restaurantId", restaurant.getId().toString()))
+                        .param("restaurantId", restaurant.getId().toString())
+                        .header("If-Match", "\"1\""))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.status").value("COMPLETED"));
 
