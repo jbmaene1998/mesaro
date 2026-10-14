@@ -53,7 +53,10 @@ test.describe('Accept Invite Page', () => {
     await page.getByLabel(/^password$/i).fill('password123');
     await page.getByLabel(/confirm password/i).fill('password123');
     await page.getByRole('button', { name: /accept invite/i }).click();
-    await expect(page.getByRole("heading", { name: "Welcome to Mesaro", exact: true })).toBeVisible();
+    // Success screen redirects to /dashboard?tour=1 after 1.5s — accept either state.
+    await expect(
+      page.getByText(/Welcome to Mesaro|Taking you to a short floor tour/i).first()
+    ).toBeVisible({ timeout: 10_000 });
   });
 
   test('shows error for expired token from preview', async ({ page }) => {

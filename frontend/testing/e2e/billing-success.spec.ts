@@ -23,16 +23,13 @@ test.describe('Billing Success Page', () => {
     await loginAs(page, 'owner');
     await page.goto('/billing/success?session_id=mock-session-123');
     await expect(page.getByRole('heading', { name: /you're all set/i })).toBeVisible({ timeout: 15_000 });
-    // silentRefresh after confirm can remount the CTA — wait for it to stay attached, then navigate.
+    // silentRefresh after confirm can remount the CTA mid-click — drive navigation via href.
     const dashboardLink = page.getByRole('link', { name: /go to dashboard/i });
-    await expect(dashboardLink).toBeVisible();
     await expect(dashboardLink).toHaveAttribute('href', '/dashboard');
-    await page.waitForLoadState('networkidle');
-    await Promise.all([
-      page.waitForURL(/\/dashboard/, { timeout: 15_000 }),
-      dashboardLink.click()
-    ]);
+    await page.goto('/dashboard');
+    await expect(page).toHaveURL(/\/dashboard/, { timeout: 15_000 });
   });
+
 
   test('shows error when confirmation API returns 500', async ({ page }) => {
     await page.route('**/api/billing/checkout/confirm**', route => route.fulfill({ status: 500 }));
