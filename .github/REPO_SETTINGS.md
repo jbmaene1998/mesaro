@@ -132,7 +132,8 @@ Triage:
 
 - Private vulnerability reporting ✅
 - Secret scanning ✅ (and push protection if available on plan)
-- Dependabot alerts ✅ (grouped updates later with Actions)
+- Dependabot alerts ✅
+- Dependabot version updates ✅ ([`dependabot.yml`](dependabot.yml) — weekly grouped PRs to `dev` for npm, Maven, Actions)
 
 ## Apply via CLI (after auth)
 
