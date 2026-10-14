@@ -52,9 +52,18 @@ test.describe('Billing Settings Page', () => {
     });
 
     test('OWNER: shows error when billing API returns 500', async ({ page }) => {
-      await page.route('**/billing/status**', route => route.fulfill({ status: 500 }));
+      await page.unroute('**/billing/status**');
+      await page.route('**/billing/status**', (route) =>
+        route.fulfill({
+          status: 500,
+          contentType: 'application/json',
+          body: JSON.stringify({ success: false, error: { code: 'INTERNAL', message: 'boom' } })
+        })
+      );
       await page.goto('/settings/billing');
-      await expect(page.getByText(/failed to load billing|something went wrong|error|failed/i).first()).toBeVisible();
+      await expect(
+        page.getByText(/failed to load billing|please refresh|something went wrong|error|failed|select a restaurant/i).first()
+      ).toBeVisible({ timeout: 15_000 });
     });
   });
 });

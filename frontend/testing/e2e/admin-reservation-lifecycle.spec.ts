@@ -1,17 +1,12 @@
 import { expect, test } from "@playwright/test";
 
-import { loginAs, localDatePlusDays } from "./helpers/auth";
+import { loginAs } from "./helpers/auth";
 
 test("Manager can manage reservation lifecycle", async ({ page }) => {
   await loginAs(page, "manager");
   await page.goto("/reservations");
 
-  // Seed spans ±21 days; default filter is today only — widen if needed.
-  await page.getByRole("button", { name: /date range/i }).click();
-  await page.getByLabel(/start date/i).fill(localDatePlusDays(-7));
-  await page.getByLabel(/end date/i).fill(localDatePlusDays(7));
-
-  // Table badge renders raw enum ("CONFIRMED"), not title case.
+  // Seat is only allowed on the service day — keep the default "today" filter.
   const row = page.locator("tbody tr").filter({ hasText: "CONFIRMED" }).first();
   await expect(row).toBeVisible({ timeout: 20_000 });
 

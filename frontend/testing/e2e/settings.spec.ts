@@ -24,7 +24,6 @@ test.describe('Settings Page', () => {
   test.describe('when authenticated as owner', () => {
     test.beforeEach(async ({ page }) => {
       await loginAs(page, 'owner');
-      // Use the real restaurant APIs — broad mocks break AppShell restaurant selection.
       await page.goto('/settings');
       await expect(page.getByRole('heading', { name: /^settings$/i })).toBeVisible({ timeout: 15_000 });
     });
@@ -50,12 +49,15 @@ test.describe('Settings Page', () => {
         }
         await route.continue();
       });
+
+      // Name lives on General; Save Changes is on the Booking tab (same update mutation).
       const nameField = page
         .locator('div')
         .filter({ has: page.getByText(/^Restaurant Name$/i) })
         .locator('input')
         .first();
       await nameField.fill(`${(await nameField.inputValue()) || 'Demo'} Updated`);
+      await page.getByRole('tab', { name: /booking/i }).click();
       await page.getByRole('button', { name: /save changes/i }).click();
       await expectApiErrorVisible(page);
     });

@@ -4,8 +4,7 @@ test("Guest can cancel their reservation", async ({ page }) => {
   let status = "CONFIRMED";
 
   await page.route("**/api/reservations/RES-TEST-001**", async (route) => {
-    const url = route.request().url();
-    if (route.request().method() !== "GET" || url.includes("/cancel")) {
+    if (route.request().method() !== "GET") {
       status = "CANCELLED";
     }
     await route.fulfill({
@@ -35,10 +34,8 @@ test("Guest can cancel their reservation", async ({ page }) => {
   await page.getByRole("button", { name: "Cancel Reservation" }).click();
   await page.getByRole("button", { name: "Confirm Cancellation" }).click();
 
-  await expect(page.getByText(/Reservation cancelled successfully/i).first()).toBeVisible({
-    timeout: 10_000
-  });
-  await expect(page.getByText(/This reservation has been cancelled/i).first()).toBeVisible({
-    timeout: 10_000
+  // Success toast unmounts with the cancel section once status flips to CANCELLED.
+  await expect(page.getByText(/cancelled successfully|has been cancelled/i).first()).toBeVisible({
+    timeout: 15_000
   });
 });

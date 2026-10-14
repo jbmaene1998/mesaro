@@ -11,10 +11,15 @@ test.describe('Go-live onboarding wizard', () => {
   test.describe('when authenticated without restaurants', () => {
     test.beforeEach(async ({ page }) => {
       await loginAsOwnerWithoutRestaurants(page);
+      await expect(
+        page.getByRole('heading', { name: /go live with mesaro|ga live met mesaro|sal en vivo|passez en ligne/i })
+      ).toBeVisible({ timeout: 15_000 });
     });
 
     test('renders go-live wizard heading', async ({ page }) => {
-      await expect(page.getByRole('heading', { name: /go live with mesaro/i })).toBeVisible();
+      await expect(
+        page.getByRole('heading', { name: /go live with mesaro|ga live met mesaro|sal en vivo|passez en ligne/i })
+      ).toBeVisible();
     });
 
     test('restaurant name and slug fields are visible', async ({ page }) => {
@@ -55,7 +60,7 @@ test.describe('Go-live onboarding wizard', () => {
           });
           return;
         }
-        await route.continue();
+        await route.fallback();
       });
       await page.getByLabel(/restaurant name/i).fill('My Test Restaurant');
       await page.getByRole('button', { name: /create restaurant/i }).click();
@@ -68,7 +73,7 @@ test.describe('Go-live onboarding wizard', () => {
           await route.fulfill({ status: 500 });
           return;
         }
-        await route.continue();
+        await route.fallback();
       });
       await page.getByLabel(/restaurant name/i).fill('My Test Restaurant');
       await page.getByRole('button', { name: /create restaurant/i }).click();

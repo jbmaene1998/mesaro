@@ -13,24 +13,10 @@ test.describe('Staff Planning Page', () => {
   test.describe('when authenticated as staff', () => {
     test.beforeEach(async ({ page }) => {
       await loginAs(page, 'staff');
-      await page.route('**/staff-planning**', (route) => {
-        if (!route.request().url().includes('/api/')) {
-          return route.continue();
-        }
-        return route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          json: {
-            success: true,
-            data: {
-              date: '2026-03-02',
-              assignments: [],
-              openShifts: []
-            }
-          }
-        });
-      });
       await page.goto('/planning');
+      await expect(page.getByRole('heading', { name: /staff planning/i })).toBeVisible({
+        timeout: 15_000
+      });
     });
 
     test('renders Staff Planning heading', async ({ page }) => {
@@ -44,7 +30,6 @@ test.describe('Staff Planning Page', () => {
 
     test('Today button navigates back to current week', async ({ page }) => {
       await page.getByRole('button', { name: 'Today', exact: true }).click();
-      // After clicking Today, week range text should still be visible
       await expect(page.getByRole('heading', { name: /staff planning/i })).toBeVisible();
     });
 
@@ -56,7 +41,9 @@ test.describe('Staff Planning Page', () => {
         return route.fulfill({ status: 500 });
       });
       await page.reload();
-      await expect(page.getByText(/unable to load planning|something went wrong|error|failed/i).first()).toBeVisible();
+      await expect(
+        page.getByText(/unable to load planning|something went wrong|error|failed/i).first()
+      ).toBeVisible({ timeout: 15_000 });
     });
 
     test('responsive: heading and week navigation visible at 375 × 812', async ({ page }) => {

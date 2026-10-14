@@ -65,20 +65,26 @@ export async function loginAsOwnerWithoutRestaurants(page: Page) {
     { refresh: refreshToken, locale: "en" }
   );
 
-  await page.route("**/api/auth/refresh", (route) =>
-    route.fulfill({
+  await page.route("**/auth/refresh", (route) => {
+    if (!route.request().url().includes("/api/")) {
+      return route.continue();
+    }
+    return route.fulfill({
       status: 200,
       contentType: "application/json",
       json: { success: true, data: tokens }
-    })
-  );
-  await page.route("**/api/auth/login", (route) =>
-    route.fulfill({
+    });
+  });
+  await page.route("**/auth/login", (route) => {
+    if (!route.request().url().includes("/api/")) {
+      return route.continue();
+    }
+    return route.fulfill({
       status: 200,
       contentType: "application/json",
       json: { success: true, data: tokens }
-    })
-  );
+    });
+  });
   await page.route("**/api/restaurants**", async (route) => {
     if (route.request().method() === "GET") {
       await route.fulfill({
@@ -88,11 +94,16 @@ export async function loginAsOwnerWithoutRestaurants(page: Page) {
       });
       return;
     }
-    await route.continue();
+    await route.fallback();
   });
 
   await page.goto("/onboarding");
   await expect(page).toHaveURL(/\/onboarding/, { timeout: 15_000 });
+  await expect(
+    page.getByRole("heading", {
+      name: /go live with mesaro|ga live met mesaro|sal en vivo|passez en ligne/i
+    })
+  ).toBeVisible({ timeout: 15_000 });
 }
 
 /** Restaurant slug for guest booking (dev seed: demo-restaurant). */

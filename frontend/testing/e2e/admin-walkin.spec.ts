@@ -9,16 +9,17 @@ test("Staff can create a walk-in reservation", async ({ page }) => {
 
   const dialog = page.getByRole("dialog");
   await expect(dialog).toBeVisible();
-  // +/- buttons also match getByLabel(/party size/i) — use the spinbutton.
   await dialog.getByRole("spinbutton", { name: "Party Size" }).fill("4");
   await dialog.getByLabel("Guest Name (optional)").fill("E2E Walkin Guest");
 
-  const firstTableCheckbox = dialog.locator("input[type='checkbox']").first();
-  await firstTableCheckbox.check();
+  // Tables are selectable buttons (best-fit auto-selects). Wait until one is available.
+  await expect(dialog.getByRole("button", { name: /seats|available|best/i }).first()).toBeVisible({
+    timeout: 15_000
+  });
 
   await dialog.getByRole("button", { name: "Seat Walk-in" }).click();
 
-  await expect(page.getByText(/Walk-in seated at Table/i)).toBeVisible();
+  await expect(page.getByText(/Walk-in seated at Table/i)).toBeVisible({ timeout: 15_000 });
 
   await page.goto("/reservations");
   await expect(page.getByText("E2E Walkin Guest")).toBeVisible();

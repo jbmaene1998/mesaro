@@ -23,10 +23,9 @@ test.describe('Billing Success Page', () => {
     await loginAs(page, 'owner');
     await page.goto('/billing/success?session_id=mock-session-123');
     await expect(page.getByRole('heading', { name: /you're all set/i })).toBeVisible({ timeout: 15_000 });
-    await Promise.all([
-      page.waitForURL(/\/dashboard/, { timeout: 15_000 }),
-      page.locator('a[href="/dashboard"]').first().click()
-    ]);
+    // Client-side React Router navigation — do not wait for a full document "load".
+    await page.locator('a[href="/dashboard"]').first().click();
+    await expect(page).toHaveURL(/\/dashboard/, { timeout: 15_000 });
   });
 
   test('shows error when confirmation API returns 500', async ({ page }) => {
