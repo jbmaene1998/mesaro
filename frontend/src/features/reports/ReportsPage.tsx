@@ -34,8 +34,11 @@ const STATUS_META: Record<ReservationStatus, { className: string }> = {
   CANCELLED: { className: "bg-red-100 text-red-700 border-red-200" }
 };
 
-function formatStatusLabel(status: string, t: (key: string) => string): string {
-  const key = `reservation.status.${status}`;
+function formatStatusLabel(
+  status: string,
+  t: (key: keyof typeof import("@/i18n/messages").messages.en) => string
+): string {
+  const key = `reservation.status.${status}` as keyof typeof import("@/i18n/messages").messages.en;
   const translated = t(key);
   if (translated !== key) {
     return translated;
