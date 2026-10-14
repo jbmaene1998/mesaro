@@ -15,6 +15,9 @@ export default defineConfig({
   reporter: process.env.CI ? [["html", { open: "never" }], ["list"]] : "html",
   use: {
     baseURL,
+    // Marketing motion keeps offscreen sections at opacity 0 until they scroll in.
+    // That makes Playwright wait out the click timeout. Reduced motion renders them immediately.
+    reducedMotion: "reduce",
     // Staging uses Caddy `tls internal`; LAN clients accept the warning once, CI must skip verify.
     ignoreHTTPSErrors: isRemote,
     trace: "on-first-retry"

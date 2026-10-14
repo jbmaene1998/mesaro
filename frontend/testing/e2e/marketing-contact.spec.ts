@@ -15,12 +15,13 @@ test.describe('Contact Page', () => {
   });
 
   test('submits form successfully and shows confirmation', async ({ page }) => {
+    await page.route('**/api/contact**', route => route.fulfill({ status: 200, json: { success: true, data: null } }));
     await page.getByLabel(/first name/i).fill('Jane');
     await page.getByLabel(/last name/i).fill('Doe');
     await page.getByLabel(/work email/i).fill('jane@example.com');
-    await page.getByLabel(/message/i).fill('This is a long enough test message for the contact form.');
+    await page.getByLabel(/on your mind/i).fill('This is a long enough test message for the contact form.');
     await page.getByRole('button', { name: /send message/i }).click();
-    await expect(page.getByText(/sent|thank you|message received/i)).toBeVisible();
+    await expect(page.getByText(/got it/i)).toBeVisible();
   });
 
   test('shows error message when API returns 500', async ({ page }) => {
@@ -28,7 +29,7 @@ test.describe('Contact Page', () => {
     await page.getByLabel(/first name/i).fill('Jane');
     await page.getByLabel(/last name/i).fill('Doe');
     await page.getByLabel(/work email/i).fill('jane@example.com');
-    await page.getByLabel(/message/i).fill('This is a long enough test message for the contact form.');
+    await page.getByLabel(/on your mind/i).fill('This is a long enough test message for the contact form.');
     await page.getByRole('button', { name: /send message/i }).click();
     await expect(page.getByText(/something went wrong|error|failed|try again/i)).toBeVisible();
   });

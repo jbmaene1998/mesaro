@@ -224,7 +224,7 @@ export function GuestBookingPage() {
                   setSlotError(null);
                 }}
               >
-                <SelectTrigger>
+                <SelectTrigger aria-label={copy.partySize}>
                   <SelectValue placeholder={copy.selectPartySize} />
                 </SelectTrigger>
                 <SelectContent>

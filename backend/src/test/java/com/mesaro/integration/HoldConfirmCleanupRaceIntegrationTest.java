@@ -64,6 +64,7 @@ class HoldConfirmCleanupRaceIntegrationTest extends IntegrationTestBase {
         Restaurant restaurant = new Restaurant("Confirm Race", "confirm-race-" + System.nanoTime(), "UTC");
         restaurant.setBookingEnabled(true);
         restaurant = restaurantRepository.save(restaurant);
+        attachBillableOwner(restaurant);
         diningTableRepository.save(new DiningTable(restaurant, "T1", 2));
         LocalDate date = LocalDate.now(ZoneId.of("UTC")).plusDays(1);
         Shift shift = new Shift(restaurant, "Lunch", date.getDayOfWeek(), LocalTime.of(11, 0), LocalTime.of(15, 0), 50);

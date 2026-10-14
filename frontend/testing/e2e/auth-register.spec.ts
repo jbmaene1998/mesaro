@@ -11,7 +11,7 @@ test.describe('Register Page', () => {
 
   test('shows validation errors when form submitted empty', async ({ page }) => {
     await page.getByRole('button', { name: /create account/i }).click();
-    await expect(page.getByText(/required/i).first()).toBeVisible();
+    await expect(page.getByText("Enter your name.")).toBeVisible();
   });
 
   test('link to login navigates to /login', async ({ page }) => {

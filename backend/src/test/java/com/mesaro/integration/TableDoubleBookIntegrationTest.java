@@ -298,6 +298,7 @@ class TableDoubleBookIntegrationTest extends IntegrationTestBase {
         restaurantDraft.setBookingEnabled(true);
         restaurantDraft.setDefaultDurationMinutes(120);
         Restaurant restaurant = restaurantRepository.save(restaurantDraft);
+        attachOwner(restaurant);
         DiningTable table = diningTableRepository.save(new DiningTable(restaurant, "T1", 2));
 
         LocalDate date = LocalDate.now(ZoneId.of("Europe/Brussels")).plusDays(1);

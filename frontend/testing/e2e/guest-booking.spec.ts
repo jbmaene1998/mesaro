@@ -14,7 +14,7 @@ test("Guest can book a reservation", { tag: "@smoke" }, async ({ page }) => {
   // Prefer tomorrow so we are past min-notice and still inside advance window.
   await page.getByLabel("Date").fill(localDatePlusDays(1));
 
-  const partySizeTrigger = page.getByRole("combobox");
+  const partySizeTrigger = page.getByRole("combobox", { name: "Party Size" });
   await partySizeTrigger.click();
   await page.getByRole("option", { name: "2", exact: true }).click();
 

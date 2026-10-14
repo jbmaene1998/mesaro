@@ -54,6 +54,7 @@ class BookingFlowIntegrationTest extends IntegrationTestBase {
         Restaurant restaurant = new Restaurant("Test", "test", "UTC");
         restaurant.setBookingEnabled(true);
         restaurant = restaurantRepository.save(restaurant);
+        attachBillableOwner(restaurant);
 
         DiningTable table = new DiningTable(restaurant, "T1", 4);
         diningTableRepository.save(table);

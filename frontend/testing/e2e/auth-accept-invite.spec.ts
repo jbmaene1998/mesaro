@@ -53,7 +53,7 @@ test.describe('Accept Invite Page', () => {
     await page.getByLabel(/^password$/i).fill('password123');
     await page.getByLabel(/confirm password/i).fill('password123');
     await page.getByRole('button', { name: /accept invite/i }).click();
-    await expect(page.getByText(/welcome to mesaro/i)).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Welcome to Mesaro", exact: true })).toBeVisible();
   });
 
   test('shows error for expired token from preview', async ({ page }) => {

@@ -107,7 +107,7 @@ test.describe('Embed widget - /embed/:slug', () => {
 
   test('renders confirmation page heading', async ({ page }) => {
     await page.goto(`/embed/${SLUG}/confirm/${HOLD_TOKEN}`);
-    await expect(page.getByRole('heading', { name: /guest details|test restaurant/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Guest Details' })).toBeVisible();
   });
 
   test('shows confirmation code', async ({ page }) => {
@@ -126,7 +126,7 @@ test.describe('Embed widget - /embed/:slug', () => {
     await page.getByLabel(/name/i).fill('Alice');
     await page.getByLabel(/^email$/i).fill('alice@example.com');
     await page.getByRole('button', { name: /confirm reservation/i }).click();
-    await expect(page.getByText(/expired|unavailable|error/i)).toBeVisible();
+    await expect(page.getByText("Your hold has expired. Please select a new time slot.").first()).toBeVisible();
   });
 });
 
@@ -154,7 +154,7 @@ test.describe('Embed widget - /embed/:slug/reservation/:code', () => {
 
   test('renders reservation details heading', async ({ page }) => {
     await page.goto(`/embed/${SLUG}/reservation/${RES_CODE}?cancelToken=${CANCEL_TOKEN}`);
-    await expect(page.getByText(/loading reservation|reservation/i)).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Reservation', exact: true })).toBeVisible();
   });
 
   test('shows confirmation code', async ({ page }) => {

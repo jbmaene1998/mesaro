@@ -76,6 +76,7 @@ class AdminReservationLifecycleIntegrationTest extends IntegrationTestBase {
     @Test
     void adminReservationLifecycle_create_seat_complete() throws Exception {
         Restaurant restaurant = restaurantRepository.save(new Restaurant("Test", "test", "UTC"));
+        attachBillableOwner(restaurant);
 
         DiningTable table = new DiningTable(restaurant, "T1", 4);
         diningTableRepository.save(table);
@@ -158,6 +159,7 @@ class AdminReservationLifecycleIntegrationTest extends IntegrationTestBase {
     @Test
     void walkIn_createWithSeatImmediately_setsSeatedStatus() throws Exception {
         Restaurant restaurant = restaurantRepository.save(new Restaurant("Test Seat", "test-seat", "UTC"));
+        attachBillableOwner(restaurant);
 
         DiningTable table = new DiningTable(restaurant, "T1", 4);
         diningTableRepository.save(table);

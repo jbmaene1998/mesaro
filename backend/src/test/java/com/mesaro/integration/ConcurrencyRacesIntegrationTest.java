@@ -82,6 +82,7 @@ class ConcurrencyRacesIntegrationTest extends IntegrationTestBase {
     @RepeatedTest(100)
     void vacationApproveRace_onlyOneApproveAudit() throws Exception {
         Restaurant restaurant = restaurantRepository.save(new Restaurant("Vac Race", "vac-race", "UTC"));
+        attachBillableOwner(restaurant);
         UserAccount manager = userAccountRepository.save(new UserAccount("manager@example.com", "hash"));
         UserAccount staff = userAccountRepository.save(new UserAccount("staff@example.com", "hash"));
         userRestaurantRepository.save(new UserRestaurant(manager, restaurant, RestaurantRole.MANAGER));
@@ -128,6 +129,7 @@ class ConcurrencyRacesIntegrationTest extends IntegrationTestBase {
     @RepeatedTest(50)
     void reservationLostUpdateRace_oneSucceeds_oneRejected() throws Exception {
         Restaurant restaurant = restaurantRepository.save(new Restaurant("Res Race", "res-race", "UTC"));
+        attachBillableOwner(restaurant);
         DiningTable table = diningTableRepository.save(new DiningTable(restaurant, "T1", 4));
         LocalDate date = LocalDate.now(ZoneId.of("UTC")).plusDays(2);
         Shift shift = new Shift(restaurant, "Lunch", date.getDayOfWeek(),
@@ -178,6 +180,8 @@ class ConcurrencyRacesIntegrationTest extends IntegrationTestBase {
     void crossRestaurantAssignmentRace_onlyOneAssignment() throws Exception {
         Restaurant r1 = restaurantRepository.save(new Restaurant("R1", "r1-" + System.nanoTime(), "UTC"));
         Restaurant r2 = restaurantRepository.save(new Restaurant("R2", "r2-" + System.nanoTime(), "UTC"));
+        attachBillableOwner(r1);
+        attachBillableOwner(r2);
         UserAccount manager = userAccountRepository.save(new UserAccount("manager-cross@example.com", "hash"));
         userRestaurantRepository.save(new UserRestaurant(manager, r1, RestaurantRole.MANAGER));
         userRestaurantRepository.save(new UserRestaurant(manager, r2, RestaurantRole.MANAGER));
