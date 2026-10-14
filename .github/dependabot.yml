@@ -1,0 +1,57 @@
+# https://docs.github.com/en/code-security/dependabot/dependabot-version-updates
+# PRs target `dev` so CI (backend / frontend / e2e) runs before anything reaches `main`.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /frontend
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    target-branch: dev
+    labels:
+      - dependencies
+      - area:web
+    groups:
+      frontend-production:
+        dependency-type: production
+        update-types:
+          - minor
+          - patch
+      frontend-development:
+        dependency-type: development
+        update-types:
+          - minor
+          - patch
+
+  - package-ecosystem: maven
+    directory: /backend
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    target-branch: dev
+    labels:
+      - dependencies
+      - area:api
+    groups:
+      backend-dependencies:
+        patterns:
+          - "*"
+        update-types:
+          - minor
+          - patch
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 3
+    target-branch: dev
+    labels:
+      - dependencies
+    groups:
+      github-actions:
+        patterns:
+          - "*"
