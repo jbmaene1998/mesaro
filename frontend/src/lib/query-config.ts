@@ -7,7 +7,7 @@ import { showApiError } from "@/lib/toast";
 export const queryClientConfig: QueryClientConfig = {
   queryCache: new QueryCache({
     onError: (error) => {
-      const appError = error as AppError;
+      const appError = error as unknown as AppError;
       if (!appError?.status || appError.status >= 500) {
         showApiError(error);
       }
@@ -15,7 +15,7 @@ export const queryClientConfig: QueryClientConfig = {
   }),
   mutationCache: new MutationCache({
     onError: (error) => {
-      const appError = error as AppError;
+      const appError = error as unknown as AppError;
       if (!appError?.status || appError.status >= 500) {
         showApiError(error);
       }

@@ -75,6 +75,7 @@ class BookingConcurrencyIntegrationTest extends IntegrationTestBase {
         Restaurant restaurantDraft = new Restaurant("Race Hold", "race-hold", "UTC");
         restaurantDraft.setBookingEnabled(true);
         Restaurant restaurant = restaurantRepository.save(restaurantDraft);
+        attachBillableOwner(restaurant);
         diningTableRepository.save(new DiningTable(restaurant, "T1", 2));
 
         LocalDate date = LocalDate.now(ZoneId.of("UTC")).plusDays(1);
@@ -95,7 +96,7 @@ class BookingConcurrencyIntegrationTest extends IntegrationTestBase {
                 .getResponse()
                 .getStatus());
 
-        long successCount = statuses.stream().filter(status -> status == 200).count();
+        long successCount = statuses.stream().filter(status -> status == 201).count();
         long conflictCount = statuses.stream().filter(status -> status == 409).count();
 
         assertThat(successCount).isEqualTo(1);
@@ -107,6 +108,7 @@ class BookingConcurrencyIntegrationTest extends IntegrationTestBase {
         Restaurant restaurantDraft = new Restaurant("Race Capacity", "race-capacity", "UTC");
         restaurantDraft.setBookingEnabled(true);
         Restaurant restaurant = restaurantRepository.save(restaurantDraft);
+        attachBillableOwner(restaurant);
         diningTableRepository.save(new DiningTable(restaurant, "T1", 2));
         diningTableRepository.save(new DiningTable(restaurant, "T2", 2));
 
@@ -146,7 +148,7 @@ class BookingConcurrencyIntegrationTest extends IntegrationTestBase {
                 .getResponse()
                 .getStatus());
 
-        long successCount = statuses.stream().filter(status -> status == 200).count();
+        long successCount = statuses.stream().filter(status -> status == 201).count();
         long conflictCount = statuses.stream().filter(status -> status == 409).count();
 
         assertThat(successCount).isEqualTo(1);

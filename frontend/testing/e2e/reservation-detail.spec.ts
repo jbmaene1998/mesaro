@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 
+import { expectApiErrorVisible } from './helpers/assertions';
 import { loginAs } from './helpers/auth';
 
 const mockReservation = {
@@ -28,9 +29,10 @@ test.describe('Reservation Detail Page', () => {
   test.describe('when authenticated as manager', () => {
     test.beforeEach(async ({ page }) => {
       await loginAs(page, 'manager');
-      await page.route('**/api/reservations/res-001**', route =>
+      await page.route('**/api/admin/reservations/res-001**', route =>
         route.fulfill({
           status: 200,
+          contentType: 'application/json',
           json: { success: true, data: mockReservation }
         })
       );
@@ -38,8 +40,8 @@ test.describe('Reservation Detail Page', () => {
     });
 
     test('renders confirmation code and CONFIRMED status badge', async ({ page }) => {
-      await expect(page.getByText(/RES-001/)).toBeVisible();
-      await expect(page.getByText(/confirmed/i)).toBeVisible();
+      await expect(page.getByText(/RES-001/).first()).toBeVisible();
+      await expect(page.getByText(/confirmed/i).first()).toBeVisible();
     });
 
     test('guest information is displayed', async ({ page }) => {
@@ -57,14 +59,14 @@ test.describe('Reservation Detail Page', () => {
     });
 
     test('shows error state when reservation API returns 500', async ({ page }) => {
-      await page.route('**/api/reservations/res-001**', route => route.fulfill({ status: 500 }));
+      await page.route('**/api/admin/reservations/res-001**', route => route.fulfill({ status: 500 }));
       await page.reload();
-      await expect(page.getByText(/something went wrong|error|not found/i)).toBeVisible();
+      await expectApiErrorVisible(page);
     });
 
     test('responsive: reservation info visible at 375 × 812', async ({ page }) => {
       await page.setViewportSize({ width: 375, height: 812 });
-      await expect(page.getByText(/RES-001/)).toBeVisible();
+      await expect(page.getByText(/RES-001/).first()).toBeVisible();
     });
   });
 });

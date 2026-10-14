@@ -14,12 +14,9 @@ test.describe('Features Page', () => {
     await expect(page).toHaveURL(/\/register/);
   });
 
-  test('feature tabs switch content', async ({ page }) => {
-    const tabs = page.getByRole('tab');
-    await expect(tabs.first()).toBeVisible();
-    const secondTab = tabs.nth(1);
-    await secondTab.click();
-    await expect(secondTab).toHaveAttribute('aria-selected', 'true');
+  test('feature sections are on the page', async ({ page }) => {
+    await expect(page.getByRole('heading', { name: /double bookings don't happen here/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /your website\. your widget/i })).toBeVisible();
   });
 
   test('responsive: heading visible at 375 × 812', async ({ page }) => {

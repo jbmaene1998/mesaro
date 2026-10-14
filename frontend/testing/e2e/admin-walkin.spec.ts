@@ -7,16 +7,29 @@ test("Staff can create a walk-in reservation", async ({ page }) => {
 
   await page.getByRole("button", { name: "New Walk-in" }).click();
 
-  await page.getByLabel("Party Size").fill("4");
-  await page.getByLabel("Guest Name (optional)").fill("E2E Walkin Guest");
+  const dialog = page.getByRole("dialog");
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole("spinbutton", { name: "Party Size" }).fill("4");
+  await dialog.getByLabel("Guest Name (optional)").fill("E2E Walkin Guest");
 
-  const firstTableCheckbox = page.locator("input[type='checkbox']").first();
-  await firstTableCheckbox.check();
+  // Default 90 min may not fit near Dinner end (22:00). UI offers 60/90/120.
+  await dialog.locator("#walkin-duration").click();
+  await page.getByRole("option", { name: "60 min" }).click();
 
-  await page.getByRole("button", { name: "Seat Walk-in" }).click();
+  // Tables are selectable buttons (best-fit auto-selects). Wait until one is available.
+  await expect(dialog.getByRole("button", { name: /seats|available|best/i }).first()).toBeVisible({
+    timeout: 15_000
+  });
 
-  await expect(page.getByText(/Walk-in seated at Table/i)).toBeVisible();
+  const createWait = page.waitForResponse(
+    (res) =>
+      res.url().includes("/admin/reservations") &&
+      res.request().method() === "POST"
+  );
+  await dialog.getByRole("button", { name: "Seat Walk-in" }).click();
+  const createRes = await createWait;
+  expect(createRes.ok(), await createRes.text()).toBeTruthy();
 
   await page.goto("/reservations");
-  await expect(page.getByText("E2E Walkin Guest")).toBeVisible();
+  await expect(page.getByText("E2E Walkin Guest")).toBeVisible({ timeout: 15_000 });
 });

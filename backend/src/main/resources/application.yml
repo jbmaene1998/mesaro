@@ -170,7 +170,7 @@ app:
   # CORS
   # ---------------------------------------------------------------------------
   cors:
-    allowed-origins: ${API_CORS_ORIGINS:http://localhost:3000,http://localhost:5173}
+    allowed-origins: ${API_CORS_ORIGINS:http://localhost:3000,http://127.0.0.1:3000,http://localhost:5173}
     allow-credentials: ${API_CORS_ALLOW_CREDENTIALS:false}
 
   # ---------------------------------------------------------------------------

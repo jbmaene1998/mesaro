@@ -10,9 +10,11 @@ test.describe('FAQ Page', () => {
   });
 
   test('accordion items expand on click', async ({ page }) => {
-    const trigger = page.locator('button[aria-expanded]').first();
-    await trigger.click();
-    await expect(trigger).toHaveAttribute('aria-expanded', 'true');
+    const triggers = page.locator('button[aria-expanded]:visible');
+    await expect(triggers.first()).toHaveAttribute('aria-expanded', 'true');
+    const second = triggers.nth(1);
+    await second.click();
+    await expect(second).toHaveAttribute('aria-expanded', 'true');
   });
 
   test('try it free CTA link navigates to /register', async ({ page }) => {
@@ -23,6 +25,6 @@ test.describe('FAQ Page', () => {
   test('responsive: heading and first accordion visible at 375 × 812', async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 812 });
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
-    await expect(page.locator('button[aria-expanded]').first()).toBeVisible();
+    await expect(page.locator('button[aria-expanded]:visible').first()).toBeVisible();
   });
 });

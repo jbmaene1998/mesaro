@@ -32,7 +32,7 @@ test.describe('Reset Password Page', () => {
     await page.getByLabel(/new password/i).fill('newpassword123');
     await page.getByLabel(/confirm password/i).fill('newpassword123');
     await page.getByRole('button', { name: /update password/i }).click();
-    await expect(page.getByText(/password updated|success|redirecting/i)).toBeVisible();
+    await expect(page.getByText("Password updated successfully.")).toBeVisible();
   });
 
   test('shows error when token is invalid or expired', async ({ page }) => {
@@ -80,7 +80,7 @@ test.describe('Reset Password Page', () => {
       return route.fulfill({ status: 200, json: { success: true } });
     });
     await page.goto('/reset-password');
-    await expect(page.getByText(/invalid|missing.*token|link.*invalid/i)).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Invalid Reset Link" })).toBeVisible();
     expect(apiCalled).toBe(false);
   });
 

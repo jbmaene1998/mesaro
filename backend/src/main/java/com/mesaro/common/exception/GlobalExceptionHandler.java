@@ -7,6 +7,7 @@ import jakarta.validation.ConstraintViolationException;
 import java.sql.SQLException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.dao.CannotAcquireLockException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -129,6 +130,14 @@ public class GlobalExceptionHandler {
                 .status(HttpStatus.CONFLICT)
                 .body(ApiResponse.error(ErrorCode.CONFLICT,
                         "Resource was modified by another request. Re-fetch the resource and retry with the latest ETag."));
+    }
+
+    @ExceptionHandler(CannotAcquireLockException.class)
+    public ResponseEntity<ApiResponse<Void>> handleLockAcquisition(CannotAcquireLockException ex) {
+        log.warn("Could not acquire database lock: {}", LogSanitizer.exceptionType(ex));
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .body(ApiResponse.error(ErrorCode.CONFLICT, CONSTRAINT_CONFLICT_MESSAGE));
     }
 
     @ExceptionHandler({DataIntegrityViolationException.class, org.hibernate.exception.ConstraintViolationException.class})

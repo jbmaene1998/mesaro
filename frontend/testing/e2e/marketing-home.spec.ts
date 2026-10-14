@@ -20,14 +20,15 @@ test.describe('Home Page', () => {
   });
 
   test('Request Demo link navigates to /contact', async ({ page }) => {
-    await page.getByRole('link', { name: /request demo/i }).first().click();
+    await page.getByRole('link', { name: /request a demo/i }).click();
     await expect(page).toHaveURL(/\/contact/);
   });
 
   test('FAQ accordion expands an item', async ({ page }) => {
-    const trigger = page.locator('button[aria-expanded]').first();
-    await trigger.click();
-    await expect(trigger).toHaveAttribute('aria-expanded', 'true');
+    const triggers = page.locator('button[aria-expanded]:visible');
+    const second = triggers.nth(1);
+    await second.click();
+    await expect(second).toHaveAttribute('aria-expanded', 'true');
   });
 
   test('responsive: heading visible at 375 × 812', async ({ page }) => {

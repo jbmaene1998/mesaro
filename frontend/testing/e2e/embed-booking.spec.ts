@@ -107,7 +107,7 @@ test.describe('Embed widget - /embed/:slug', () => {
 
   test('renders confirmation page heading', async ({ page }) => {
     await page.goto(`/embed/${SLUG}/confirm/${HOLD_TOKEN}`);
-    await expect(page.getByRole('heading', { name: /guest details|test restaurant/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Guest Details' })).toBeVisible();
   });
 
   test('shows confirmation code', async ({ page }) => {
@@ -119,16 +119,30 @@ test.describe('Embed widget - /embed/:slug', () => {
   });
 
   test('shows error when confirm API returns 410 (expired hold)', async ({ page }) => {
-    await page.route('**/api/holds/confirm', route =>
-      route.fulfill({ status: 410, json: { success: false, error: { code: 'HOLD_EXPIRED' } } })
-    );
+    // Last registered handler wins — override the beforeEach 200 confirm mock.
+    await page.route('**/api/holds/confirm**', (route) => {
+      if (route.request().method() !== 'POST') {
+        return route.fallback();
+      }
+      return route.fulfill({
+        status: 410,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          success: false,
+          error: { code: 'HOLD_EXPIRED', message: 'Hold expired' }
+        })
+      });
+    });
     await page.goto(`/embed/${SLUG}/confirm/${HOLD_TOKEN}`);
     await page.getByLabel(/name/i).fill('Alice');
     await page.getByLabel(/^email$/i).fill('alice@example.com');
     await page.getByRole('button', { name: /confirm reservation/i }).click();
-    await expect(page.getByText(/expired|unavailable|error/i)).toBeVisible();
+    await expect(
+      page.getByText(/hold has expired|unable to confirm|something went wrong/i).first()
+    ).toBeVisible({ timeout: 10_000 });
   });
 });
+
 
 test.describe('Embed widget - /embed/:slug/reservation/:code', () => {
   test.beforeEach(async ({ page }) => {
@@ -154,7 +168,7 @@ test.describe('Embed widget - /embed/:slug/reservation/:code', () => {
 
   test('renders reservation details heading', async ({ page }) => {
     await page.goto(`/embed/${SLUG}/reservation/${RES_CODE}?cancelToken=${CANCEL_TOKEN}`);
-    await expect(page.getByText(/loading reservation|reservation/i)).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Reservation', exact: true })).toBeVisible();
   });
 
   test('shows confirmation code', async ({ page }) => {

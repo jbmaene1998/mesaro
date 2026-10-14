@@ -1,5 +1,7 @@
 import { test, expect } from '@playwright/test';
 
+import { loginAs } from './helpers/auth';
+
 // /billing/cancel is a Stripe post-checkout cancel page — no auth required,
 // no API calls made.
 
@@ -17,12 +19,16 @@ test.describe('Billing Cancel Page', () => {
   });
 
   test('Try again link navigates to /settings/billing', async ({ page }) => {
-    await page.getByRole('link', { name: /try again/i }).click();
+    await loginAs(page, 'owner');
+    await page.goto('/billing/cancel');
+    await page.getByRole('button', { name: 'Try again' }).click();
     await expect(page).toHaveURL(/\/settings\/billing/);
   });
 
   test('Back to dashboard link navigates to /dashboard', async ({ page }) => {
-    await page.getByRole('link', { name: /back to dashboard|dashboard/i }).click();
+    await loginAs(page, 'owner');
+    await page.goto('/billing/cancel');
+    await page.getByRole('button', { name: 'Back to dashboard' }).click();
     await expect(page).toHaveURL(/\/dashboard/);
   });
 

@@ -47,8 +47,12 @@ class DstBookingIntegrationTest extends IntegrationTestBase {
         LocalDate gapDate = findGapDate(zone);
         Restaurant restaurant = new Restaurant("DST Test", "dst-test-" + System.nanoTime(), zone.getId());
         restaurant.setBookingEnabled(true);
+        restaurant.setMaxAdvanceDays(400);
+        restaurant.setDefaultDurationMinutes(30);
         restaurant = restaurantRepository.save(restaurant);
+        attachBillableOwner(restaurant);
         diningTableRepository.save(new DiningTable(restaurant, "T1", 4));
+        diningTableRepository.save(new DiningTable(restaurant, "T2", 4));
         Shift shift = new Shift(restaurant, "Night", gapDate.getDayOfWeek(),
                 LocalTime.of(0, 0), LocalTime.of(4, 0), 50);
         shift.setStatus(ShiftStatus.ACTIVE);
@@ -79,9 +83,9 @@ class DstBookingIntegrationTest extends IntegrationTestBase {
                 .getResponse()
                 .getStatus();
 
-        assertThat(beforeStatus).isEqualTo(200);
+        assertThat(beforeStatus).isEqualTo(201);
         assertThat(gapStatus).isEqualTo(422);
-        assertThat(afterStatus).isEqualTo(200);
+        assertThat(afterStatus).isEqualTo(201);
     }
 
     private LocalDate findGapDate(ZoneId zone) {

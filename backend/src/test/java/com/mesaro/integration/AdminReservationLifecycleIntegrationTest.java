@@ -75,7 +75,10 @@ class AdminReservationLifecycleIntegrationTest extends IntegrationTestBase {
 
     @Test
     void adminReservationLifecycle_create_seat_complete() throws Exception {
-        Restaurant restaurant = restaurantRepository.save(new Restaurant("Test", "test", "UTC"));
+        Restaurant restaurant = new Restaurant("Test", "test", "UTC");
+        restaurant.setBookingEnabled(true);
+        restaurant = restaurantRepository.save(restaurant);
+        attachBillableOwner(restaurant);
 
         DiningTable table = new DiningTable(restaurant, "T1", 4);
         diningTableRepository.save(table);
@@ -114,7 +117,7 @@ class AdminReservationLifecycleIntegrationTest extends IntegrationTestBase {
                         .param("restaurantId", restaurant.getId().toString())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(createRequest)))
-                .andExpect(status().isOk())
+                .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.data.status").value("CONFIRMED"))
                 .andReturn();
 
@@ -123,13 +126,15 @@ class AdminReservationLifecycleIntegrationTest extends IntegrationTestBase {
 
         mockMvc.perform(post("/api/admin/reservations/{id}/seat", reservationId)
                         .with(authentication(auth))
-                        .param("restaurantId", restaurant.getId().toString()))
+                        .param("restaurantId", restaurant.getId().toString())
+                        .header("If-Match", "\"0\""))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.status").value("SEATED"));
 
         mockMvc.perform(post("/api/admin/reservations/{id}/complete", reservationId)
                         .with(authentication(auth))
-                        .param("restaurantId", restaurant.getId().toString()))
+                        .param("restaurantId", restaurant.getId().toString())
+                        .header("If-Match", "\"1\""))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.status").value("COMPLETED"));
 
@@ -157,7 +162,10 @@ class AdminReservationLifecycleIntegrationTest extends IntegrationTestBase {
 
     @Test
     void walkIn_createWithSeatImmediately_setsSeatedStatus() throws Exception {
-        Restaurant restaurant = restaurantRepository.save(new Restaurant("Test Seat", "test-seat", "UTC"));
+        Restaurant restaurant = new Restaurant("Test Seat", "test-seat", "UTC");
+        restaurant.setBookingEnabled(true);
+        restaurant = restaurantRepository.save(restaurant);
+        attachBillableOwner(restaurant);
 
         DiningTable table = new DiningTable(restaurant, "T1", 4);
         diningTableRepository.save(table);
@@ -196,7 +204,7 @@ class AdminReservationLifecycleIntegrationTest extends IntegrationTestBase {
                         .param("restaurantId", restaurant.getId().toString())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(createRequest)))
-                .andExpect(status().isOk())
+                .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.data.status").value("SEATED"))
                 .andExpect(jsonPath("$.data.guestEmail").value(""));
     }

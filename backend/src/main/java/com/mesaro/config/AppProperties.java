@@ -162,7 +162,7 @@ public class AppProperties {
 
     public static class Cors {
         @NotBlank
-        private String allowedOrigins = "http://localhost:3000,http://localhost:5173";
+        private String allowedOrigins = "http://localhost:3000,http://127.0.0.1:3000,http://localhost:5173";
         private boolean allowCredentials = false;
 
         public String getAllowedOrigins() {

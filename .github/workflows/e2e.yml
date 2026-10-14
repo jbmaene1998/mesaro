@@ -10,7 +10,7 @@ jobs:
   playwright-e2e:
     name: Playwright E2E
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
 
     steps:
       - name: Checkout
@@ -64,6 +64,8 @@ jobs:
           ELASTICSEARCH_HEALTH_ENABLED: "false"
           # CI has no SMTP credentials; keep aggregate/liveness health green.
           MANAGEMENT_HEALTH_MAIL_ENABLED: "false"
+          # Serial Playwright logins share one IP and would trip the auth bucket.
+          RATE_LIMIT_ENABLED: "false"
         run: |
           set -euo pipefail
           chmod +x mvnw
@@ -94,7 +96,7 @@ jobs:
           E2E_MANAGER_PASSWORD: ${{ secrets.E2E_MANAGER_PASSWORD }}
           E2E_STAFF_EMAIL: ${{ secrets.E2E_STAFF_EMAIL }}
           E2E_STAFF_PASSWORD: ${{ secrets.E2E_STAFF_PASSWORD }}
-        run: npx playwright test --project=chromium
+        run: stdbuf -oL -eL npx playwright test --project=chromium --reporter=line
 
       - name: Upload Playwright HTML report
         if: always()

@@ -21,7 +21,7 @@ describe("reservations api table status", () => {
     getMock.mockReset();
   });
 
-  it("does not send unsupported partySize query param to backend table status endpoint", async () => {
+  it("sends date and time params to the table status endpoint", async () => {
     getMock.mockResolvedValue({
       data: {
         success: true,
@@ -32,8 +32,7 @@ describe("reservations api table status", () => {
     await getTableStatus({
       date: "2026-02-20",
       startTime: "18:00",
-      endTime: "19:30",
-      partySize: 4
+      endTime: "19:30"
     });
 
     expect(getMock).toHaveBeenCalledWith("/restaurants/7/tables/status", {

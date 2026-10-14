@@ -1,9 +1,11 @@
 import path from "node:path";
+import { loadEnv } from "vite";
 import { defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react";
 
-function assertProductionApiUrl() {
-    const apiUrl = process.env.VITE_API_URL?.trim() ?? "";
+function assertProductionApiUrl(mode) {
+    const fileEnv = loadEnv(mode, process.cwd(), "VITE_");
+    const apiUrl = (process.env.VITE_API_URL?.trim() || fileEnv.VITE_API_URL?.trim() || "");
     if (!apiUrl) {
         throw new Error(
             "VITE_API_URL is required for production builds. Example: https://api.example.com/api"
@@ -23,7 +25,7 @@ function assertProductionApiUrl() {
 
 export default defineConfig(({ command, mode }) => {
     if (command === "build" && mode === "production") {
-        assertProductionApiUrl();
+        assertProductionApiUrl(mode);
     }
     return {
         plugins: [react()],
@@ -37,7 +39,9 @@ export default defineConfig(({ command, mode }) => {
             environment: "jsdom",
             setupFiles: "./testing/unit/setup.ts",
             include: ["testing/unit/**/*.{test,spec}.{ts,tsx}"],
-            css: true
+            css: true,
+            minWorkers: 1,
+            maxWorkers: 2
         }
     };
 });

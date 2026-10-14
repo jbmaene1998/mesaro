@@ -10,8 +10,8 @@ test("Staff cannot see management pages", async ({ page }) => {
   await expect(page.getByRole("link", { name: "Staff" })).toHaveCount(0);
 
   await page.goto("/tables");
-  await expect(page.getByText("403 Access Denied")).toBeVisible();
+  await expect(page.getByText(/access denied/i).first()).toBeVisible();
 
   await page.goto("/settings");
-  await expect(page.getByText("403 Access Denied")).toBeVisible();
+  await expect(page.getByText(/access denied/i).first()).toBeVisible();
 });

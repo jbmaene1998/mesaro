@@ -54,6 +54,7 @@ class BookingFlowIntegrationTest extends IntegrationTestBase {
         Restaurant restaurant = new Restaurant("Test", "test", "UTC");
         restaurant.setBookingEnabled(true);
         restaurant = restaurantRepository.save(restaurant);
+        attachBillableOwner(restaurant);
 
         DiningTable table = new DiningTable(restaurant, "T1", 4);
         diningTableRepository.save(table);
@@ -76,7 +77,7 @@ class BookingFlowIntegrationTest extends IntegrationTestBase {
         MvcResult holdResult = mockMvc.perform(post("/api/holds")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(holdRequest)))
-                .andExpect(status().isOk())
+                .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.data.holdToken").isNotEmpty())
                 .andReturn();
 

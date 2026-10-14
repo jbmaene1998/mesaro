@@ -13,22 +13,10 @@ test.describe('Staff Planning Page', () => {
   test.describe('when authenticated as staff', () => {
     test.beforeEach(async ({ page }) => {
       await loginAs(page, 'staff');
-      await page.route('**/api/staff-planning**', route =>
-        route.fulfill({
-          status: 200,
-          json: {
-            success: true,
-            data: {
-              weekStart: '2026-03-02',
-              totalShifts: 0,
-              assignedSlots: 0,
-              openSlots: 0,
-              days: []
-            }
-          }
-        })
-      );
       await page.goto('/planning');
+      await expect(page.getByRole('heading', { name: /staff planning/i })).toBeVisible({
+        timeout: 15_000
+      });
     });
 
     test('renders Staff Planning heading', async ({ page }) => {
@@ -41,15 +29,21 @@ test.describe('Staff Planning Page', () => {
     });
 
     test('Today button navigates back to current week', async ({ page }) => {
-      await page.getByRole('button', { name: /today/i }).click();
-      // After clicking Today, week range text should still be visible
+      await page.getByRole('button', { name: 'Today', exact: true }).click();
       await expect(page.getByRole('heading', { name: /staff planning/i })).toBeVisible();
     });
 
     test('shows error state when API returns 500', async ({ page }) => {
-      await page.route('**/api/staff-planning**', route => route.fulfill({ status: 500 }));
+      await page.route('**/staff-planning**', (route) => {
+        if (!route.request().url().includes('/api/')) {
+          return route.continue();
+        }
+        return route.fulfill({ status: 500 });
+      });
       await page.reload();
-      await expect(page.getByText(/something went wrong|error|failed/i)).toBeVisible();
+      await expect(
+        page.getByText(/unable to load planning|something went wrong|error|failed/i).first()
+      ).toBeVisible({ timeout: 15_000 });
     });
 
     test('responsive: heading and week navigation visible at 375 × 812', async ({ page }) => {

@@ -71,7 +71,6 @@ public interface StaffShiftAssignmentRepository extends JpaRepository<StaffShift
             """)
     int deleteFutureAssignments(Long restaurantId, Long userId, LocalDate startDate);
 
-    @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query(value = """
             SELECT a.*
             FROM staff_shift_assignment a
@@ -88,7 +87,7 @@ public interface StaffShiftAssignmentRepository extends JpaRepository<StaffShift
                         END
                     ),
                     '[)'
-                  ) && tstzrange(:startUtc::timestamp, :endUtc::timestamp, '[)')
+                  ) && tstzrange(CAST(:startUtc AS timestamptz), CAST(:endUtc AS timestamptz), '[)')
             LIMIT 1
             FOR UPDATE
             """, nativeQuery = true)

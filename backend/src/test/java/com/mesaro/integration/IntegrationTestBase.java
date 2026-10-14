@@ -1,5 +1,11 @@
 package com.mesaro.integration;
 
+import com.mesaro.restaurant.Restaurant;
+import com.mesaro.security.RestaurantRole;
+import com.mesaro.user.UserAccount;
+import com.mesaro.user.UserAccountRepository;
+import com.mesaro.user.UserRestaurant;
+import com.mesaro.user.UserRestaurantRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -22,8 +28,26 @@ public abstract class IntegrationTestBase {
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
+    @Autowired
+    private UserAccountRepository userAccountRepository;
+
+    @Autowired
+    private UserRestaurantRepository userRestaurantRepository;
+
     @BeforeEach
     void cleanDatabase() {
         new TestDatabaseCleaner(jdbcTemplate).clean();
+    }
+
+    /**
+     * Guest holds and restaurant writes are billed to the owner. A restaurant
+     * saved only for the test still needs a trialing owner or those calls 500.
+     */
+    protected void attachBillableOwner(Restaurant restaurant) {
+        UserAccount owner = userAccountRepository.save(new UserAccount(
+                "owner-" + restaurant.getId() + "-" + System.nanoTime() + "@example.com",
+                "hash"
+        ));
+        userRestaurantRepository.save(new UserRestaurant(owner, restaurant, RestaurantRole.OWNER));
     }
 }
