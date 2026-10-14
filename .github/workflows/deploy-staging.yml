@@ -185,10 +185,14 @@ jobs:
 
       - name: Build frontend
         working-directory: /opt/mesaro/frontend
+        env:
+          # Same origin as the SPA so one Caddy internal-cert accept covers API calls.
+          # Must be in process.env: vite.config asserts VITE_API_URL at config-load time
+          # (file-only .env.production.local is not always visible then).
+          VITE_API_URL: https://app.mesaro.staging/api
         run: |
           set -euo pipefail
-          # Same origin as the SPA so one Caddy internal-cert accept covers API calls.
-          printf '%s\n' 'VITE_API_URL=https://app.mesaro.staging/api' > .env.production.local
+          printf '%s\n' "VITE_API_URL=${VITE_API_URL}" > .env.production.local
           npm ci
           npx vite build
           mkdir -p ../backend/frontend-dist
