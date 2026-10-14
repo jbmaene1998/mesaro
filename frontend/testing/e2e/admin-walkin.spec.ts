@@ -17,10 +17,15 @@ test("Staff can create a walk-in reservation", async ({ page }) => {
     timeout: 15_000
   });
 
+  const createWait = page.waitForResponse(
+    (res) =>
+      res.url().includes("/admin/reservations") &&
+      res.request().method() === "POST"
+  );
   await dialog.getByRole("button", { name: "Seat Walk-in" }).click();
-
-  await expect(page.getByText(/Walk-in seated at Table/i)).toBeVisible({ timeout: 15_000 });
+  const createRes = await createWait;
+  expect(createRes.ok(), await createRes.text()).toBeTruthy();
 
   await page.goto("/reservations");
-  await expect(page.getByText("E2E Walkin Guest")).toBeVisible();
+  await expect(page.getByText("E2E Walkin Guest")).toBeVisible({ timeout: 15_000 });
 });

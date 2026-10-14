@@ -1,16 +1,54 @@
 import { expect, test } from "@playwright/test";
 
-import { loginAs, localDatePlusDays } from "./helpers/auth";
+import { loginAs } from "./helpers/auth";
 
 const API_BASE = (process.env.VITE_API_URL || "http://127.0.0.1:8080/api").replace(/\/$/, "");
+const RESTAURANT_TZ = "Europe/Brussels";
 
 function decodeJwtPayload(token: string): Record<string, unknown> {
   const segment = token.split(".")[1];
   if (!segment) {
     throw new Error("Invalid JWT");
   }
-  const json = Buffer.from(segment, "base64url").toString("utf8");
-  return JSON.parse(json) as Record<string, unknown>;
+  return JSON.parse(Buffer.from(segment, "base64url").toString("utf8")) as Record<string, unknown>;
+}
+
+/** Dinner last_reservation_time is 21:00 — pick a future quarter-hour still inside that window. */
+function nextDinnerSlotInBrussels(now = new Date()): { date: string; time: string; endTime: string } | null {
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat("en-GB", {
+      timeZone: RESTAURANT_TZ,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hourCycle: "h23"
+    })
+      .formatToParts(now)
+      .filter((part) => part.type !== "literal")
+      .map((part) => [part.type, part.value])
+  ) as Record<string, string>;
+
+  const date = `${parts.year}-${parts.month}-${parts.day}`;
+  let totalMinutes = Number(parts.hour) * 60 + Number(parts.minute) + 15;
+  totalMinutes = Math.ceil(totalMinutes / 15) * 15;
+  let hour = Math.floor(totalMinutes / 60);
+  let minute = totalMinutes % 60;
+
+  if (hour < 18) {
+    hour = 18;
+    minute = 0;
+  }
+  // last_reservation_time for Dinner is 21:00
+  if (hour > 21 || (hour === 21 && minute > 0)) {
+    return null;
+  }
+
+  const time = `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+  const endTotal = hour * 60 + minute + 90;
+  const endTime = `${String(Math.floor(endTotal / 60)).padStart(2, "0")}:${String(endTotal % 60).padStart(2, "0")}`;
+  return { date, time, endTime };
 }
 
 test("Manager can manage reservation lifecycle", async ({ page }) => {
@@ -29,12 +67,13 @@ test("Manager can manage reservation lifecycle", async ({ page }) => {
   const restaurantId = Number(restaurants?.[0]?.restaurantId ?? restaurants?.[0]?.id);
   expect(restaurantId, "manager restaurant id").toBeGreaterThan(0);
 
-  const date = localDatePlusDays(0);
-  const headers = { Authorization: `Bearer ${accessToken}` };
+  const slot = nextDinnerSlotInBrussels();
+  test.skip(!slot, "Too late for Dinner last_reservation_time (21:00 Europe/Brussels)");
 
+  const headers = { Authorization: `Bearer ${accessToken}` };
   const statusRes = await page.request.get(`${API_BASE}/restaurants/${restaurantId}/tables/status`, {
     headers,
-    params: { date, startTime: "20:00", endTime: "21:30" }
+    params: { date: slot!.date, startTime: slot!.time, endTime: slot!.endTime }
   });
   expect(statusRes.ok(), await statusRes.text()).toBeTruthy();
   const statusJson = await statusRes.json();
@@ -51,7 +90,7 @@ test("Manager can manage reservation lifecycle", async ({ page }) => {
         : String(table.status ?? "").toUpperCase() === "AVAILABLE";
     return available && Number(table.seats ?? 0) >= 2;
   });
-  expect(free, "expected a free table for Dinner 20:00").toBeTruthy();
+  expect(free, `expected a free table at ${slot!.time}`).toBeTruthy();
 
   const createRes = await page.request.post(`${API_BASE}/admin/reservations`, {
     headers: { ...headers, "Content-Type": "application/json" },
@@ -59,8 +98,8 @@ test("Manager can manage reservation lifecycle", async ({ page }) => {
     data: {
       guestName: "E2E Lifecycle Guest",
       partySize: 2,
-      date,
-      time: "20:00",
+      date: slot!.date,
+      time: slot!.time,
       durationMinutes: 90,
       tableIds: [Number(free!.id)],
       seatImmediately: false
