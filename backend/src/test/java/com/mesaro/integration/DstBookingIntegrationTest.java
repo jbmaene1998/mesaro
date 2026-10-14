@@ -47,6 +47,8 @@ class DstBookingIntegrationTest extends IntegrationTestBase {
         LocalDate gapDate = findGapDate(zone);
         Restaurant restaurant = new Restaurant("DST Test", "dst-test-" + System.nanoTime(), zone.getId());
         restaurant.setBookingEnabled(true);
+        restaurant.setMaxAdvanceDays(400);
+        restaurant.setDefaultDurationMinutes(30);
         restaurant = restaurantRepository.save(restaurant);
         attachBillableOwner(restaurant);
         diningTableRepository.save(new DiningTable(restaurant, "T1", 4));
@@ -80,9 +82,9 @@ class DstBookingIntegrationTest extends IntegrationTestBase {
                 .getResponse()
                 .getStatus();
 
-        assertThat(beforeStatus).isEqualTo(200);
+        assertThat(beforeStatus).isEqualTo(201);
         assertThat(gapStatus).isEqualTo(422);
-        assertThat(afterStatus).isEqualTo(200);
+        assertThat(afterStatus).isEqualTo(201);
     }
 
     private LocalDate findGapDate(ZoneId zone) {

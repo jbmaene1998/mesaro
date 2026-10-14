@@ -96,7 +96,7 @@ class BookingConcurrencyIntegrationTest extends IntegrationTestBase {
                 .getResponse()
                 .getStatus());
 
-        long successCount = statuses.stream().filter(status -> status == 200).count();
+        long successCount = statuses.stream().filter(status -> status == 201).count();
         long conflictCount = statuses.stream().filter(status -> status == 409).count();
 
         assertThat(successCount).isEqualTo(1);
@@ -148,7 +148,7 @@ class BookingConcurrencyIntegrationTest extends IntegrationTestBase {
                 .getResponse()
                 .getStatus());
 
-        long successCount = statuses.stream().filter(status -> status == 200).count();
+        long successCount = statuses.stream().filter(status -> status == 201).count();
         long conflictCount = statuses.stream().filter(status -> status == 409).count();
 
         assertThat(successCount).isEqualTo(1);

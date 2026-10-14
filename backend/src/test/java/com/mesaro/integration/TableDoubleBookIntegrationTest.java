@@ -180,8 +180,13 @@ class TableDoubleBookIntegrationTest extends IntegrationTestBase {
 
         Long sharedTableId = fixture.table().getId();
         jdbcTemplate.update("DELETE FROM hold_table WHERE hold_id IN (?, ?)", holdA.hold().getId(), holdB.hold().getId());
-        jdbcTemplate.update("INSERT INTO hold_table (hold_id, table_id) VALUES (?, ?)", holdA.hold().getId(), sharedTableId);
-        jdbcTemplate.update("INSERT INTO hold_table (hold_id, table_id) VALUES (?, ?)", holdB.hold().getId(), sharedTableId);
+        jdbcTemplate.execute("ALTER TABLE hold_table DISABLE TRIGGER trg_hold_table_no_overlap");
+        try {
+            jdbcTemplate.update("INSERT INTO hold_table (hold_id, table_id) VALUES (?, ?)", holdA.hold().getId(), sharedTableId);
+            jdbcTemplate.update("INSERT INTO hold_table (hold_id, table_id) VALUES (?, ?)", holdB.hold().getId(), sharedTableId);
+        } finally {
+            jdbcTemplate.execute("ALTER TABLE hold_table ENABLE TRIGGER trg_hold_table_no_overlap");
+        }
         assertThat(table2.getId()).isNotNull();
 
         AtomicInteger success = new AtomicInteger();

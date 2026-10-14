@@ -88,7 +88,7 @@ public interface StaffShiftAssignmentRepository extends JpaRepository<StaffShift
                         END
                     ),
                     '[)'
-                  ) && tstzrange(:startUtc::timestamp, :endUtc::timestamp, '[)')
+                  ) && tstzrange(CAST(:startUtc AS timestamptz), CAST(:endUtc AS timestamptz), '[)')
             LIMIT 1
             FOR UPDATE
             """, nativeQuery = true)

@@ -75,7 +75,9 @@ class AdminReservationLifecycleIntegrationTest extends IntegrationTestBase {
 
     @Test
     void adminReservationLifecycle_create_seat_complete() throws Exception {
-        Restaurant restaurant = restaurantRepository.save(new Restaurant("Test", "test", "UTC"));
+        Restaurant restaurant = new Restaurant("Test", "test", "UTC");
+        restaurant.setBookingEnabled(true);
+        restaurant = restaurantRepository.save(restaurant);
         attachBillableOwner(restaurant);
 
         DiningTable table = new DiningTable(restaurant, "T1", 4);
@@ -115,7 +117,7 @@ class AdminReservationLifecycleIntegrationTest extends IntegrationTestBase {
                         .param("restaurantId", restaurant.getId().toString())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(createRequest)))
-                .andExpect(status().isOk())
+                .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.data.status").value("CONFIRMED"))
                 .andReturn();
 
@@ -158,7 +160,9 @@ class AdminReservationLifecycleIntegrationTest extends IntegrationTestBase {
 
     @Test
     void walkIn_createWithSeatImmediately_setsSeatedStatus() throws Exception {
-        Restaurant restaurant = restaurantRepository.save(new Restaurant("Test Seat", "test-seat", "UTC"));
+        Restaurant restaurant = new Restaurant("Test Seat", "test-seat", "UTC");
+        restaurant.setBookingEnabled(true);
+        restaurant = restaurantRepository.save(restaurant);
         attachBillableOwner(restaurant);
 
         DiningTable table = new DiningTable(restaurant, "T1", 4);
@@ -198,7 +202,7 @@ class AdminReservationLifecycleIntegrationTest extends IntegrationTestBase {
                         .param("restaurantId", restaurant.getId().toString())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(createRequest)))
-                .andExpect(status().isOk())
+                .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.data.status").value("SEATED"))
                 .andExpect(jsonPath("$.data.guestEmail").value(""));
     }

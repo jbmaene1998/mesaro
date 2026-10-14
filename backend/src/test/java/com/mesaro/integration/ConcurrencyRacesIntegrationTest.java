@@ -140,7 +140,7 @@ class ConcurrencyRacesIntegrationTest extends IntegrationTestBase {
         Reservation reservation = new Reservation(
                 restaurant,
                 shift,
-                "RES-RACE-" + System.nanoTime(),
+                "R" + Long.toUnsignedString(System.nanoTime(), 36),
                 "Guest",
                 "guest@example.com",
                 2,

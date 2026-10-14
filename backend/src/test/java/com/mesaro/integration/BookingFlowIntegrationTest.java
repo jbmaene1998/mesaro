@@ -77,7 +77,7 @@ class BookingFlowIntegrationTest extends IntegrationTestBase {
         MvcResult holdResult = mockMvc.perform(post("/api/holds")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(holdRequest)))
-                .andExpect(status().isOk())
+                .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.data.holdToken").isNotEmpty())
                 .andReturn();
 

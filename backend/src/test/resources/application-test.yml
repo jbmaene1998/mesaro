@@ -18,6 +18,8 @@ management:
       enabled: false
 
 app:
+  rate-limit:
+    enabled: false
   ops:
     alerts-enabled: false
   logging:
