@@ -40,7 +40,7 @@
     "react-router-dom": "^6.28.0",
     "sonner": "^1.7.1",
     "tailwind-merge": "^2.5.4",
-    "zod": "^3.23.8"
+    "zod": "^4.6.6"
   },
   "devDependencies": {
     "@playwright/test": "^1.50.1",
